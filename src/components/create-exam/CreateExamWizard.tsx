@@ -1637,14 +1637,13 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                               <div key={opt} className="flex items-center gap-1">
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    handleUpdateQuestion(q.id, {
-                                      objective_data: {
-                                        ...q.objective_data!,
-                                        correct_option: opt,
-                                      },
-                                    })
-                                  }
+                                  onClick={() => {
+                                    if (editingQuestionId === q.id && editingDraft?.objective_data) {
+                                      setEditingDraft({ ...editingDraft, objective_data: { ...editingDraft.objective_data, correct_option: opt } });
+                                    } else {
+                                      handleUpdateQuestion(q.id, { objective_data: { ...q.objective_data!, correct_option: opt } });
+                                    }
+                                  }}
                                   className={`font-bold px-1 rounded transition-colors ${
                                     isCorrect ? 'bg-emerald-100 text-emerald-800 font-bold' : 'text-slate-700 hover:bg-slate-200'
                                   }`}
