@@ -41,6 +41,9 @@ async function supabaseAdminRequest(path: string, init: RequestInit = {}) {
   const data = raw ? JSON.parse(raw) : null;
   if (!response.ok) {
     console.error('Supabase server request failed', response.status, data);
+    if (data?.code === '23505' && typeof data?.message === 'string' && data.message.toLowerCase().includes('already has an exam for this subject')) {
+      throw new Error(data.message);
+    }
     throw new Error('Unable to complete the secure database operation.');
   }
   return data;
