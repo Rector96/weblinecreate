@@ -47,7 +47,7 @@ function AppContent() {
   const [lastCreatedExam, setLastCreatedExam] = useState<Exam | null>(null);
 
   // Check URL pathname for /join/:token on mount
-  const [initialJoinToken, setInitialJoinToken] = useState<string | undefined>(() => {
+  const [initialJoinToken] = useState<string | undefined>(() => {
     const path = window.location.pathname;
     if (path.startsWith('/join/')) {
       return path.split('/join/')[1]?.toUpperCase();
