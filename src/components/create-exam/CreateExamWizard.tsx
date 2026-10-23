@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
+import { saveExamToSupabase } from '../../lib/examRepository';
 import {
   Exam,
   Question,
@@ -450,72 +451,76 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     showNotification('Exam draft safely stored in offline storage!');
   };
 
-  // Step 5: Final Submission, Automatic Download & Dashboard Sync
+  // Step 5: Save the exam and all related questions to Supabase.
   const handleSubmitExam = async () => {
-    if (!school) return;
-    setIsSubmitting(true);
-
-    const trialRes = db.consumeTrial(school.id, method === 'ai');
-    if (!trialRes.success) {
-      alert(trialRes.message || 'Trial quota exhausted');
-      setIsSubmitting(false);
-      onOpenPaystack();
+    if (!school || !user?.id) {
+      alert('Please sign in with a valid school account before publishing an exam.');
       return;
     }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    const examCode = `EC-${session.slice(0, 4)}-${subject.slice(0, 3).toUpperCase()}-${className.replace(/\s+/g, '')}`;
-    const sectionAMarks = questions.filter((q) => q.section === 'A').reduce((acc, q) => acc + q.marks, 0);
-    const sectionBMarks = questions.filter((q) => q.section === 'B').reduce((acc, q) => acc + q.marks, 0);
-
-    const newExam = db.saveExam(
-      {
-        school_id: school.id,
-        created_by: user?.id || 'admin',
-        created_by_name: user?.full_name || 'Staff',
-        exam_code: examCode,
-        title,
-        subject,
-        class_name: className,
-        term,
-        session,
-        duration_minutes: durationMinutes,
-        instructions,
-        total_marks: sectionAMarks + sectionBMarks || totalMarks,
-        section_a_marks: sectionAMarks,
-        section_b_marks: sectionBMarks,
-        status: 'published',
-      },
-      questions
-    );
-
-    // AUTOMATIC DOWNLOAD: Both Exam Paper DOCX and Confidential Marking Scheme DOCX
     try {
-      await exportExamToDocx(newExam, school);
-      // Small pause before second download so browser doesn't block dual download popup
-      setTimeout(async () => {
-        try {
-          await exportMarkingSchemeToDocx(newExam, school);
-        } catch {
-          // Handled
-        }
-      }, 600);
-    } catch (e) {
-      console.warn('Auto download error', e);
-    }
+      const trialRes = db.consumeTrial(school.id, method === 'ai');
+      if (!trialRes.success) {
+        alert(trialRes.message || 'Trial quota exhausted');
+        onOpenPaystack();
+        return;
+      }
 
-    // Trigger celebration confetti
-    try {
-      confetti({
-        particleCount: 80,
-        spread: 60,
-        origin: { y: 0.6 },
-      });
-    } catch {
-      // Ignored
-    }
+      const examCode = `EC-${session.slice(0, 4)}-${subject.slice(0, 3).toUpperCase()}-${className.replace(/\\s+/g, '')}-${Date.now().toString().slice(-5)}`;
+      const sectionAMarks = questions.filter((q) => q.section === 'A').reduce((acc, q) => acc + q.marks, 0);
+      const sectionBMarks = questions.filter((q) => q.section === 'B').reduce((acc, q) => acc + q.marks, 0);
 
-    setIsSubmitting(false);
-    onSuccessExam(newExam);
+      const newExam = await saveExamToSupabase(
+        {
+          school_id: school.id,
+          created_by: user.id,
+          created_by_name: user.full_name || 'Staff',
+          exam_code: examCode,
+          title,
+          subject,
+          class_name: className,
+          term,
+          session,
+          duration_minutes: durationMinutes,
+          instructions,
+          total_marks: sectionAMarks + sectionBMarks || totalMarks,
+          section_a_marks: sectionAMarks,
+          section_b_marks: sectionBMarks,
+          status: 'published',
+        },
+        questions
+      );
+
+      // Download the paper and confidential marking scheme only after all records are saved.
+      try {
+        await exportExamToDocx(newExam, school);
+        setTimeout(async () => {
+          try {
+            await exportMarkingSchemeToDocx(newExam, school);
+          } catch (error) {
+            console.warn('Marking scheme download failed', error);
+          }
+        }, 600);
+      } catch (error) {
+        console.warn('Automatic exam download failed', error);
+      }
+
+      try {
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
+      } catch {
+        // Confetti is decorative and must not block a saved exam.
+      }
+
+      onSuccessExam(newExam);
+    } catch (error) {
+      console.error('Exam publication failed', error);
+      const message = error instanceof Error ? error.message : 'Unexpected error while saving the exam.';
+      alert(`The exam was not published: ${message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const sectionAQuestions = questions.filter((q) => q.section === 'A');
