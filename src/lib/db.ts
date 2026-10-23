@@ -65,7 +65,7 @@ const INITIAL_SCHOOLS: School[] = [
     subscription_status: 'trial',
     ai_exams_used: 1,
     manual_exams_used: 1,
-    max_trial_ai_exams: 3,
+    max_trial_ai_exams: 4,
     max_trial_manual_exams: 5,
     created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
   },
@@ -84,7 +84,7 @@ const INITIAL_SCHOOLS: School[] = [
     subscription_expires_at: new Date(Date.now() + 60 * 86400000).toISOString(),
     ai_exams_used: 8,
     manual_exams_used: 14,
-    max_trial_ai_exams: 3,
+    max_trial_ai_exams: 4,
     max_trial_manual_exams: 5,
     created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
   }
@@ -236,6 +236,24 @@ function writeStorage<T>(key: string, val: T): void {
 export function initializeDatabase() {
   if (!localStorage.getItem(STORAGE_KEYS.SCHOOLS)) {
     writeStorage(STORAGE_KEYS.SCHOOLS, INITIAL_SCHOOLS);
+  } else {
+    // Migrate existing stored schools from 3 to 4 trial exams if needed
+    try {
+      const stored = readStorage<School[]>(STORAGE_KEYS.SCHOOLS, []);
+      let changed = false;
+      const updated = stored.map((s) => {
+        if (s.max_trial_ai_exams === 3) {
+          changed = true;
+          return { ...s, max_trial_ai_exams: 4 };
+        }
+        return s;
+      });
+      if (changed) {
+        writeStorage(STORAGE_KEYS.SCHOOLS, updated);
+      }
+    } catch {
+      // Ignore
+    }
   }
   if (!localStorage.getItem(STORAGE_KEYS.CLASSES)) {
     writeStorage(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
@@ -283,7 +301,7 @@ export const db = {
       subscription_status: 'trial',
       ai_exams_used: 0,
       manual_exams_used: 0,
-      max_trial_ai_exams: 3,
+      max_trial_ai_exams: 4,
       max_trial_manual_exams: 5,
       created_at: new Date().toISOString(),
     };
@@ -326,6 +344,38 @@ export const db = {
     return true;
   },
 
+  canGenerateExam(schoolId: string, isAI: boolean): { allowed: boolean; reason?: string; used: number; max: number; isPaid: boolean } {
+    const school = this.getSchool(schoolId);
+    if (!school) return { allowed: false, reason: 'School not found', used: 0, max: 0, isPaid: false };
+    const isPaid = school.subscription_status === 'active';
+    if (isPaid) {
+      return { allowed: true, used: isAI ? school.ai_exams_used : school.manual_exams_used, max: 999999, isPaid: true };
+    }
+    const used = isAI ? school.ai_exams_used : school.manual_exams_used;
+    const max = isAI ? school.max_trial_ai_exams : school.max_trial_manual_exams;
+    if (used >= max) {
+      return {
+        allowed: false,
+        reason: isAI
+          ? `Trial limit reached (${used}/${max} AI exams used). On your 5th generation, please complete payment for full term access.`
+          : `Trial limit reached (${used}/${max} manual exams used). Please upgrade to continue.`,
+        used,
+        max,
+        isPaid: false,
+      };
+    }
+    return { allowed: true, used, max, isPaid: false };
+  },
+
+  setSchoolTrialUsage(schoolId: string, aiUsed: number, manualUsed?: number): School | null {
+    const school = this.getSchool(schoolId);
+    if (!school) return null;
+    return this.updateSchool(schoolId, {
+      ai_exams_used: aiUsed,
+      ...(manualUsed !== undefined ? { manual_exams_used: manualUsed } : {}),
+    });
+  },
+
   consumeTrial(schoolId: string, isAI: boolean): { success: boolean; message?: string } {
     const school = this.getSchool(schoolId);
     if (!school) return { success: false, message: 'School not found' };
@@ -344,7 +394,7 @@ export const db = {
       if (school.ai_exams_used >= school.max_trial_ai_exams) {
         return {
           success: false,
-          message: `Trial limit reached (${school.max_trial_ai_exams}/${school.max_trial_ai_exams} AI exams used). Please subscribe for ₦11,000/term to generate unlimited exams.`
+          message: `Trial limit reached (${school.max_trial_ai_exams}/${school.max_trial_ai_exams} AI exams used). Please pay ₦11,000 for full term access to generate unlimited exams.`
         };
       }
       this.updateSchool(schoolId, { ai_exams_used: school.ai_exams_used + 1 });

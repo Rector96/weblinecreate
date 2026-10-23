@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../lib/auth';
-import { School, User, Sparkles, LogOut, ShieldCheck, CreditCard } from 'lucide-react';
+import { School, User, Sparkles, LogOut, ShieldCheck, CreditCard, Check } from 'lucide-react';
 
 interface HeaderProps {
   currentRoute: string;
@@ -88,17 +88,28 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
             onClick={onOpenPaystack}
             className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               school.subscription_status === 'active'
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold shadow-xs'
+                : school.ai_exams_used >= 4
+                ? 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 font-bold animate-pulse'
                 : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
             }`}
             title="Manage School Subscription"
           >
-            <CreditCard className="w-3.5 h-3.5" />
-            <span>
-              {school.subscription_status === 'active'
-                ? 'Term Active'
-                : `Trial: ${school.max_trial_ai_exams - school.ai_exams_used} AI left`}
-            </span>
+            {school.subscription_status === 'active' ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span>PAID · FULL TERM ACTIVE</span>
+              </>
+            ) : (
+              <>
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>
+                  {school.ai_exams_used >= 4
+                    ? '4/4 Used · Pay ₦11,000'
+                    : `Trial: ${Math.max(0, 4 - school.ai_exams_used)} AI left`}
+                </span>
+              </>
+            )}
           </button>
         )}
 

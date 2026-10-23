@@ -131,23 +131,50 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* Card 2: Subscription Status */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold text-slate-500">Subscription</span>
-            <CreditCard className="w-4 h-4 text-sky-600" />
-          </div>
-          <div className="text-base sm:text-lg font-black text-slate-900 capitalize">
-            {school?.subscription_status === 'active' ? 'Active Term' : 'Free Trial'}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">
+        <div className={`p-4 sm:p-5 rounded-2xl border shadow-xs ${
+          school?.subscription_status === 'active'
+            ? 'bg-emerald-50/50 border-emerald-200'
+            : (school?.ai_exams_used || 0) >= 4
+            ? 'bg-amber-50/60 border-amber-200'
+            : 'bg-white border-slate-200/80'
+        }`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">Subscription Status</span>
             {school?.subscription_status === 'active' ? (
-              <span className="text-emerald-600 font-medium">Unlimited Access</span>
+              <span className="flex items-center gap-1 text-[10px] font-black uppercase bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-md">
+                <Check className="w-3 h-3" />
+                PAID
+              </span>
+            ) : (school?.ai_exams_used || 0) >= 4 ? (
+              <span className="text-[10px] font-bold uppercase bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md">
+                Limit
+              </span>
+            ) : (
+              <CreditCard className="w-4 h-4 text-sky-600" />
+            )}
+          </div>
+          <div className={`text-base sm:text-lg font-black ${
+            school?.subscription_status === 'active' ? 'text-emerald-800' : 'text-slate-900'
+          }`}>
+            {school?.subscription_status === 'active'
+              ? 'Full Term Active'
+              : (school?.ai_exams_used || 0) >= 4
+              ? '4/4 Used (5th Pending)'
+              : `${remainingAi} Trial Left`}
+          </div>
+          <div className="text-[11px] mt-1">
+            {school?.subscription_status === 'active' ? (
+              <span className="text-emerald-700 font-semibold">✓ Unlimited AI & Papers</span>
             ) : (
               <button
                 onClick={onOpenPaystack}
-                className="text-blue-600 font-semibold hover:underline"
+                className={`font-semibold hover:underline ${
+                  (school?.ai_exams_used || 0) >= 4 ? 'text-amber-800 font-bold' : 'text-blue-600'
+                }`}
               >
-                {remainingAi} AI trials left · Upgrade
+                {(school?.ai_exams_used || 0) >= 4
+                  ? 'Pay ₦11,000 for 5th exam'
+                  : `${remainingAi} AI trials left · Upgrade`}
               </button>
             )}
           </div>

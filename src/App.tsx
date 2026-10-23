@@ -22,12 +22,14 @@ import { ClassesPage } from './components/classes/ClassesPage';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { PlatformAdminPage } from './components/admin/PlatformAdminPage';
 import { ExamPreviewModal } from './components/exams/ExamPreviewModal';
+import { PageLoader } from './components/common/PageLoader';
 import { Exam } from './types';
 
 function AppContent() {
   const { isAuthenticated, school, isLoading } = useAuth();
   const [currentRoute, setCurrentRoute] = useState<string>('dashboard');
   const [routeParam, setRouteParam] = useState<string | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Modals state
   const [isPaystackOpen, setIsPaystackOpen] = useState(false);
@@ -44,11 +46,29 @@ function AppContent() {
     return params.get('token')?.toUpperCase() || undefined;
   });
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, []);
+
   const navigate = (route: string, param?: string) => {
     setCurrentRoute(route);
     setRouteParam(param || null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Smooth PageLoader on app launch / auth resolution
+  if (isLoading || isInitialLoading) {
+    return (
+      <PageLoader
+        message="Loading ROCKCRAF Examination Workspace..."
+        minDurationMs={650}
+        onFinish={() => setIsInitialLoading(false)}
+      />
+    );
+  }
 
   // If unauthenticated: only render auth screens (no public marketing landing)
   if (!isAuthenticated) {
@@ -107,47 +127,49 @@ function AppContent() {
 
         {/* Viewport Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
-          {currentRoute === 'dashboard' && (
-            <DashboardPage
-              navigate={navigate}
-              onOpenPaystack={() => setIsPaystackOpen(true)}
-              onPreviewExam={(ex) => setPreviewExam(ex)}
-            />
-          )}
+          <div key={currentRoute} className="animate-page-enter">
+            {currentRoute === 'dashboard' && (
+              <DashboardPage
+                navigate={navigate}
+                onOpenPaystack={() => setIsPaystackOpen(true)}
+                onPreviewExam={(ex) => setPreviewExam(ex)}
+              />
+            )}
 
-          {currentRoute === 'create-exam' && (
-            <CreateExamWizard
-              navigate={navigate}
-              onOpenPaystack={() => setIsPaystackOpen(true)}
-              onSuccessExam={(savedExam) => {
-                setLastCreatedExam(savedExam);
-                navigate('exam-success', savedExam.exam_code);
-              }}
-            />
-          )}
+            {currentRoute === 'create-exam' && (
+              <CreateExamWizard
+                navigate={navigate}
+                onOpenPaystack={() => setIsPaystackOpen(true)}
+                onSuccessExam={(savedExam) => {
+                  setLastCreatedExam(savedExam);
+                  navigate('exam-success', savedExam.exam_code);
+                }}
+              />
+            )}
 
-          {currentRoute === 'exam-success' && lastCreatedExam && (
-            <ExamSuccessPage
-              exam={lastCreatedExam}
-              navigate={navigate}
-              onPreview={(ex) => setPreviewExam(ex)}
-            />
-          )}
+            {currentRoute === 'exam-success' && lastCreatedExam && (
+              <ExamSuccessPage
+                exam={lastCreatedExam}
+                navigate={navigate}
+                onPreview={(ex) => setPreviewExam(ex)}
+              />
+            )}
 
-          {currentRoute === 'exams' && (
-            <ExamsListPage
-              navigate={navigate}
-              onPreviewExam={(ex) => setPreviewExam(ex)}
-            />
-          )}
+            {currentRoute === 'exams' && (
+              <ExamsListPage
+                navigate={navigate}
+                onPreviewExam={(ex) => setPreviewExam(ex)}
+              />
+            )}
 
-          {currentRoute === 'classes' && <ClassesPage />}
+            {currentRoute === 'classes' && <ClassesPage />}
 
-          {currentRoute === 'profile' && (
-            <ProfilePage onOpenPaystack={() => setIsPaystackOpen(true)} />
-          )}
+            {currentRoute === 'profile' && (
+              <ProfilePage onOpenPaystack={() => setIsPaystackOpen(true)} />
+            )}
 
-          {currentRoute === 'admin' && <PlatformAdminPage />}
+            {currentRoute === 'admin' && <PlatformAdminPage />}
+          </div>
         </main>
 
         {/* Mobile Floating Bottom Dock */}

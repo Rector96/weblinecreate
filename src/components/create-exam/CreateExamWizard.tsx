@@ -37,7 +37,8 @@ import {
   RefreshCw,
   Download,
   Check,
-  Edit3
+  Edit3,
+  CreditCard
 } from 'lucide-react';
 
 interface CreateExamWizardProps {
@@ -131,6 +132,11 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
   // Step 2 Choice
   const handleSelectMethod = (selected: 'ai' | 'manual') => {
+    if (selected === 'ai' && school && school.subscription_status !== 'active' && school.ai_exams_used >= 4) {
+      setAiError('You have used all 4 free trial exams. On your 5th generation, please complete payment for full term access.');
+      onOpenPaystack();
+      return;
+    }
     setMethod(selected);
     setCurrentStep(3);
   };
@@ -138,17 +144,19 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   // Step 3b AI Generation Handler
   const handleGenerateAI = async () => {
     if (!school) return;
-    setIsGeneratingAI(true);
-    setAiError(null);
 
-    // Enforce trial limit
-    if (school.subscription_status !== 'active' && school.ai_exams_used >= school.max_trial_ai_exams) {
+    // Enforce 4 free trial limit: 5th attempt triggers Paystack payment popup immediately
+    if (school.subscription_status !== 'active' && school.ai_exams_used >= 4) {
       setAiError(
-        `Trial limit reached (${school.max_trial_ai_exams}/${school.max_trial_ai_exams} AI exams used). Please upgrade to unlimited school subscription for ₦11,000/term.`
+        'Trial limit reached (4 of 4 free exams used). Please pay ₦11,000 for full term access to generate your 5th exam.'
       );
       setIsGeneratingAI(false);
+      onOpenPaystack();
       return;
     }
+
+    setIsGeneratingAI(true);
+    setAiError(null);
 
     try {
       const response = await fetch('/api/generate-questions', {
@@ -166,8 +174,15 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         }),
       });
 
-      const json = await response.json();
-      if (json.success && json.data) {
+      const text = await response.text();
+      let json: any = null;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error('Received invalid response from server. Check that your GEMINI_API_KEY is configured in Netlify environment variables.');
+      }
+
+      if (json && json.success && json.data) {
         const rawA = json.data.section_a || [];
         const rawB = json.data.section_b || [];
 
@@ -694,25 +709,81 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             </p>
           </div>
 
+          {/* Subscription Banner */}
+          {school && school.subscription_status === 'active' ? (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs text-emerald-900 font-medium">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>
+                  <strong>PAID · FULL TERM ACTIVE:</strong> Unlimited AI & Manual Exam Generations Unlocked
+                </span>
+              </div>
+              <span className="bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full text-[10px]">
+                PAID
+              </span>
+            </div>
+          ) : school && school.ai_exams_used >= 4 ? (
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="font-bold text-amber-900 block">
+                  4 of 4 Free Trial Exams Completed!
+                </span>
+                <span>
+                  To generate your <strong>5th exam</strong>, please complete payment for full term access.
+                </span>
+              </div>
+              <button
+                onClick={onOpenPaystack}
+                className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0 flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>Pay ₦11,000 via Paystack</span>
+              </button>
+            </div>
+          ) : (
+            <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-2xl text-xs text-blue-900 flex items-center justify-between">
+              <span>Free Trial Active: <strong>{4 - (school?.ai_exams_used || 0)} of 4</strong> free AI generations remaining</span>
+              <span className="text-[10px] text-blue-600 font-semibold">Attempt 5 requires payment</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div
               onClick={() => handleSelectMethod('ai')}
-              className="p-5 rounded-3xl border-2 border-blue-200 hover:border-blue-600 bg-gradient-to-br from-blue-50/50 to-white hover:shadow-md transition-all cursor-pointer text-left group"
+              className={`p-5 rounded-3xl border-2 transition-all cursor-pointer text-left group ${
+                school?.subscription_status !== 'active' && (school?.ai_exams_used || 0) >= 4
+                  ? 'border-amber-300 bg-amber-50/30 hover:border-amber-500'
+                  : 'border-blue-200 hover:border-blue-600 bg-gradient-to-br from-blue-50/50 to-white hover:shadow-md'
+              }`}
             >
               <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center mb-4 shadow-sm shadow-blue-600/30 group-hover:scale-105 transition-transform">
                 <Sparkles className="w-6 h-6" />
               </div>
               <div className="flex items-center gap-2">
                 <h4 className="text-base font-bold text-blue-950">AI Question Generator</h4>
-                <span className="text-[10px] bg-blue-200 text-blue-900 font-bold px-2 py-0.5 rounded-full">
-                  Recommended
-                </span>
+                {school?.subscription_status === 'active' ? (
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                    Unlimited
+                  </span>
+                ) : (school?.ai_exams_used || 0) >= 4 ? (
+                  <span className="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">
+                    5th Attempt Paywall
+                  </span>
+                ) : (
+                  <span className="text-[10px] bg-blue-200 text-blue-900 font-bold px-2 py-0.5 rounded-full">
+                    Recommended
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
                 Generate authentic WAEC-standard multiple choice questions, essay problems, and confidential scoring rubrics in seconds from Nigerian curriculum topics.
               </p>
               <div className="mt-4 text-xs font-bold text-blue-600 flex items-center gap-1">
-                <span>Configure AI Generator</span>
+                <span>
+                  {school?.subscription_status !== 'active' && (school?.ai_exams_used || 0) >= 4
+                    ? 'Unlock 5th Exam (₦11,000)'
+                    : 'Configure AI Generator'}
+                </span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </div>
             </div>
@@ -842,14 +913,29 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             </button>
 
             <button
-              onClick={handleGenerateAI}
+              onClick={() => {
+                if (school && school.subscription_status !== 'active' && school.ai_exams_used >= 4) {
+                  onOpenPaystack();
+                  return;
+                }
+                handleGenerateAI();
+              }}
               disabled={isGeneratingAI}
-              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-800 disabled:opacity-75 text-white font-semibold text-xs flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all"
+              className={`px-6 py-2.5 rounded-xl text-white font-semibold text-xs flex items-center gap-2 shadow-md transition-all active:scale-95 ${
+                school?.subscription_status !== 'active' && (school?.ai_exams_used || 0) >= 4
+                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/25'
+                  : 'bg-blue-600 hover:bg-blue-800 shadow-blue-600/20 disabled:opacity-75'
+              }`}
             >
               {isGeneratingAI ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>AI Drafting Questions & Marking Scheme...</span>
+                </>
+              ) : school?.subscription_status !== 'active' && (school?.ai_exams_used || 0) >= 4 ? (
+                <>
+                  <CreditCard className="w-4 h-4" />
+                  <span>Unlock 5th Exam (Pay ₦11,000 via Paystack)</span>
                 </>
               ) : (
                 <>

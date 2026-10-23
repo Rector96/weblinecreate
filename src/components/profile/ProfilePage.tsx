@@ -121,31 +121,76 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
 
       {/* Subscription Status Card */}
       {school && (
-        <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className={`p-5 rounded-3xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm ${
+          school.subscription_status === 'active'
+            ? 'bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-800'
+            : 'bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800'
+        }`}>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
-              Subscription Plan
-            </span>
-            <div className="text-lg font-extrabold capitalize mt-0.5">
-              {school.subscription_status === 'active' ? 'Full Term Active' : 'Free Trial Mode'}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
+                School Subscription
+              </span>
+              {school.subscription_status === 'active' && (
+                <span className="px-2 py-0.5 rounded-md bg-emerald-400 text-emerald-950 font-black text-[10px] uppercase">
+                  PAID ACTIVE
+                </span>
+              )}
             </div>
-            <p className="text-xs text-blue-200 mt-1">
+            <div className="text-lg font-extrabold capitalize mt-0.5">
+              {school.subscription_status === 'active' ? 'Full Term Active · Paid' : 'Free Trial Mode'}
+            </div>
+            <p className="text-xs text-blue-100 mt-1">
               {school.subscription_status === 'active' ? (
-                'Unlimited exam generation active for this academic term.'
+                'Unlimited AI examination paper and marking scheme generation active for this academic term.'
               ) : (
                 <>
-                  {school.max_trial_ai_exams - school.ai_exams_used} AI exams and{' '}
-                  {school.max_trial_manual_exams - school.manual_exams_used} manual exams remaining.
+                  <span className="font-bold text-white">
+                    {Math.max(0, 4 - school.ai_exams_used)} of 4
+                  </span>{' '}
+                  free AI exams remaining. (5th attempt requires payment of ₦11,000).
                 </>
               )}
             </p>
+
+            {/* Quick test control for user / testing */}
+            <div className="mt-3 flex items-center gap-2 text-[11px]">
+              <span className="text-blue-200 font-medium">Trial Simulator:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  db.setSchoolTrialUsage(school.id, 4);
+                  refreshSchool();
+                }}
+                className="px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white font-medium transition-colors"
+                title="Fast-forward to 4/4 used so the 5th generation triggers Paystack"
+              >
+                Set to 4/4 Used (Test 5th Attempt)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  db.setSchoolTrialUsage(school.id, 0);
+                  refreshSchool();
+                }}
+                className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-blue-200 font-medium transition-colors"
+                title="Reset usage counter back to 0"
+              >
+                Reset to 0/4
+              </button>
+            </div>
           </div>
 
           <button
+            type="button"
             onClick={onOpenPaystack}
-            className="px-4 py-2.5 rounded-xl bg-white text-blue-900 hover:bg-blue-50 text-xs font-bold transition-all shadow-sm shrink-0"
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm shrink-0 active:scale-95 ${
+              school.subscription_status === 'active'
+                ? 'bg-white text-emerald-900 hover:bg-emerald-50'
+                : 'bg-white text-blue-900 hover:bg-blue-50'
+            }`}
           >
-            {school.subscription_status === 'active' ? 'Manage Term' : 'Upgrade for ₦11,000'}
+            {school.subscription_status === 'active' ? 'Manage Term Subscription' : 'Upgrade for ₦11,000'}
           </button>
         </div>
       )}

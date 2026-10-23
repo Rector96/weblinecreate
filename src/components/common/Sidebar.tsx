@@ -10,7 +10,8 @@ import {
   CreditCard,
   UserCheck,
   Users,
-  Sparkles
+  Sparkles,
+  Check
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -134,38 +135,54 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
       {/* Subscription Card */}
       {school && (
         <div className="mt-auto pt-4 border-t border-slate-100">
-          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50 via-sky-50/50 to-slate-50 border border-blue-100 text-left">
-            <div className="flex items-center justify-between text-xs font-bold text-blue-900 mb-1">
-              <span>Subscription</span>
-              <span className="capitalize px-2 py-0.5 rounded-full bg-blue-200/60 text-blue-800 text-[10px]">
-                {school.subscription_status}
-              </span>
+          {school.subscription_status === 'active' ? (
+            <div className="p-3.5 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-left">
+              <div className="flex items-center justify-between text-xs font-bold text-emerald-950 mb-1">
+                <span>School Subscription</span>
+                <span className="flex items-center gap-1 uppercase px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900 text-[10px] font-black">
+                  <Check className="w-3 h-3" />
+                  PAID
+                </span>
+              </div>
+              <p className="text-xs text-emerald-800 font-medium mt-1 leading-relaxed">
+                Full Term Active · Unlimited AI questions, DOCX exports & marking schemes.
+              </p>
             </div>
-            <p className="text-xs text-slate-600 mt-1">
-              {school.subscription_status === 'active' ? (
-                'Unlimited AI & Manual exams for this term.'
-              ) : (
-                <>
-                  <span className="font-semibold text-blue-900">
-                    {Math.max(0, school.max_trial_ai_exams - school.ai_exams_used)}
-                  </span>{' '}
-                  AI &{' '}
-                  <span className="font-semibold text-blue-900">
-                    {Math.max(0, school.max_trial_manual_exams - school.manual_exams_used)}
-                  </span>{' '}
-                  manual trial exams remaining.
-                </>
-              )}
-            </p>
-            {school.subscription_status !== 'active' && (
+          ) : (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50 via-sky-50/50 to-slate-50 border border-blue-100 text-left">
+              <div className="flex items-center justify-between text-xs font-bold text-blue-900 mb-1">
+                <span>Free Trial</span>
+                <span className={`capitalize px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  school.ai_exams_used >= 4
+                    ? 'bg-amber-200 text-amber-900'
+                    : 'bg-blue-200/60 text-blue-800'
+                }`}>
+                  {school.ai_exams_used >= 4 ? 'Limit Reached' : `${school.ai_exams_used}/4 Used`}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-1">
+                {school.ai_exams_used >= 4 ? (
+                  <span className="text-amber-800 font-semibold">
+                    4 of 4 trial exams used. 5th exam requires term access.
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-semibold text-blue-900">
+                      {Math.max(0, 4 - school.ai_exams_used)}
+                    </span>{' '}
+                    AI trial exams remaining.
+                  </>
+                )}
+              </p>
               <button
                 onClick={onOpenPaystack}
-                className="mt-3 w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-all"
+                className="mt-3 w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5"
               >
-                Upgrade (₦11,000/Term)
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>{school.ai_exams_used >= 4 ? 'Pay ₦11,000 via Paystack' : 'Upgrade (₦11,000/Term)'}</span>
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </aside>
