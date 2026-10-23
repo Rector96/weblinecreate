@@ -15,6 +15,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS school_subjects_school_name_unique
   ON public.school_subjects (school_id, lower(btrim(name)));
 
 ALTER TABLE public.school_subjects ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.school_subjects TO authenticated;
 
 DROP POLICY IF EXISTS school_subjects_select_member ON public.school_subjects;
 CREATE POLICY school_subjects_select_member
@@ -102,9 +103,46 @@ $$;
 
 DROP TRIGGER IF EXISTS exams_prevent_duplicate_class_subject ON public.exams;
 CREATE TRIGGER exams_prevent_duplicate_class_subject
-BEFORE INSERT OR UPDATE OF school_id, class_name, subject, term, session, status
+BEFORE INSERT OR UPDATE
 ON public.exams
 FOR EACH ROW
 EXECUTE FUNCTION public.prevent_duplicate_class_subject_exam();
+
+
+-- New schools receive the standard curriculum automatically; school admins can customize it.
+CREATE OR REPLACE FUNCTION public.seed_default_school_subjects()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $
+BEGIN
+  INSERT INTO public.school_subjects (school_id, name)
+  SELECT NEW.id, subjects.name
+  FROM (VALUES
+    ('Mathematics'), ('English Language'), ('Civic Education'),
+    ('Physics'), ('Chemistry'), ('Biology'), ('Further Mathematics'),
+    ('Agricultural Science'), ('Computer Studies'), ('Data Processing'),
+    ('Technical Drawing'), ('Animal Husbandry'), ('Fisheries'),
+    ('Economics'), ('Financial Accounting'), ('Commerce'), ('Marketing'),
+    ('Store Management'), ('Book Keeping'), ('Office Practice'), ('Insurance'),
+    ('Government'), ('Literature-in-English'), ('History'),
+    ('Christian Religious Studies (CRS)'), ('Islamic Religious Studies (IRS)'),
+    ('Visual Arts'), ('Music'), ('French'), ('Yoruba'), ('Igbo'), ('Hausa'),
+    ('Basic Science'), ('Basic Technology'), ('Social Studies'), ('Business Studies'),
+    ('Physical & Health Education (PHE)'), ('Home Economics'),
+    ('Cultural & Creative Arts (CCA)'), ('Christian Religious Knowledge (CRK)'),
+    ('Islamic Studies (JSS)'), ('Computer Studies (Junior)')
+  ) AS subjects(name)
+  ON CONFLICT DO NOTHING;
+  RETURN NEW;
+END;
+$;
+
+DROP TRIGGER IF EXISTS schools_seed_default_subjects ON public.schools;
+CREATE TRIGGER schools_seed_default_subjects
+AFTER INSERT ON public.schools
+FOR EACH ROW
+EXECUTE FUNCTION public.seed_default_school_subjects();
 
 COMMIT;
