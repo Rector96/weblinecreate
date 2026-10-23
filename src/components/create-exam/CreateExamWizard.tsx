@@ -282,7 +282,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               : undefined,
         };
 
-        setQuestions(questions.map((q) => (q.id === targetQuestion.id ? updatedQuestion : q)));
+        setQuestions((current) => current.map((q) => (q.id === targetQuestion.id ? updatedQuestion : q)));
         showNotification(`Question ${targetQuestion.question_number} regenerated with AI!`);
       }
     } catch (error: any) {
@@ -292,32 +292,59 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     }
   };
 
-  // GENERATE MORE QUESTIONS (e.g. +5 objectives or +1 theory)
+  // Generate only the requested missing questions. The API accepts at most 20 per call,
+  // so larger gaps are filled in small batches without replacing questions already accepted.
   const handleGenerateMoreQuestions = async (section: 'A' | 'B', countToAdd: number = 5) => {
+    const requestedCount = Math.max(0, Math.floor(countToAdd));
+    if (requestedCount === 0) {
+      showNotification('You already have the requested number of questions.');
+      return;
+    }
+
     setIsAddingMore(true);
-    const currentSectionCount = questions.filter((q) => q.section === section).length;
-    const startNumber = currentSectionCount + 1;
+    let totalAdded = 0;
+    let remaining = requestedCount;
+    let attempts = 0;
 
     try {
-      const response = await fetch('/api/generate-more-questions', {
-        method: 'POST',
-        headers: await getAiAuthHeaders(),
-        body: JSON.stringify({
-          school_id: school?.id,
-          subject,
-          class_name: className,
-          section,
-          count: countToAdd,
-          start_number: startNumber,
-          topics: aiTopics,
-        }),
-      });
+      while (remaining > 0 && attempts < 5) {
+        attempts += 1;
+        const batchCount = Math.min(remaining, 20);
+        const currentMaxNumber = questions
+          .filter((q) => q.section === section)
+          .reduce((max, q) => Math.max(max, q.question_number || 0), 0);
+        // Each response is committed to state immediately so a later failed batch
+        // never discards questions already generated (or wastes their tokens).
+        const startNumber = currentMaxNumber + totalAdded + 1;
+        const response = await fetch('/api/generate-more-questions', {
+          method: 'POST',
+          headers: await getAiAuthHeaders(),
+          body: JSON.stringify({
+            school_id: school?.id,
+            subject,
+            class_name: className,
+            section,
+            count: batchCount,
+            start_number: startNumber,
+            topics: aiTopics,
+            difficulty: aiDifficulty,
+            instructions,
+            term,
+          }),
+        });
 
-      const res = await response.json();
-      if (!response.ok || !res.success) throw new Error(res.error || 'AI question generation failed. Please try again.');
-      if (res.success && Array.isArray(res.data)) {
-        const newQs: Question[] = res.data.map((item: any, idx: number) => ({
-          id: `q_more_${Date.now()}_${idx}`,
+        const res = await response.json();
+        if (!response.ok || !res.success || !Array.isArray(res.data)) {
+          throw new Error(res.error || 'AI question generation failed. Please try again.');
+        }
+
+        const items = res.data.slice(0, batchCount);
+        if (items.length === 0) {
+          throw new Error('The AI returned no questions. Your existing questions have been kept; please try again.');
+        }
+
+        const newQs: Question[] = items.map((item: any, idx: number) => ({
+          id: `q_more_${Date.now()}_${attempts}_${idx}`,
           section,
           question_number: startNumber + idx,
           question_text: item.question_text || `Additional Question ${startNumber + idx}`,
@@ -342,14 +369,31 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               : undefined,
         }));
 
-        setQuestions([...questions, ...newQs]);
-        showNotification(`Added ${newQs.length} new ${section === 'A' ? 'objective' : 'theory'} questions!`);
+        setQuestions((current) => [...current, ...newQs]);
+        totalAdded += newQs.length;
+        remaining -= newQs.length;
+      }
+
+      if (remaining > 0) {
+        showNotification(`Generated ${totalAdded} of ${requestedCount} requested questions. Your new questions are saved in the preview; use Generate Missing again to finish.`);
+      } else {
+        showNotification(`Added ${totalAdded} new ${section === 'A' ? 'objective' : 'theory'} questions.`);
       }
     } catch (error: any) {
-      showNotification(error?.message || 'AI generation failed. Please try again.');
+      showNotification(`${error?.message || 'AI generation failed. Please try again.'}${totalAdded ? ` ${totalAdded} generated question(s) were kept.` : ''}`);
     } finally {
       setIsAddingMore(false);
     }
+  };
+
+  const handleGenerateToTarget = (section: 'A' | 'B') => {
+    const target = section === 'A' ? aiNumObj : aiNumTheory;
+    const existingCount = questions.filter((q) => q.section === section).length;
+    if (target <= existingCount) {
+      showNotification(`You already have ${existingCount} ${section === 'A' ? 'objective' : 'theory'} questions. Lowering the target will not delete existing questions.`);
+      return;
+    }
+    void handleGenerateMoreQuestions(section, target - existingCount);
   };
 
   // Add Question Manually
@@ -385,7 +429,15 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   };
 
   const handleRemoveQuestion = (id: string) => {
-    setQuestions(questions.filter((q) => q.id !== id));
+    setQuestions((current) => {
+      const remaining = current.filter((q) => q.id !== id);
+      // Keep section numbering contiguous after a teacher removes a question.
+      return (['A', 'B'] as const).flatMap((section) =>
+        remaining
+          .filter((q) => q.section === section)
+          .map((q, index) => ({ ...q, question_number: index + 1 })),
+      );
+    });
   };
 
   const handleUpdateQuestion = (id: string, updates: Partial<Question>) => {
@@ -1224,45 +1276,68 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             </div>
           </div>
 
-          {/* Quick AI Addition Toolbar: Add more objectives or theories */}
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/40 to-slate-50 border border-blue-200/70 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+          {/* Target counts let teachers fill only the missing questions without discarding accepted work. */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/40 to-slate-50 border border-blue-200/70 space-y-3">
+            <div className="flex items-start gap-2">
+              <div className="w-7 h-7 shrink-0 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                 <Sparkles className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-blue-950">
-                Want to add more questions?
-              </span>
+              <div>
+                <p className="text-xs font-bold text-blue-950">Adjust question totals</p>
+                <p className="text-xs text-slate-600 mt-1">Choose the total number you want. We generate only the missing questions and keep the ones you have already reviewed. Regenerating one question never replaces the rest.</p>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleGenerateMoreQuestions('A', 5)}
-                disabled={isAddingMore}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-900 font-semibold text-xs border border-blue-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5 text-blue-600" />
-                <span>+5 Objectives</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleGenerateMoreQuestions('A', 1)}
-                disabled={isAddingMore}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-900 font-semibold text-xs border border-blue-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5 text-blue-600" />
-                <span>+1 Objective</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleGenerateMoreQuestions('B', 1)}
-                disabled={isAddingMore}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-900 font-semibold text-xs border border-blue-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5 text-blue-600" />
-                <span>+1 Theory Question</span>
-              </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-white/80 border border-blue-100 rounded-xl p-3 space-y-2">
+                <label htmlFor="target-objectives" className="block text-xs font-semibold text-slate-700">Objective questions (Section A)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="target-objectives"
+                    type="number"
+                    min={5}
+                    max={50}
+                    value={aiNumObj}
+                    onChange={(event) => setAiNumObj(Math.min(50, Math.max(5, Number(event.target.value) || 5)))}
+                    className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    aria-label="Target total objective questions"
+                  />
+                  <span className="text-xs text-slate-500">{questions.filter((q) => q.section === 'A').length} currently in preview</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateToTarget('A')}
+                  disabled={isAddingMore || aiNumObj <= questions.filter((q) => q.section === 'A').length}
+                  className="w-full px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs disabled:opacity-50"
+                >
+                  {isAddingMore ? 'Generating questions...' : `Generate ${Math.max(0, aiNumObj - questions.filter((q) => q.section === 'A').length)} missing objective(s)`}
+                </button>
+              </div>
+
+              <div className="bg-white/80 border border-indigo-100 rounded-xl p-3 space-y-2">
+                <label htmlFor="target-theory" className="block text-xs font-semibold text-slate-700">Theory questions (Section B)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="target-theory"
+                    type="number"
+                    min={1}
+                    max={6}
+                    value={aiNumTheory}
+                    onChange={(event) => setAiNumTheory(Math.min(6, Math.max(1, Number(event.target.value) || 1)))}
+                    className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    aria-label="Target total theory questions"
+                  />
+                  <span className="text-xs text-slate-500">{questions.filter((q) => q.section === 'B').length} currently in preview</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateToTarget('B')}
+                  disabled={isAddingMore || aiNumTheory <= questions.filter((q) => q.section === 'B').length}
+                  className="w-full px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs disabled:opacity-50"
+                >
+                  {isAddingMore ? 'Generating questions...' : `Generate ${Math.max(0, aiNumTheory - questions.filter((q) => q.section === 'B').length)} missing theory question(s)`}
+                </button>
+              </div>
             </div>
           </div>
 
