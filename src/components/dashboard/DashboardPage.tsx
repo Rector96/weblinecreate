@@ -12,7 +12,8 @@ import {
   Copy,
   Check,
   Download,
-  BookOpen
+  BookOpen,
+  Share2
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -96,12 +97,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return () => { cancelled = true; };
   }, [school?.id, role, user?.id]);
 
-  const copyInvite = () => {
-    if (!inviteToken) return;
-    const inviteUrl = `${window.location.origin}/join/${inviteToken}`;
-    navigator.clipboard.writeText(inviteUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const getInviteUrl = () => inviteToken ? `${window.location.origin}/join/${inviteToken}` : '';
+
+  const copyInvite = async () => {
+    const inviteUrl = getInviteUrl();
+    if (!inviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setDataError('Could not copy the invite link. Please copy it from your browser address bar after opening it.');
+    }
+  };
+
+  const shareInvite = async () => {
+    const inviteUrl = getInviteUrl();
+    if (!inviteUrl) return;
+    const shareData = {
+      title: `${school?.name || 'School'} teacher exam workspace`,
+      text: `Use this secure link to create exams for ${school?.name || 'our school'}. It opens the teacher exam workspace, not the school dashboard.`,
+      url: inviteUrl,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(inviteUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      setDataError('Unable to share automatically. Use Copy invite link instead.');
+    }
   };
 
   const handleDownloadDocx = async (exam: Exam, e: React.MouseEvent) => {
@@ -221,10 +250,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="text-lg font-mono font-black text-blue-600 tracking-wider">
             {inviteToken || 'No active invite'}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            <button onClick={copyInvite} disabled={!inviteToken} className="hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-medium">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px]">
+            <button onClick={copyInvite} disabled={!inviteToken} className="hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-semibold text-slate-600">
               {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-              <span>{copied ? 'Copied' : 'Copy invite link'}</span>
+              <span>{copied ? 'Copied' : 'Copy link'}</span>
+            </button>
+            <button onClick={shareInvite} disabled={!inviteToken} className="hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-semibold text-blue-700">
+              <Share2 className="w-3 h-3" />
+              <span>Share with teachers</span>
             </button>
           </div>
         </div>
