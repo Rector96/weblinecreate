@@ -12,9 +12,7 @@ import {
   Copy,
   Check,
   Download,
-  BookOpen,
-  Clock,
-  Sparkles
+  BookOpen
 } from 'lucide-react';
 
 interface DashboardPageProps {
