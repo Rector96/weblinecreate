@@ -108,7 +108,19 @@ function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Smooth PageLoader on app launch / auth resolution
+  // Invite links use a minimal brand-only loader with no login/account UI.
+  if ((isLoading || isInitialLoading) && initialJoinToken && !isAuthenticated) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#f4f7fc]" aria-label="Loading ROCKCRAFT">
+        <div className="flex flex-col items-center gap-5">
+          <div className="h-10 w-10 rounded-full border-4 border-blue-100 border-t-blue-700 animate-spin" />
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950">ROCKCRAFT</h1>
+        </div>
+      </div>
+    );
+  }
+
+  // Smooth PageLoader on standard app launch / auth resolution
   if (isLoading || isInitialLoading) {
     return (
       <PageLoader
