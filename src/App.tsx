@@ -53,6 +53,14 @@ function AppContent() {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const paymentStatus = new URLSearchParams(window.location.search).get('payment');
+    if (paymentStatus === 'success' || paymentStatus === 'failed') {
+      setIsPaystackOpen(true);
+    }
+  }, []);
+
+
   const navigate = (route: string, param?: string) => {
     setCurrentRoute(route);
     setRouteParam(param || null);
