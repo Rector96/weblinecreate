@@ -1511,7 +1511,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                   <span className="text-xs text-slate-500">Added to the bottom of Section A</span>
                 </div>
                 <button type="button" onClick={() => handleGenerateMoreQuestions('A', additionalObjectiveCount)} disabled={isAddingMore} className="w-full rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-                  {isAddingMore ? 'Generating questions...' : `Generate ${additionalObjectiveCount} additional objective question(s)`}
+                  {isAddingMore ? 'Generating questions...' : `Generate & Add ${additionalObjectiveCount} objective question(s)`}
                 </button>
               </div>
 
@@ -1522,7 +1522,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                   <span className="text-xs text-slate-500">Added to the bottom of Section B</span>
                 </div>
                 <button type="button" onClick={() => handleGenerateMoreQuestions('B', additionalTheoryCount)} disabled={isAddingMore} className="w-full rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-                  {isAddingMore ? 'Generating questions...' : `Generate ${additionalTheoryCount} additional theory question(s)`}
+                  {isAddingMore ? 'Generating questions...' : `Generate & Add ${additionalTheoryCount} theory question(s)`}
                 </button>
               </div>
             </div>
@@ -1554,7 +1554,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                   <p>TIME ALLOWED: <span className="font-normal">{durationMinutes} MINUTES</span></p>
                   <p>TOTAL MARKS: <span className="font-normal">{totalMarks} MARKS</span></p>
                 </div>
-              </div>\n<div className="text-[11px] italic text-left pt-1 text-slate-700">
+              </div>
+
+              <div className="text-[11px] italic text-left pt-1 text-slate-700">
                 <strong>GENERAL INSTRUCTIONS:</strong> {instructions}
               </div>
             </div>
