@@ -1,6 +1,6 @@
 # ExamCraft — Nigerian Secondary School Exam Paper Generator (PWA)
 
-ExamCraft is a multi-tenant SaaS Progressive Web App engineered specifically for Nigerian secondary schools (JSS 1 to SSS 3). It empowers school administrators and subject teachers to author authentic WAEC, NECO, and JAMB-standard examination question papers (Objective + Theory) manually or with AI, complete with official 12pt Times New Roman DOCX exports and confidential marking schemes.
+ExamCraft is a multi-tenant SaaS Progressive Web App engineered specifically for Nigerian secondary schools (JSS 1 to SSS 3). It empowers school administrators and subject teachers to create high-quality examination question papers (Objective + Theory) manually or with AI, complete with official 12pt Times New Roman DOCX exports and confidential marking schemes.
 
 ---
 
@@ -14,7 +14,7 @@ ExamCraft is a multi-tenant SaaS Progressive Web App engineered specifically for
    - Refined purple/violet primary accents with light gray backgrounds.
    - Zero marketing landing page — unauthenticated users land directly at Login / Sign Up / Join with Token.
 
-2. **WAEC / JAMB Exact DOCX Export**
+2. **Exam Paper DOCX Export**
    - Exact official layout: Centered school name (16pt bold), motto, address, exam title, subject, class, session, time allowed, and candidate details line.
    - **Section A**: Objectives with lettered options [A] [B] [C] [D].
    - **Section B**: Theory questions with allocated marks in brackets `[15 Marks]`.
