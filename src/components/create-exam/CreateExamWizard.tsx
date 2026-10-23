@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
-import { isSupabaseConfigured, supabase } from '../../lib/supabase';
-import { saveExamToSupabase } from '../../lib/examRepository';
+import { isSupabaseConfigured } from '../../lib/supabase';
+import { publishExamWithQuota } from '../../lib/examRepository';
 import {
   Exam,
   Question,
@@ -466,30 +466,13 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         throw new Error('Secure publishing is unavailable because Supabase is not configured.');
       }
 
-      // The quota is checked and incremented atomically in PostgreSQL. Never trust
-      // browser localStorage for subscription state or trial limits.
-      const { data: quotaResult, error: quotaError } = await supabase.rpc('consume_exam_quota', {
-        p_school_id: school.id,
-        p_is_ai: method === 'ai',
-      });
-
-      if (quotaError) {
-        console.error('Secure exam quota check failed', quotaError);
-        throw new Error('Could not verify your school subscription or trial quota. Please try again.');
-      }
-
-      const quota = quotaResult as { success?: boolean; code?: string; message?: string } | null;
-      if (!quota?.success) {
-        alert(quota?.message || 'Your exam trial quota could not be confirmed.');
-        if (quota?.code === 'quota_exceeded') onOpenPaystack();
-        return;
-      }
-
+      // Exam rows, answers, marking schemes, and quota usage are committed together
+      // by one PostgreSQL function. Any failed insert rolls back the entire publication.
       const examCode = `EC-${session.slice(0, 4)}-${subject.slice(0, 3).toUpperCase()}-${className.replace(/\\s+/g, '')}-${Date.now().toString().slice(-5)}`;
       const sectionAMarks = questions.filter((q) => q.section === 'A').reduce((acc, q) => acc + q.marks, 0);
       const sectionBMarks = questions.filter((q) => q.section === 'B').reduce((acc, q) => acc + q.marks, 0);
 
-      const newExam = await saveExamToSupabase(
+      const publishResult = await publishExamWithQuota(
         {
           school_id: school.id,
           created_by: user.id,
@@ -507,8 +490,17 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           section_b_marks: sectionBMarks,
           status: 'published',
         },
-        questions
+        questions,
+        method === 'ai'
       );
+
+      if (!publishResult.success) {
+        alert(publishResult.message || 'Your exam could not be published.');
+        if (publishResult.code === 'quota_exceeded') onOpenPaystack();
+        return;
+      }
+
+      const newExam = publishResult.exam;
 
       // Download the paper and confidential marking scheme only after all records are saved.
       try {
