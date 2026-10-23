@@ -129,10 +129,10 @@ export const ClassesPage: React.FC = () => {
     <div className="space-y-6 text-left max-w-4xl mx-auto">
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-          Class Management
+          Classes
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Configure junior and senior secondary classes with automatic standard naming (JSS 1 – SSS 3).
+          Manage your school classes.
         </p>
       </div>
 
