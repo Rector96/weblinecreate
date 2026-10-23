@@ -121,10 +121,6 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                     </div>
                   </div>
 
-                  <div className="text-xs font-bold text-left pt-3">
-                    CANDIDATE NAME: <span className="font-normal">____________________________</span>
-                  </div>
-
                   <div className="text-xs italic text-left pt-2 text-slate-700">
                     <strong>GENERAL INSTRUCTIONS:</strong> {exam.instructions}
                   </div>
