@@ -99,6 +99,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   }, [school?.id, role, user?.id]);
 
   const copyInvite = () => {
+    if (!inviteToken) return;
     const inviteUrl = `${window.location.origin}/join/${inviteToken}`;
     navigator.clipboard.writeText(inviteUrl);
     setCopied(true);
@@ -241,10 +242,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <Users className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-lg font-mono font-black text-blue-600 tracking-wider">
-            {inviteToken}
+            {inviteToken || 'No active invite'}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            <button onClick={copyInvite} className="hover:text-blue-600 flex items-center gap-1 font-medium">
+            <button onClick={copyInvite} disabled={!inviteToken} className="hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-medium">
               {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
               <span>{copied ? 'Link Copied' : 'Share staff invite'}</span>
             </button>
