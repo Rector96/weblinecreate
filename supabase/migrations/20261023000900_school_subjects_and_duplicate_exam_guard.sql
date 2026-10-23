@@ -72,7 +72,7 @@ BEGIN
 
   v_lock_key := concat_ws('|',
     NEW.school_id::text,
-    lower(btrim(NEW.class_name)),
+    lower(regexp_replace(btrim(NEW.class_name), '\\s+', ' ', 'g')),
     lower(btrim(NEW.subject)),
     lower(btrim(NEW.term)),
     lower(btrim(NEW.session))
