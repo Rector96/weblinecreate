@@ -461,7 +461,17 @@ Return STRICT JSON ONLY.`;
       if (!validAiInputs(body)) return jsonResponse({ success: false, error: 'Invalid or oversized AI request fields.' }, 400);
       const authorization = await authorizeAiRequest(req, body.school_id || req.headers.get('x-school-id'));
       if (!authorization.ok) return authorization.response;
-      const { subject, class_name, section = 'A', count = 5, start_number = 1, topics = '' } = body;
+      const {
+        subject,
+        class_name,
+        section = 'A',
+        count = 5,
+        start_number = 1,
+        topics = '',
+        difficulty = 'Standard WAEC/JAMB',
+        instructions = '',
+        term = 'First Term',
+      } = body;
       const safeCount = Math.min(Math.max(Number(count) || 5, 1), 20);
       const isObjective = section === 'A';
 
@@ -469,9 +479,14 @@ Return STRICT JSON ONLY.`;
 You are a senior WAEC Chief Examiner. Generate EXACTLY ${safeCount} NEW ${isObjective ? 'Objective Multiple Choice' : 'Theory'} questions for:
 - Subject: ${subject}
 - Class: ${class_name}
+- Academic term: ${term}
 - Section: ${section}
 - Topics: ${topics || 'Nigerian secondary syllabus'}
+- Difficulty: ${difficulty || 'Standard WAEC/JAMB'}
+- Exam instructions: ${instructions || 'Use clear, age-appropriate Nigerian secondary-school examination language.'}
 - Starting Question Number: ${start_number}
+
+Do not repeat questions already likely to appear in this section. Make each question complete and self-contained. For objectives, provide four plausible options and exactly one correct option. For theory, provide a complete model answer and a clear marking breakdown.
 
 Respond strictly with a JSON object:
 {
@@ -493,7 +508,19 @@ Respond strictly with a JSON object:
               config: { responseMimeType: 'application/json', temperature: 0.5 },
             });
             const parsed = JSON.parse(response.text || '{}');
-            return new Response(JSON.stringify({ success: true, data: parsed.questions || [] }), {
+            const validQuestions = (Array.isArray(parsed.questions) ? parsed.questions : [])
+              .filter((question: any) => {
+                if (!question || typeof question.question_text !== 'string' || !question.question_text.trim()) return false;
+                if (isObjective) {
+                  return ['option_a', 'option_b', 'option_c', 'option_d'].every(
+                    (key) => typeof question[key] === 'string' && question[key].trim(),
+                  ) && ['A', 'B', 'C', 'D'].includes(String(question.correct_option || '').toUpperCase());
+                }
+                return typeof question.model_answer === 'string' && question.model_answer.trim()
+                  && typeof question.score_breakdown === 'string' && question.score_breakdown.trim();
+              })
+              .slice(0, safeCount);
+            return new Response(JSON.stringify({ success: true, data: validQuestions }), {
               status: 200,
               headers: corsHeaders,
             });
