@@ -96,7 +96,7 @@ function AppContent() {
   const isProfileIncomplete = !school?.id;
 
   return (
-    <div className="min-h-screen bg-[#f0f4f9] flex flex-col md:flex-row text-slate-900 font-sans antialiased">
+    <div className="app-shell min-h-screen bg-[#f5f7fb] flex flex-col md:flex-row text-slate-900 font-sans antialiased">
       <OfflineBanner />
 
       {/* Desktop/Tablet Left Sidebar */}
@@ -107,7 +107,7 @@ function AppContent() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+      <div className="app-main flex-1 flex flex-col min-w-0 min-h-screen">
         {/* Top Header */}
         <Header
           currentRoute={currentRoute}
@@ -134,8 +134,8 @@ function AppContent() {
         )}
 
         {/* Viewport Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
-          <div key={currentRoute} className="animate-page-enter">
+        <main className="flex-1 px-3 py-4 sm:px-5 sm:py-5 lg:px-7 lg:py-6 pb-safe-nav">
+          <div key={currentRoute} className="route-screen animate-page-enter">
             {currentRoute === 'dashboard' && (
               <DashboardPage
                 navigate={navigate}
