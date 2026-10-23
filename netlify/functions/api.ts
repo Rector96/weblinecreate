@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 
-const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const apiKey = process.env.GEMINI_API_KEY; // Server-side secret only; never expose Gemini keys via VITE_ variables.
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // Best models for high accuracy and ultra-low cost / free tier
@@ -113,34 +113,9 @@ You MUST respond strictly with a valid JSON object matching this schema:
         }
       }
 
-      // Offline curriculum fallback if no key or all attempts fail
-      const fallbackA = Array.from({ length: safeObjCount }, (_, i) => ({
-        question_number: i + 1,
-        question_text: `[${subject} Q${i + 1}] Which of the following is correct regarding ${topics || 'the syllabus'} for ${class_name}?`,
-        option_a: 'Primary standard definition statement',
-        option_b: 'Inverse relationship variable',
-        option_c: 'Empirical condition in Nigerian ecosystems',
-        option_d: 'Non-applicable baseline',
-        correct_option: ['A', 'B', 'C', 'D'][i % 4],
-        marks: 1,
-      }));
-
-      const fallbackB = Array.from({ length: safeTheoryCount }, (_, i) => ({
-        question_number: i + 1,
-        question_text: `(a) Clearly define ${topics || subject} in relation to ${class_name}.\n(b) Solve with full working showing intermediate steps.\n(c) State two practical applications in Nigerian industry.`,
-        marks: 15,
-        model_answer: '(a) Clear formal definition (3 mks).\n(b) Step-by-step substitution and solution (8 mks).\n(c) Two valid real-world applications (4 mks). Total = 15 Marks.',
-        score_breakdown: 'Part (a): 3 mks; Part (b): 8 mks; Part (c): 4 mks.',
-        max_score: 15,
-      }));
-
       return new Response(
-        JSON.stringify({
-          success: true,
-          provider: 'curriculum-fallback',
-          data: { section_a: fallbackA, section_b: fallbackB },
-        }),
-        { status: 200, headers: corsHeaders }
+        JSON.stringify({ success: false, error: 'AI generation is unavailable. Configure GEMINI_API_KEY on the server and try again; placeholder questions are never returned as real exam content.' }),
+        { status: 503, headers: corsHeaders }
       );
     } catch (e: any) {
       return new Response(JSON.stringify({ success: false, error: e?.message }), {
@@ -207,30 +182,10 @@ Return STRICT JSON ONLY.`;
         }
       }
 
-      const fallbackSingle = isObjective
-        ? {
-            question_number,
-            question_text: `[${subject}] According to WAEC standard curriculum in ${class_name}, which of the following is correct regarding ${topics || 'the syllabus'}?`,
-            option_a: 'Primary theorem statement with standard units',
-            option_b: 'Alternative reciprocal property',
-            option_c: 'Inverse proportionality under standard laboratory conditions',
-            option_d: 'Non-applicable empirical variable',
-            correct_option: 'A',
-            marks: 1,
-          }
-        : {
-            question_number,
-            question_text: `(a) Clearly state the fundamental rule governing ${topics || subject} in ${class_name}.\n(b) Solve for the unknown magnitude if the initial quantity is increased by 50%.\n(c) List two safety or standard industrial practices related to this topic in Nigeria.`,
-            marks: 15,
-            model_answer: '(a) Statement of rule (3 mks).\n(b) Calculation with 1.5 multiplier (7 mks).\n(c) Practical industrial applications in Nigeria (5 mks). Total = 15 Marks.',
-            score_breakdown: 'Part (a): 3 mks; Part (b): 7 mks; Part (c): 5 mks.',
-            max_score: 15,
-          };
-
-      return new Response(JSON.stringify({ success: true, data: fallbackSingle }), {
-        status: 200,
-        headers: corsHeaders,
-      });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Question regeneration is unavailable. Configure GEMINI_API_KEY on the server and try again.' }),
+        { status: 503, headers: corsHeaders }
+      );
     } catch (e: any) {
       return new Response(JSON.stringify({ success: false, error: e?.message }), {
         status: 500,
@@ -285,36 +240,10 @@ Respond strictly with a JSON object:
         }
       }
 
-      const generated = [];
-      for (let i = 0; i < safeCount; i++) {
-        const qNum = Number(start_number) + i;
-        if (isObjective) {
-          generated.push({
-            question_number: qNum,
-            question_text: `[${subject} Q${qNum}] Which principle in ${class_name} corresponds to ${topics || 'the curriculum'}?`,
-            option_a: `Verified baseline property A`,
-            option_b: `Empirical observation B`,
-            option_c: `Inverted theorem C`,
-            option_d: `Theoretical constant D`,
-            correct_option: ['A', 'B', 'C', 'D'][i % 4],
-            marks: 1,
-          });
-        } else {
-          generated.push({
-            question_number: qNum,
-            question_text: `(a) Define the concept of ${topics || subject} as applied in ${class_name}.\n(b) Calculate the final equilibrium given standard values.\n(c) Discuss its significance in Nigerian socio-economic development.`,
-            marks: 15,
-            model_answer: 'Full step-by-step solution according to WAEC standards.',
-            score_breakdown: 'Part (a): 4 mks; Part (b): 7 mks; Part (c): 4 mks.',
-            max_score: 15,
-          });
-        }
-      }
-
-      return new Response(JSON.stringify({ success: true, data: generated }), {
-        status: 200,
-        headers: corsHeaders,
-      });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Question generation is unavailable. Configure GEMINI_API_KEY on the server and try again.' }),
+        { status: 503, headers: corsHeaders }
+      );
     } catch (e: any) {
       return new Response(JSON.stringify({ success: false, error: e?.message }), {
         status: 500,
