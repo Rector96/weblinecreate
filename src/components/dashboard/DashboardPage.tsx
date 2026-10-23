@@ -13,7 +13,8 @@ import {
   Check,
   Download,
   BookOpen,
-  Share2
+  Share2,
+  Clock
 } from 'lucide-react';
 
 interface DashboardPageProps {

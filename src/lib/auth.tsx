@@ -126,21 +126,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    supabase.auth.getSession().then(({ data, error }) => {
+    const sessionTimeout = new Promise<{ data: { session: null }; error: Error }>((resolve) => {
+      window.setTimeout(() => resolve({ data: { session: null }, error: new Error('Session restoration timed out') }), 8000);
+    });
+
+    Promise.race([supabase.auth.getSession(), sessionTimeout]).then(async ({ data, error }) => {
       if (error) console.error('Unable to restore Supabase session', error);
       if (mounted) {
-        return loadUserContext(data.session?.user || null).finally(() => {
+        try {
+          await loadUserContext(data.session?.user || null);
+        } catch (contextError) {
+          console.error('Unable to load authenticated workspace context', contextError);
+          setUser(null);
+          setSchool(null);
+        } finally {
           if (mounted) setIsLoading(false);
-        });
+        }
       }
-      return undefined;
+    }).catch((sessionError) => {
+      console.error('Unable to restore Supabase session', sessionError);
+      if (mounted) {
+        setUser(null);
+        setSchool(null);
+        setIsLoading(false);
+      }
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
       // Defer database reads until after the auth callback to avoid Supabase lock contention.
       setTimeout(() => {
-        if (mounted) void loadUserContext(session?.user || null);
+        if (mounted) {
+          void loadUserContext(session?.user || null).catch((contextError) => {
+            console.error('Unable to refresh authenticated workspace context', contextError);
+          });
+        }
       }, 0);
     });
 

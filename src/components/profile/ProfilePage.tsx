@@ -24,7 +24,7 @@ interface ProfilePageProps {
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
-  const { school, user, refreshSchool, role, isPlatformAdmin, switchDemoUser } = useAuth();
+  const { school, user, refreshSchool, role, isPlatformAdmin } = useAuth();
   const canEdit = role === 'school_admin' || isPlatformAdmin;
 
   const [name, setName] = useState(school?.name || '');
@@ -381,15 +381,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             </span>
           </div>
         ) : (
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-xs text-slate-600">
-            <span>You are currently viewing as a Subject Teacher.</span>
-            <button
-              type="button"
-              onClick={() => switchDemoUser('admin')}
-              className="px-3 py-1.5 rounded-xl bg-blue-600 text-white font-semibold text-xs hover:bg-blue-800"
-            >
-              Switch to School Admin to Edit
-            </button>
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-600">
+            You are currently viewing as a Subject Teacher.
           </div>
         )}
       </form>

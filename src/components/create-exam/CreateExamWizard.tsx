@@ -193,10 +193,10 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const getAiAuthHeaders = async () => {
     if (!school?.id) throw new Error('A valid school account is required for AI question generation.');
     if (isGuestTeacher && guestInviteToken) {
-      return {
+      return new Headers({
         'Content-Type': 'application/json',
         'X-School-Invite-Token': guestInviteToken,
-      };
+      });
     }
     if (!isSupabaseConfigured()) {
       throw new Error('Supabase is not configured. Please contact the school administrator.');
@@ -213,10 +213,10 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     if (!session?.access_token) {
       throw new Error(error?.message || 'Your sign-in session has expired. Please sign out and sign in again.');
     }
-    return {
+    return new Headers({
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.access_token}`,
-    };
+    });
   };
 
   const showNotification = (msg: string) => {
