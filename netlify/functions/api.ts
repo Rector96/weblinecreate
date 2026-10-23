@@ -6,6 +6,206 @@ const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 // Best models for high accuracy and ultra-low cost / free tier
 const MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
 
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+const SUBSCRIPTION_AMOUNT_KOBO = 1100000;
+const ALLOWED_TERMS = new Set(['First Term', 'Second Term', 'Third Term']);
+
+function jsonResponse(body: unknown, status = 200, headers: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...headers },
+  });
+}
+
+function getSiteUrl(req: Request) {
+  const configured = process.env.SITE_URL || process.env.URL || process.env.DEPLOY_PRIME_URL;
+  return (configured || new URL(req.url).origin).replace(/\\/$/, '');
+}
+
+async function supabaseAdminRequest(path: string, init: RequestInit = {}) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Server Supabase credentials are not configured.');
+  }
+  const response = await fetch(`${SUPABASE_URL.replace(/\\/$/, '')}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      ...(init.headers || {}),
+    },
+  });
+  const raw = await response.text();
+  const data = raw ? JSON.parse(raw) : null;
+  if (!response.ok) {
+    console.error('Supabase server request failed', response.status, data);
+    throw new Error('Unable to complete the secure database operation.');
+  }
+  return data;
+}
+
+async function getAuthenticatedUser(req: Request) {
+  const token = req.headers.get('authorization')?.replace(/^Bearer\\s+/i, '');
+  if (!token || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
+  const response = await fetch(`${SUPABASE_URL.replace(/\\/$/, '')}/auth/v1/user`, {
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) return null;
+  return await response.json() as { id: string; email?: string };
+}
+
+async function initializePaystackPayment(req: Request) {
+  if (!PAYSTACK_SECRET_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return jsonResponse({ error: 'Secure payments are not configured. No payment has been taken.' }, 503);
+  }
+  const user = await getAuthenticatedUser(req);
+  if (!user?.id || !user.email) return jsonResponse({ error: 'Please sign in again before making a payment.' }, 401);
+
+  const body = await req.json() as { school_id?: string; term?: string; session?: string };
+  const schoolId = body.school_id?.trim();
+  const term = body.term?.trim();
+  const session = body.session?.trim();
+  if (!schoolId || !term || !ALLOWED_TERMS.has(term) || !session || !/^\\d{4}\\/\\d{4}$/.test(session)) {
+    return jsonResponse({ error: 'Invalid school, term, or academic session.' }, 400);
+  }
+
+  const userId = encodeURIComponent(user.id);
+  const [profiles, roles] = await Promise.all([
+    supabaseAdminRequest(`profiles?user_id=eq.${userId}&select=user_id,school_id,full_name,email`),
+    supabaseAdminRequest(`user_roles?user_id=eq.${userId}&select=role,school_id`),
+  ]) as [Array<{ user_id: string; school_id: string | null; full_name: string; email: string }>, Array<{ role: string; school_id: string | null }>];
+
+  const profile = profiles[0];
+  const isPlatformAdmin = roles.some((row) => row.role === 'platform_admin');
+  const isSchoolAdmin = roles.some((row) => row.role === 'school_admin' && row.school_id === schoolId);
+  if (!profile || (!isPlatformAdmin && (profile.school_id !== schoolId || !isSchoolAdmin))) {
+    return jsonResponse({ error: 'You are not authorized to purchase a subscription for this school.' }, 403);
+  }
+
+  const schools = await supabaseAdminRequest(`schools?id=eq.${encodeURIComponent(schoolId)}&select=id,name,email,subscription_status`) as Array<{ id: string; name: string; email: string; subscription_status: string }>;
+  const school = schools[0];
+  if (!school) return jsonResponse({ error: 'School was not found.' }, 404);
+
+  const reference = `ROCKCRAF-${crypto.randomUUID()}`;
+  await supabaseAdminRequest('payments', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      school_id: school.id,
+      school_name: school.name,
+      amount_ngn: 11000,
+      reference,
+      status: 'pending',
+      term,
+      session,
+      channel: 'paystack',
+    }),
+  });
+
+  const siteUrl = getSiteUrl(req);
+  const callbackUrl = new URL('/api/verify-payment', siteUrl);
+  const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: user.email,
+      amount: SUBSCRIPTION_AMOUNT_KOBO,
+      reference,
+      callback_url: callbackUrl.toString(),
+      metadata: { school_id: school.id, term, session, user_id: user.id },
+    }),
+  });
+  const paystackResult = await paystackResponse.json() as {
+    status?: boolean;
+    message?: string;
+    data?: { authorization_url?: string };
+  };
+
+  if (!paystackResponse.ok || !paystackResult.status || !paystackResult.data?.authorization_url) {
+    await supabaseAdminRequest(`payments?reference=eq.${encodeURIComponent(reference)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: 'failed' }),
+    });
+    console.error('Paystack initialization failed', paystackResult.message || paystackResponse.status);
+    return jsonResponse({ error: 'Paystack could not start checkout. No payment has been taken.' }, 502);
+  }
+
+  return jsonResponse({ authorization_url: paystackResult.data.authorization_url, reference });
+}
+
+async function verifyPaystackPayment(req: Request) {
+  const url = new URL(req.url);
+  const reference = url.searchParams.get('reference')?.trim();
+  const siteUrl = getSiteUrl(req);
+  const resultUrl = (status: 'success' | 'failed') => {
+    const destination = new URL('/', siteUrl);
+    destination.searchParams.set('payment', status);
+    if (reference) destination.searchParams.set('reference', reference);
+    return Response.redirect(destination.toString(), 303);
+  };
+
+  if (!reference || !PAYSTACK_SECRET_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return resultUrl('failed');
+  }
+
+  try {
+    const rows = await supabaseAdminRequest(`payments?reference=eq.${encodeURIComponent(reference)}&select=id,school_id,amount_ngn,status,term,session`) as Array<{
+      id: string; school_id: string; amount_ngn: number; status: string; term: string; session: string;
+    }>;
+    const payment = rows[0];
+    if (!payment) return resultUrl('failed');
+    if (payment.status === 'success') return resultUrl('success');
+
+    const verifyResponse = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+    });
+    const verified = await verifyResponse.json() as {
+      status?: boolean;
+      data?: { status?: string; reference?: string; amount?: number; currency?: string; channel?: string };
+    };
+    if (
+      !verifyResponse.ok || !verified.status ||
+      verified.data?.status !== 'success' ||
+      verified.data.reference !== reference ||
+      verified.data.amount !== SUBSCRIPTION_AMOUNT_KOBO ||
+      verified.data.currency !== 'NGN'
+    ) {
+      await supabaseAdminRequest(`payments?reference=eq.${encodeURIComponent(reference)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ status: 'failed' }),
+      });
+      return resultUrl('failed');
+    }
+
+    const paidAt = new Date().toISOString();
+    const expiry = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString();
+    await supabaseAdminRequest(`payments?reference=eq.${encodeURIComponent(reference)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: 'success', paid_at: paidAt, channel: verified.data.channel || 'paystack' }),
+    });
+    await supabaseAdminRequest(`schools?id=eq.${encodeURIComponent(payment.school_id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ subscription_status: 'active', subscription_expires_at: expiry }),
+    });
+    return resultUrl('success');
+  } catch (error) {
+    console.error('Paystack verification failed', error);
+    return resultUrl('failed');
+  }
+}
+
 export default async (req: Request) => {
   const url = new URL(req.url);
   const pathname = url.pathname;
@@ -20,6 +220,19 @@ export default async (req: Request) => {
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  if (pathname.endsWith('/initialize-payment') && req.method === 'POST') {
+    try {
+      return await initializePaystackPayment(req);
+    } catch (error) {
+      console.error('Payment initialization error', error);
+      return jsonResponse({ error: 'Unable to initialize payment securely. No payment has been taken.' }, 500);
+    }
+  }
+
+  if (pathname.endsWith('/verify-payment') && req.method === 'GET') {
+    return await verifyPaystackPayment(req);
   }
 
   // 1. GENERATE FULL EXAM QUESTIONS
@@ -259,5 +472,5 @@ Respond strictly with a JSON object:
 };
 
 export const config = {
-  path: ['/api/generate-questions', '/api/regenerate-single-question', '/api/generate-more-questions'],
+  path: ['/api/generate-questions', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment'],
 };
