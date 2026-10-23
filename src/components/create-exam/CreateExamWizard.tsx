@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
-import { isSupabaseConfigured } from '../../lib/supabase';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { publishExamWithQuota } from '../../lib/examRepository';
 import {
   Exam,
@@ -117,6 +117,17 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
 
+  const getAiAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('Please sign in again before using AI question generation.');
+    if (!school?.id) throw new Error('A valid school account is required for AI question generation.');
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      'X-School-Id': school.id,
+    };
+  };
+
   const showNotification = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3500);
@@ -152,8 +163,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     try {
       const response = await fetch('/api/generate-questions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAiAuthHeaders(),
         body: JSON.stringify({
+          school_id: school.id,
           subject,
           class_name: className,
           term,
@@ -232,8 +244,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     try {
       const response = await fetch('/api/regenerate-single-question', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAiAuthHeaders(),
         body: JSON.stringify({
+          school_id: school?.id,
           subject,
           class_name: className,
           section: targetQuestion.section,
@@ -302,8 +315,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     try {
       const response = await fetch('/api/generate-more-questions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAiAuthHeaders(),
         body: JSON.stringify({
+          school_id: school?.id,
           subject,
           class_name: className,
           section,
