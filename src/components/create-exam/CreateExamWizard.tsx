@@ -256,6 +256,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       });
 
       const res = await response.json();
+      if (!response.ok || !res.success) throw new Error(res.error || 'AI regeneration failed. Please try again.');
       if (res.success && res.data) {
         const d = res.data;
         const updatedQuestion: Question = {
@@ -314,6 +315,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       });
 
       const res = await response.json();
+      if (!response.ok || !res.success) throw new Error(res.error || 'AI question generation failed. Please try again.');
       if (res.success && Array.isArray(res.data)) {
         const newQs: Question[] = res.data.map((item: any, idx: number) => ({
           id: `q_more_${Date.now()}_${idx}`,
