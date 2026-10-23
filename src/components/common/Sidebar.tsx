@@ -21,7 +21,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpenPaystack }) => {
-  const { user, school, role, isPlatformAdmin, switchDemoUser } = useAuth();
+  const { user, school, role, isPlatformAdmin } = useAuth();
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -47,45 +47,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
           <span className="text-xs text-slate-500 font-medium truncate">
             {school?.name || 'WAEC Paper Engine'}
           </span>
-        </div>
-      </div>
-
-      {/* Demo Role Switcher */}
-      <div className="mt-4 p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs">
-        <span className="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
-          Active Role: {role.replace('_', ' ')}
-        </span>
-        <div className="grid grid-cols-3 gap-1">
-          <button
-            onClick={() => switchDemoUser('admin')}
-            className={`py-1 px-1.5 rounded-md font-medium text-center transition-colors ${
-              role === 'school_admin'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
-            }`}
-          >
-            Admin
-          </button>
-          <button
-            onClick={() => switchDemoUser('teacher')}
-            className={`py-1 px-1.5 rounded-md font-medium text-center transition-colors ${
-              role === 'teacher'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
-            }`}
-          >
-            Teacher
-          </button>
-          <button
-            onClick={() => switchDemoUser('platform')}
-            className={`py-1 px-1.5 rounded-md font-medium text-center transition-colors ${
-              role === 'platform_admin'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
-            }`}
-          >
-            Platform
-          </button>
         </div>
       </div>
 
