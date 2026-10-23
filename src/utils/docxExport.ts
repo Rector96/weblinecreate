@@ -297,8 +297,7 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
             font: FONT_NAME,
             size: 24,
             bold: true,
-            underline: {},
-          }),
+            }),
         ],
       })
     );
