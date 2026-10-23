@@ -284,6 +284,8 @@ export default async (req: Request) => {
       const schools = await supabaseAdminRequest(`schools?id=eq.${encodeURIComponent(invitations[0].school_id)}&select=id,name,logo_url,motto,address,institution_type,subscription_status,subscription_expires_at&limit=1`) as Array<{ id: string; name: string; logo_url?: string; motto?: string; address?: string; institution_type?: string; subscription_status?: string; subscription_expires_at?: string | null }>;
       const school = schools[0];
       if (!school?.name) return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 404, { 'Cache-Control': 'no-store' });
+      const classes = await supabaseAdminRequest(`school_classes?school_id=eq.${encodeURIComponent(school.id)}&select=name,level,display_order&order=display_order.asc`) as Array<{ name: string; level: string; display_order: number }>;
+      const subjects = await supabaseAdminRequest(`school_subjects?school_id=eq.${encodeURIComponent(school.id)}&is_active=eq.true&select=name&order=name.asc`) as Array<{ name: string }>;
       return jsonResponse({
         success: true,
         school_name: school.name,
@@ -293,7 +295,9 @@ export default async (req: Request) => {
           subscription_status: school.subscription_status || 'trial',
           subscription_expires_at: school.subscription_expires_at || undefined,
           ai_exams_used: 0, manual_exams_used: 0, max_trial_ai_exams: 4, max_trial_manual_exams: 5,
-          admin_name: '', email: '', phone: '', state: '', lga: '', created_at: new Date().toISOString()
+          admin_name: '', email: '', phone: '', state: '', lga: '', created_at: new Date().toISOString(),
+          classes: classes.map((item) => ({ name: item.name, level: item.level, display_order: item.display_order })),
+          subjects: subjects.map((item) => item.name)
         }
       }, 200, { 'Cache-Control': 'no-store' });
     } catch (error) {
