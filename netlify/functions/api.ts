@@ -1,11 +1,46 @@
 import { GoogleGenAI } from '@google/genai';
 
-// Google AI Studio supports GEMINI_API_KEY and GOOGLE_API_KEY. Keep either server-side only.
-const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+// Prefer Groq when configured; fall back to Gemini when no Groq key is available.
+// Both keys stay exclusively in the server-side Netlify Function runtime.
+const groqApiKey = (process.env.GROQ_API_KEY || '').trim();
+const geminiApiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
+const geminiAi = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
+const ai: any = groqApiKey
+  ? {
+      models: {
+        generateContent: async ({ contents, config }: { contents: string; config?: { temperature?: number; responseMimeType?: string } }) => {
+          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${groqApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [
+                { role: 'system', content: 'You generate high-quality Nigerian secondary school examination questions. Follow the user instructions exactly. When JSON is requested, return valid JSON only, without markdown fences.' },
+                { role: 'user', content: contents },
+              ],
+              temperature: config?.temperature ?? 0.3,
+              ...(config?.responseMimeType === 'application/json' ? { response_format: { type: 'json_object' } } : {}),
+            }),
+          });
+          const result = await response.json() as any;
+          if (!response.ok) {
+            const error = new Error(result?.error?.message || `Groq API request failed with status ${response.status}`);
+            (error as any).status = response.status;
+            throw error;
+          }
+          return { text: result?.choices?.[0]?.message?.content || '' };
+        },
+      },
+    }
+  : geminiAi;
 
-// Best models for high accuracy and ultra-low cost / free tier
-const MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+// Groq uses one configured model; Gemini retains its model fallback list.
+const MODELS = groqApiKey
+  ? ['llama-3.3-70b-versatile']
+  : ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim().replace(/\/$/, '');
 // Prefer the legacy service-role JWT when configured. Supabase's newer sb_secret_
@@ -507,9 +542,9 @@ You MUST respond strictly with a valid JSON object matching this schema:
 `;
 
       if (!ai) {
-        console.error('AI generation unavailable: neither GEMINI_API_KEY nor GOOGLE_API_KEY is available to the Netlify Function runtime.');
+        console.error('AI generation unavailable: configure GROQ_API_KEY or GEMINI_API_KEY/GOOGLE_API_KEY in the Netlify Function runtime.');
         return new Response(
-          JSON.stringify({ success: false, error: 'AI generation is not configured on the server. Add GEMINI_API_KEY (recommended) or GOOGLE_API_KEY in Netlify Environment variables, enable Functions scope and Production context, then redeploy.' }),
+          JSON.stringify({ success: false, error: 'AI generation is not configured on the server. Add GROQ_API_KEY (recommended) or GEMINI_API_KEY/GOOGLE_API_KEY in Netlify Environment variables with Functions scope, then redeploy.' }),
           { status: 503, headers: corsHeaders }
         );
       }
@@ -621,7 +656,7 @@ Return STRICT JSON ONLY.`;
       }
 
       return new Response(
-        JSON.stringify({ success: false, error: 'Question regeneration is unavailable. Configure GEMINI_API_KEY on the server and try again.' }),
+        JSON.stringify({ success: false, error: 'Question regeneration is unavailable. Configure GROQ_API_KEY or GEMINI_API_KEY on the server and check the Netlify Function logs.' }),
         { status: 503, headers: corsHeaders }
       );
     } catch (e: any) {
@@ -710,7 +745,7 @@ Respond strictly with a JSON object:
       }
 
       return new Response(
-        JSON.stringify({ success: false, error: 'Question generation is unavailable. Configure GEMINI_API_KEY on the server and try again.' }),
+        JSON.stringify({ success: false, error: 'Question generation is unavailable. Configure GROQ_API_KEY or GEMINI_API_KEY on the server and check the Netlify Function logs.' }),
         { status: 503, headers: corsHeaders }
       );
     } catch (e: any) {
