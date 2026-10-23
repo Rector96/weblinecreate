@@ -8,10 +8,11 @@
 4. Copy the entire SQL file, paste it into the editor, and click **Run**.
 5. Confirm the query completes successfully.
 6. Repeat with the [secure signup provisioning migration](https://github.com/Rector96/weblinecreate/blob/fix/production-readiness/supabase/migrations/20261023000200_secure_signup_provisioning.sql).
+7. Then run the [email-based admin authorization removal migration](https://github.com/Rector96/weblinecreate/blob/fix/production-readiness/supabase/migrations/20261023000400_remove_email_based_platform_admin.sql), especially if the earlier hardening migrations have already been applied.
 
 The first migration tightens row-level security and prevents client-side payment inserts. The second provisions school and teacher profiles through a trusted database trigger and blocks users from changing their own school membership or granting platform-admin access. Platform-admin access is never assigned automatically from an email address; use the manual bootstrap instructions below.
 
-**Important:** your existing database already has the required tables. Do not rerun `supabase_schema.sql` on it: that original setup file contains older permissive policies. Apply migrations in order, and confirm each succeeds.
+**Important:** your existing database already has the required tables. Do not rerun `supabase_schema.sql` on it: that original setup file contains older permissive policies. Apply migrations 001, 002, and 004 in order, and confirm each succeeds. Migration 004 is a follow-up patch for databases where migration 001 or 002 was already applied before the email-based administrator shortcut was removed.
 
 ## 2. Configure server environment variables
 
