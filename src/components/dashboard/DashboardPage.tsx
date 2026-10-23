@@ -133,7 +133,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     <div className="space-y-6 text-left">
       {dataError && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">{dataError}</div>}
       {/* 1. Welcome Greeting Header (Smooth Blue) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white rounded-3xl p-6 sm:p-8 shadow-lg shadow-blue-950/10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white rounded-3xl p-5 sm:p-6 shadow-lg shadow-blue-950/10">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-blue-200 text-xs font-semibold">
             <span>{school?.name || 'School Dashboard'}</span>
@@ -141,10 +141,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <span>{school?.state || 'Nigeria'}</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-            Welcome back, {user?.full_name?.split(' ')[0] || 'Educator'}
+            Hi, {user?.full_name?.split(' ')[0] || 'there'}
           </h2>
           <p className="text-xs text-blue-200/90 max-w-xl">
-            Author and download official WAEC, NECO, and JAMB-standard examination papers with instant Times New Roman formatting.
+            
           </p>
         </div>
 
@@ -154,26 +154,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             className="px-4 py-2.5 rounded-xl bg-white text-blue-900 font-bold text-xs hover:bg-blue-50 shadow-md active:scale-95 transition-all flex items-center gap-2"
           >
             <PlusCircle className="w-4 h-4 text-blue-600" />
-            <span>New Exam Paper</span>
+            <span>New exam</span>
           </button>
         </div>
       </div>
 
       {/* 2. KPI Summary Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-        {/* Card 1: Exams Created */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+        {/* Card 1: Exams */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-semibold text-slate-500">Exams Created</span>
             <FileText className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-2xl font-black text-slate-900 tabular-nums">{exams.length}</div>
           <div className="text-[11px] text-slate-500 mt-1">
-            <span className="font-semibold text-slate-700 tabular-nums">{totalQuestions}</span> questions drafted
+            <span className="font-semibold text-slate-700 tabular-nums">{totalQuestions}</span>
           </div>
         </div>
 
-        {/* Card 2: Subscription Status */}
+        {/* Card 2: Plan */}
         <div className={`p-4 sm:p-5 rounded-2xl border shadow-xs ${
           school?.subscription_status === 'active'
             ? 'bg-emerald-50/50 border-emerald-200'
@@ -200,14 +200,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             school?.subscription_status === 'active' ? 'text-emerald-800' : 'text-slate-900'
           }`}>
             {school?.subscription_status === 'active'
-              ? 'Full Term Active'
+              ? 'Active'
               : (school?.ai_exams_used || 0) >= 4
-              ? '4/4 Used (5th Pending)'
+              ? 'Limit reached'
               : `${remainingAi} Trial Left`}
           </div>
           <div className="text-[11px] mt-1">
             {school?.subscription_status === 'active' ? (
-              <span className="text-emerald-700 font-semibold">✓ Unlimited AI & Papers</span>
+              <span className="text-emerald-700 font-semibold">✓ Unlimited access</span>
             ) : (
               <button
                 onClick={onOpenPaystack}
@@ -217,7 +217,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               >
                 {(school?.ai_exams_used || 0) >= 4
                   ? 'Pay ₦11,000 for 5th exam'
-                  : `${remainingAi} AI trials left · Upgrade`}
+                  : `${remainingAi} trials left · Upgrade`}
               </button>
             )}
           </div>
@@ -226,19 +226,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {/* Card 3: Classes Managed */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold text-slate-500">Standard Classes</span>
+            <span className="text-xs font-semibold text-slate-500">Classes</span>
             <BookOpen className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-2xl font-black text-slate-900 tabular-nums">
             {classesCount}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">JSS 1 – SSS 3 Levels</div>
+          <div className="text-[11px] text-slate-500 mt-1"></div>
         </div>
 
         {/* Card 4: Teacher Collaboration Token */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold text-slate-500">Teacher Code</span>
+            <span className="text-xs font-semibold text-slate-500">Invite code</span>
             <Users className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-lg font-mono font-black text-blue-600 tracking-wider">
