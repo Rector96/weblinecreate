@@ -25,10 +25,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'exams', label: 'Exams Repository', icon: FileText },
-    { id: 'create-exam', label: 'Create New Exam', icon: PlusCircle, isPrimary: true },
-    { id: 'classes', label: 'Manage Classes', icon: BookOpen },
-    { id: 'profile', label: 'School Settings', icon: SchoolIcon },
+    { id: 'exams', label: 'Exams', icon: FileText },
+    { id: 'create-exam', label: 'Create exam', icon: PlusCircle, isPrimary: true },
+    { id: 'classes', label: 'Classes', icon: BookOpen },
+    { id: 'profile', label: 'School', icon: SchoolIcon },
   ];
 
   if (isPlatformAdmin) {
@@ -106,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
                 </span>
               </div>
               <p className="text-xs text-emerald-800 font-medium mt-1 leading-relaxed">
-                Full Term Active · Unlimited AI questions, DOCX exports & marking schemes.
+                Unlimited access
               </p>
             </div>
           ) : (
@@ -124,14 +124,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
               <p className="text-xs text-slate-600 mt-1">
                 {school.ai_exams_used >= 4 ? (
                   <span className="text-amber-800 font-semibold">
-                    4 of 4 trial exams used. 5th exam requires term access.
+                    Trial limit reached.
                   </span>
                 ) : (
                   <>
                     <span className="font-semibold text-blue-900">
                       {Math.max(0, 4 - school.ai_exams_used)}
                     </span>{' '}
-                    AI trial exams remaining.
+                    trials remaining.
                   </>
                 )}
               </p>
