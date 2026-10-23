@@ -190,8 +190,21 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         'X-School-Invite-Token': guestInviteToken,
       };
     }
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) throw new Error('Please sign in again before using AI question generation.');
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase is not configured. Please contact the school administrator.');
+    }
+
+    // Read the current session immediately before the request. If its access token
+    // expired while the page was open, ask Supabase to refresh it before failing.
+    let { data: { session }, error } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      const refreshed = await supabase.auth.refreshSession();
+      session = refreshed.data.session;
+      error = refreshed.error;
+    }
+    if (!session?.access_token) {
+      throw new Error(error?.message || 'Your sign-in session has expired. Please sign out and sign in again.');
+    }
     return {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.access_token}`,
@@ -1051,13 +1064,19 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Syllabus Topics to Cover *
             </label>
-            <input
-              type="text"
+            <textarea
+              rows={8}
+              maxLength={3000}
               value={aiTopics}
               onChange={(e) => setAiTopics(e.target.value)}
-              placeholder="e.g. Quadratic Equations, Indices, Circle Theorems, Commercial Arithmetic"
-              className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+              placeholder="Paste or type the syllabus topics to cover, including subtopics, learning objectives, and any specific areas teachers want assessed."
+              className="w-full min-h-48 resize-y text-sm leading-6 rounded-xl border border-slate-300 p-3 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+              aria-describedby="syllabus-topics-help"
             />
+            <div id="syllabus-topics-help" className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-slate-500">
+              <span>Include as much syllabus detail as needed (up to 3,000 characters).</span>
+              <span className="shrink-0 tabular-nums">{aiTopics.length}/3000</span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
