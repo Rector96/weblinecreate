@@ -117,7 +117,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           School Profile & Identity
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          These details are automatically printed on the official WAEC/JAMB exam header.
+          School details and subscription.
         </p>
       </div>
 
@@ -138,26 +138,26 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
-                School Subscription
+                Plan
               </span>
               {school.subscription_status === 'active' && (
                 <span className="px-2 py-0.5 rounded-md bg-emerald-400 text-emerald-950 font-black text-[10px] uppercase">
-                  PAID ACTIVE
+                  ACTIVE
                 </span>
               )}
             </div>
             <div className="text-lg font-extrabold capitalize mt-0.5">
-              {school.subscription_status === 'active' ? 'Full Term Active · Paid' : 'Free Trial Mode'}
+              {school.subscription_status === 'active' ? 'Active' : 'Free trial'}
             </div>
             <p className="text-xs text-blue-100 mt-1">
               {school.subscription_status === 'active' ? (
-                'Unlimited AI examination paper and marking scheme generation active for this academic term.'
+                'Unlimited access.'
               ) : (
                 <>
                   <span className="font-bold text-white">
                     {Math.max(0, 4 - school.ai_exams_used)} of 4
                   </span>{' '}
-                  free AI exams remaining. (5th attempt requires payment of ₦11,000).
+                  trials remaining.
                 </>
               )}
             </p>
@@ -173,7 +173,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
                 : 'bg-white text-blue-900 hover:bg-blue-50'
             }`}
           >
-            {school.subscription_status === 'active' ? 'Manage Term Subscription' : 'Upgrade for ₦11,000'}
+            {school.subscription_status === 'active' ? 'Manage plan' : 'Upgrade · ₦11,000'}
           </button>
         </div>
       )}
