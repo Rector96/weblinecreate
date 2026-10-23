@@ -17,7 +17,7 @@ import {
   STANDARD_NIGERIAN_CLASSES,
   EXAM_TERMS,
   ACADEMIC_SESSIONS,
-  DEFAULT_WAEC_INSTRUCTIONS
+  DEFAULT_EXAM_INSTRUCTIONS
 } from '../../data/nigerianCurriculum';
 import { ScientificSymbolPicker } from '../common/ScientificSymbolPicker';
 import { VoiceInputButton } from '../common/VoiceInputButton';
@@ -41,6 +41,7 @@ import {
   Download,
   Check,
   Edit3,
+  X,
   CreditCard
 } from 'lucide-react';
 
@@ -81,7 +82,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [aiTopics, setAiTopics] = useState('Logarithms, Quadratic Equations, Trigonometry & Mensuration');
   const [aiNumObj, setAiNumObj] = useState(10);
   const [aiNumTheory, setAiNumTheory] = useState(3);
-  const [aiDifficulty, setAiDifficulty] = useState<'Standard WAEC/JAMB' | 'Foundational / Basic' | 'Advanced / Rigorous'>('Standard WAEC/JAMB');
+  const [aiDifficulty, setAiDifficulty] = useState<'Standard' | 'Foundational / Basic' | 'Advanced / Rigorous'>('Standard');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [generationStage, setGenerationStage] = useState<'working' | 'finishing' | null>(null);
   const [motivationIndex, setMotivationIndex] = useState(0);
@@ -94,6 +95,10 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [isAddingMore, setIsAddingMore] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [additionalObjectiveCount, setAdditionalObjectiveCount] = useState(5);
+  const [additionalTheoryCount, setAdditionalTheoryCount] = useState(2);
+  const [editingPreviewField, setEditingPreviewField] = useState<string | null>(null);
+  const [previewEditDraft, setPreviewEditDraft] = useState('');
 
   // Questions State
   const [questions, setQuestions] = useState<Question[]>([
@@ -384,6 +389,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           section: targetQuestion.section,
           question_number: targetQuestion.question_number,
           topics: aiTopics,
+          previous_question: targetQuestion.question_text,
+          previous_options: targetQuestion.objective_data ? { ...targetQuestion.objective_data } : undefined,
         }),
       });
 
@@ -519,16 +526,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     }
   };
 
-  const handleGenerateToTarget = (section: 'A' | 'B') => {
-    const target = section === 'A' ? aiNumObj : aiNumTheory;
-    const existingCount = questions.filter((q) => q.section === section).length;
-    if (target <= existingCount) {
-      showNotification(`You already have ${existingCount} ${section === 'A' ? 'objective' : 'theory'} questions. Lowering the target will not delete existing questions.`);
-      return;
-    }
-    void handleGenerateMoreQuestions(section, target - existingCount);
-  };
-
   // Add Question Manually
   const handleAddQuestion = (section: 'A' | 'B') => {
     const sectionCount = questions.filter((q) => q.section === section).length;
@@ -574,7 +571,27 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   };
 
   const handleUpdateQuestion = (id: string, updates: Partial<Question>) => {
-    setQuestions(questions.map((q) => (q.id === id ? { ...q, ...updates } : q)));
+    setQuestions((current) => current.map((q) => (q.id === id ? { ...q, ...updates } : q)));
+  };
+
+  const beginPreviewEdit = (field: string, value: string) => {
+    setEditingPreviewField(field);
+    setPreviewEditDraft(value || '');
+  };
+
+  const cancelPreviewEdit = () => {
+    setEditingPreviewField(null);
+    setPreviewEditDraft('');
+  };
+
+  const savePreviewEdit = (question: Question, kind: 'question' | 'option', option?: 'A' | 'B' | 'C' | 'D') => {
+    if (kind === 'question') {
+      handleUpdateQuestion(question.id, { question_text: previewEditDraft });
+    } else if (option && question.objective_data) {
+      const key = `option_${option.toLowerCase()}` as keyof ObjectiveAnswer;
+      handleUpdateQuestion(question.id, { objective_data: { ...question.objective_data, [key]: previewEditDraft } });
+    }
+    cancelPreviewEdit();
   };
 
   // Save Offline Draft
@@ -1013,7 +1030,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 )}
               </div>
               <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                Generate authentic WAEC-standard multiple choice questions, essay problems, and confidential scoring rubrics in seconds from Nigerian curriculum topics.
+                Generate clear, curriculum-aligned multiple-choice and theory questions with confidential marking guides.
               </p>
               <div className="mt-4 text-xs font-bold text-blue-600 flex items-center gap-1">
                 <span>
@@ -1139,7 +1156,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 onChange={(e) => setAiDifficulty(e.target.value as any)}
                 className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               >
-                <option value="Standard WAEC/JAMB">Standard WAEC / JAMB</option>
+                <option value="Standard">Standard</option>
                 <option value="Foundational / Basic">Foundational / Basic</option>
                 <option value="Advanced / Rigorous">Advanced / Rigorous</option>
               </select>
@@ -1458,7 +1475,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                  Official WAEC/JAMB Preview
+                  Question Paper Preview
                 </span>
                 <span className="text-xs text-slate-400">·</span>
                 <span className="text-xs text-slate-600 font-medium">{subject} ({className})</span>
@@ -1488,52 +1505,24 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="bg-white/80 border border-blue-100 rounded-xl p-3 space-y-2">
-                <label htmlFor="target-objectives" className="block text-xs font-semibold text-slate-700">Objective questions (Section A)</label>
+                <label htmlFor="target-objectives" className="block text-sm font-semibold text-slate-700">Additional objective questions</label>
                 <div className="flex items-center gap-2">
-                  <input
-                    id="target-objectives"
-                    type="number"
-                    min={5}
-                    max={50}
-                    value={aiNumObj}
-                    onChange={(event) => setAiNumObj(Math.min(50, Math.max(5, Number(event.target.value) || 5)))}
-                    className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    aria-label="Target total objective questions"
-                  />
-                  <span className="text-xs text-slate-500">{questions.filter((q) => q.section === 'A').length} currently in preview</span>
+                  <input id="target-objectives" type="number" min={1} max={20} value={additionalObjectiveCount} onChange={(event) => setAdditionalObjectiveCount(Math.min(20, Math.max(1, Number(event.target.value) || 1)))} className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm" aria-label="Number of additional objective questions" />
+                  <span className="text-xs text-slate-500">Added to the bottom of Section A</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleGenerateToTarget('A')}
-                  disabled={isAddingMore || aiNumObj <= questions.filter((q) => q.section === 'A').length}
-                  className="w-full px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs disabled:opacity-50"
-                >
-                  {isAddingMore ? 'Generating questions...' : `Generate ${Math.max(0, aiNumObj - questions.filter((q) => q.section === 'A').length)} missing objective(s)`}
+                <button type="button" onClick={() => handleGenerateMoreQuestions('A', additionalObjectiveCount)} disabled={isAddingMore} className="w-full rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                  {isAddingMore ? 'Generating questions...' : `Generate & Add ${additionalObjectiveCount} objective question(s)`}
                 </button>
               </div>
 
               <div className="bg-white/80 border border-indigo-100 rounded-xl p-3 space-y-2">
-                <label htmlFor="target-theory" className="block text-xs font-semibold text-slate-700">Theory questions (Section B)</label>
+                <label htmlFor="target-theory" className="block text-sm font-semibold text-slate-700">Additional theory questions</label>
                 <div className="flex items-center gap-2">
-                  <input
-                    id="target-theory"
-                    type="number"
-                    min={1}
-                    max={6}
-                    value={aiNumTheory}
-                    onChange={(event) => setAiNumTheory(Math.min(6, Math.max(1, Number(event.target.value) || 1)))}
-                    className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    aria-label="Target total theory questions"
-                  />
-                  <span className="text-xs text-slate-500">{questions.filter((q) => q.section === 'B').length} currently in preview</span>
+                  <input id="target-theory" type="number" min={1} max={10} value={additionalTheoryCount} onChange={(event) => setAdditionalTheoryCount(Math.min(10, Math.max(1, Number(event.target.value) || 1)))} className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm" aria-label="Number of additional theory questions" />
+                  <span className="text-xs text-slate-500">Added to the bottom of Section B</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleGenerateToTarget('B')}
-                  disabled={isAddingMore || aiNumTheory <= questions.filter((q) => q.section === 'B').length}
-                  className="w-full px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs disabled:opacity-50"
-                >
-                  {isAddingMore ? 'Generating questions...' : `Generate ${Math.max(0, aiNumTheory - questions.filter((q) => q.section === 'B').length)} missing theory question(s)`}
+                <button type="button" onClick={() => handleGenerateMoreQuestions('B', additionalTheoryCount)} disabled={isAddingMore} className="w-full rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                  {isAddingMore ? 'Generating questions...' : `Generate & Add ${additionalTheoryCount} theory question(s)`}
                 </button>
               </div>
             </div>
@@ -1567,10 +1556,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 </div>
               </div>
 
-              <div className="text-[11px] font-bold text-left pt-2">
-                CANDIDATE NAME: _________________________________________  CLASS/ARM: ___________
-              </div>
-
               <div className="text-[11px] italic text-left pt-1 text-slate-700">
                 <strong>GENERAL INSTRUCTIONS:</strong> {instructions}
               </div>
@@ -1597,15 +1582,21 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 flex gap-1.5 items-baseline">
                           <span className="font-bold shrink-0">{idx + 1}.</span>
-                          <input
-                            type="text"
-                            value={q.question_text}
-                            onChange={(e) => handleUpdateQuestion(q.id, { question_text: e.target.value })}
-                            className="w-full bg-transparent border-b border-transparent hover:border-blue-300 focus:border-blue-600 outline-none font-serif text-xs font-medium"
-                          />
+                          {editingPreviewField === `question:${q.id}` ? (
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <textarea rows={3} autoFocus value={previewEditDraft} onChange={(e) => setPreviewEditDraft(e.target.value)} className="w-full min-w-0 rounded-lg border border-blue-300 bg-white p-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                              <div className="flex flex-wrap gap-2">
+                                <button type="button" onClick={() => savePreviewEdit(q, 'question')} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white"><Check className="h-3.5 w-3.5" /> Save</button>
+                                <button type="button" onClick={cancelPreviewEdit} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600"><X className="h-3.5 w-3.5" /> Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed">{q.question_text}</span>
+                          )}
+                          <button type="button" onClick={() => beginPreviewEdit(`question:${q.id}`, q.question_text)} className="shrink-0 rounded-lg p-1.5 text-blue-700 hover:bg-blue-50" aria-label={`Edit question ${idx + 1}`} title="Edit question"><Edit3 className="h-4 w-4" /></button>
                         </div>
                         {/* Regenerate Question Action */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-100 transition-opacity">
                           <button
                             type="button"
                             onClick={() => handleRegenerateQuestion(q)}
@@ -1629,42 +1620,28 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
                       {/* Options Inline (A4 Single-Line Layout) */}
                       {q.objective_data && (
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-4 pt-1 text-slate-800 text-[11px]">
+                        <div className="grid grid-cols-1 gap-2 pl-4 pt-2 sm:grid-cols-2">
                           {(['A', 'B', 'C', 'D'] as const).map((opt) => {
                             const optKey = `option_${opt.toLowerCase()}` as keyof ObjectiveAnswer;
                             const isCorrect = q.objective_data?.correct_option === opt;
+                            const optionField = `option:${q.id}:${opt}`;
                             return (
-                              <div key={opt} className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleUpdateQuestion(q.id, {
-                                      objective_data: {
-                                        ...q.objective_data!,
-                                        correct_option: opt,
-                                      },
-                                    })
-                                  }
-                                  className={`font-bold px-1 rounded transition-colors ${
-                                    isCorrect ? 'bg-emerald-100 text-emerald-800 font-bold' : 'text-slate-700 hover:bg-slate-200'
-                                  }`}
-                                  title="Click to toggle correct key"
-                                >
-                                  [{opt}]
-                                </button>
-                                <input
-                                  type="text"
-                                  value={q.objective_data?.[optKey] || ''}
-                                  onChange={(e) =>
-                                    handleUpdateQuestion(q.id, {
-                                      objective_data: {
-                                        ...q.objective_data!,
-                                        [optKey]: e.target.value,
-                                      },
-                                    })
-                                  }
-                                  className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-600 outline-none w-24 sm:w-32"
-                                />
+                              <div key={opt} className="flex min-w-0 items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm leading-relaxed">
+                                <button type="button" onClick={() => handleUpdateQuestion(q.id, { objective_data: { ...q.objective_data!, correct_option: opt } })} className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-bold ${isCorrect ? 'bg-emerald-100 text-emerald-800' : 'bg-white text-slate-700 hover:bg-slate-200'}`} title="Set correct answer">[{opt}]</button>
+                                {editingPreviewField === optionField ? (
+                                  <div className="min-w-0 flex-1 space-y-2">
+                                    <textarea rows={2} autoFocus value={previewEditDraft} onChange={(e) => setPreviewEditDraft(e.target.value)} className="w-full min-w-0 rounded-md border border-blue-300 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                                    <div className="flex flex-wrap gap-1.5">
+                                      <button type="button" onClick={() => savePreviewEdit(q, 'option', opt)} className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2 py-1 text-xs font-semibold text-white"><Check className="h-3 w-3" /> Save</button>
+                                      <button type="button" onClick={cancelPreviewEdit} className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600"><X className="h-3 w-3" /> Cancel</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{q.objective_data?.[optKey] || ''}</span>
+                                    <button type="button" onClick={() => beginPreviewEdit(optionField, q.objective_data?.[optKey] || '')} className="shrink-0 rounded-md p-1 text-blue-700 hover:bg-blue-100" aria-label={`Edit option ${opt}`} title={`Edit option ${opt}`}><Edit3 className="h-3.5 w-3.5" /></button>
+                                  </>
+                                )}
                               </div>
                             );
                           })}
@@ -1697,12 +1674,18 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 flex gap-1.5 items-start">
                           <span className="font-bold shrink-0">{idx + 1}.</span>
-                          <textarea
-                            rows={2}
-                            value={q.question_text}
-                            onChange={(e) => handleUpdateQuestion(q.id, { question_text: e.target.value })}
-                            className="w-full bg-transparent border-b border-transparent hover:border-blue-300 focus:border-blue-600 outline-none font-serif text-xs"
-                          />
+                          {editingPreviewField === `question:${q.id}` ? (
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <textarea rows={4} autoFocus value={previewEditDraft} onChange={(e) => setPreviewEditDraft(e.target.value)} className="w-full min-w-0 rounded-lg border border-blue-300 bg-white p-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                              <div className="flex flex-wrap gap-2">
+                                <button type="button" onClick={() => savePreviewEdit(q, 'question')} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white"><Check className="h-3.5 w-3.5" /> Save</button>
+                                <button type="button" onClick={cancelPreviewEdit} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600"><X className="h-3.5 w-3.5" /> Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed">{q.question_text}</span>
+                          )}
+                          <button type="button" onClick={() => beginPreviewEdit(`question:${q.id}`, q.question_text)} className="shrink-0 rounded-lg p-1.5 text-blue-700 hover:bg-blue-50" aria-label={`Edit theory question ${idx + 1}`} title="Edit question"><Edit3 className="h-4 w-4" /></button>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="font-bold italic text-slate-600">[{q.marks} Mks]</span>
@@ -1710,7 +1693,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                             type="button"
                             onClick={() => handleRegenerateQuestion(q)}
                             disabled={regeneratingId === q.id}
-                            className="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-sans font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-sans font-semibold flex items-center gap-1 opacity-100 transition-opacity"
                             title="Regenerate with AI"
                           >
                             <RefreshCw className={`w-2.5 h-2.5 ${regeneratingId === q.id ? 'animate-spin' : ''}`} />
