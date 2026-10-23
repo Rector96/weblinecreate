@@ -505,7 +505,7 @@ export default async (req: Request) => {
         topics = 'Standard Nigerian secondary curriculum',
         num_objectives = 10,
         num_theories = 3,
-        difficulty = 'Standard WAEC/JAMB',
+        difficulty = 'Standard',
         instructions = '',
       } = body;
 
@@ -513,7 +513,7 @@ export default async (req: Request) => {
       const safeTheoryCount = Math.min(Math.max(Number(num_theories) || 3, 1), 6);
 
       const promptText = `
-You are a senior West African Examinations Council (WAEC) and JAMB Chief Examiner with 20+ years setting Nigerian secondary school final papers.
+You are an experienced Nigerian secondary-school examination setter with 20+ years of experience.
 
 GENERATE AN AUTHENTIC NIGERIAN EXAMINATION PAPER FOR:
 - Subject: ${subject}
@@ -529,7 +529,7 @@ REQUIREMENTS:
    - Provide the correct_option which MUST be one of 'A', 'B', 'C', or 'D'.
    - Marks for each objective question must be 1.
 2. Generate EXACTLY ${safeTheoryCount} Section B Essay/Theory questions.
-   - Each theory question should reflect authentic WAEC style (with sub-parts like (a), (b) if applicable).
+   - Each theory question should reflect clear, curriculum-aligned examination style (with sub-parts like (a), (b) if applicable).
    - Allocate marks (e.g. 10 to 15 marks per question).
    - Provide a thorough model_answer showing step-by-step solutions or detailed essay points.
    - Provide an exact score_breakdown (e.g. "Step 1 formula: 2 mks, Substitution: 3 mks, Correct unit: 1 mk").
@@ -623,14 +623,17 @@ You MUST respond strictly with a valid JSON object matching this schema:
       if (!validAiInputs(body)) return jsonResponse({ success: false, error: 'Invalid or oversized AI request fields.' }, 400);
       const authorization = await authorizeAiRequest(req, body.school_id || req.headers.get('x-school-id'));
       if (!authorization.ok) return authorization.response;
-      const { subject, class_name, section = 'A', question_number = 1, topics = '' } = body;
+      const { subject, class_name, section = 'A', question_number = 1, topics = '', previous_question = '', previous_options = null } = body;
       const isObjective = section === 'A';
 
       const promptText = `
-You are a senior WAEC Chief Examiner. Generate a SINGLE FRESH ${isObjective ? 'Objective (Multiple Choice)' : 'Theory/Essay'} question for:
+You are an experienced Nigerian secondary-school examination setter. Generate a SINGLE FRESH ${isObjective ? 'Objective (Multiple Choice)' : 'Theory/Essay'} question for:
 - Subject: ${subject}
 - Class: ${class_name}
 - Topics: ${topics || 'Standard Nigerian curriculum'}
+- Previous question to avoid repeating: ${previous_question || 'None supplied'}
+- Previous options to avoid reusing: ${previous_options ? JSON.stringify(previous_options) : 'None supplied'}
+Create a genuinely different question and fresh answer options; do not paraphrase the previous question.
 
 ${
   isObjective
@@ -703,7 +706,7 @@ Return STRICT JSON ONLY.`;
         count = 5,
         start_number = 1,
         topics = '',
-        difficulty = 'Standard WAEC/JAMB',
+        difficulty = 'Standard',
         instructions = '',
         term = 'First Term',
       } = body;
@@ -711,13 +714,13 @@ Return STRICT JSON ONLY.`;
       const isObjective = section === 'A';
 
       const promptText = `
-You are a senior WAEC Chief Examiner. Generate EXACTLY ${safeCount} NEW ${isObjective ? 'Objective Multiple Choice' : 'Theory'} questions for:
+You are an experienced Nigerian secondary-school examination setter. Generate EXACTLY ${safeCount} NEW ${isObjective ? 'Objective Multiple Choice' : 'Theory'} questions for:
 - Subject: ${subject}
 - Class: ${class_name}
 - Academic term: ${term}
 - Section: ${section}
 - Topics: ${topics || 'Nigerian secondary syllabus'}
-- Difficulty: ${difficulty || 'Standard WAEC/JAMB'}
+- Difficulty: ${difficulty || 'Standard'}
 - Exam instructions: ${instructions || 'Use clear, age-appropriate Nigerian secondary-school examination language.'}
 - Starting Question Number: ${start_number}
 
