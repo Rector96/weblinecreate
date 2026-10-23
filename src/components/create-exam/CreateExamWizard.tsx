@@ -639,6 +639,11 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       }
 
       if (!publishResult.success) {
+        if (publishResult.code === 'duplicate_class_subject' || (publishResult.message || '').toLowerCase().includes('already has an exam for this subject')) {
+          setStepError(publishResult.message || 'This class already has an exam for this subject, term and session. Choose a different combination.');
+          setCurrentStep(1);
+          return;
+        }
         alert(publishResult.message || 'Your exam could not be published.');
         if (publishResult.code === 'quota_exceeded') {
           if (role === 'teacher') showNotification('The school exam limit has been reached. Please ask your school admin to upgrade the plan.');
@@ -669,7 +674,12 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     } catch (error) {
       console.error('Exam publication failed', error);
       const message = error instanceof Error ? error.message : 'Unexpected error while saving the exam.';
-      alert(`The exam was not published: ${message}`);
+      if (message.toLowerCase().includes('already has an exam for this subject')) {
+        setStepError(message);
+        setCurrentStep(1);
+      } else {
+        alert(`The exam was not published: ${message}`);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -762,9 +772,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {currentStep === 1 && (
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-4 animate-in fade-in">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 1: Exam Details & Header</h3>
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">Exam details</h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Specify subject, class, and examination parameters for official WAEC formatting.
+              Choose the class, subject and exam details.
             </p>
           </div>
 
@@ -890,9 +900,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {currentStep === 2 && (
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-4 animate-in fade-in">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 2: How would you like to craft this exam?</h3>
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">How would you like to create it?</h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Select between instant AI generation or manual question authoring.
+              Choose AI to draft questions or enter them yourself.
             </p>
           </div>
 
@@ -1012,9 +1022,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-5 animate-in fade-in">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 3: AI Generator Parameters</h3>
+              <h3 className="text-lg font-bold text-slate-900 tracking-tight">Set up your AI questions</h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Specifying topics for <strong className="text-blue-600">{subject}</strong> ({className} · {term})
+                Topics for <strong className="text-blue-600">{subject}</strong> ({className} · {term})
               </p>
             </div>
             <button
@@ -1140,12 +1150,13 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {/* STEP 3B: MANUAL QUESTION AUTHORING */}
       {/* ============================================================== */}
       {currentStep === 3 && method === 'manual' && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6 animate-in fade-in">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs space-y-5 animate-in fade-in">
+          {stepError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{stepError}</div>}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 3: Manual Authoring</h3>
               <p className="text-xs text-slate-500">
-                Craft questions with scientific symbols and voice speech-to-text.
+                Add and edit your questions below.
               </p>
             </div>
             <div className="flex gap-2">
@@ -1373,8 +1384,10 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             <button
               onClick={() => {
                 const missing = questions.find((question) => !question.question_text.trim());
-                if (questions.length === 0 || missing) {
-                  setStepError('Add at least one question and complete every question text before previewing.');
+                const missingObjectiveOption = questions.find((question) => question.section === 'A' && question.objective_data && [question.objective_data.option_a, question.objective_data.option_b, question.objective_data.option_c, question.objective_data.option_d].some((option) => !option.trim()));
+                const missingTheoryGuide = questions.find((question) => question.section === 'B' && question.theory_data && (!question.theory_data.model_answer.trim() || !question.theory_data.score_breakdown.trim()));
+                if (questions.length === 0 || missing || missingObjectiveOption || missingTheoryGuide) {
+                  setStepError('Complete each question, its answer options and marking guide before previewing.');
                   return;
                 }
                 setStepError(null);
@@ -1405,10 +1418,10 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 <span className="text-xs text-slate-600 font-medium">{subject} ({className})</span>
               </div>
               <h3 className="text-base font-bold text-slate-900 mt-0.5">
-                Review & Edit Examination Paper
+                Review your paper
               </h3>
               <p className="text-xs text-slate-500">
-                Click any question to edit text or options. Regenerate questions or add more objectives below.
+                Tap a question to edit it. Check the answers and marking guide before publishing.
               </p>
             </div>
 
