@@ -111,9 +111,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 text-left">
+    <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-5 text-left px-0.5 sm:px-2 pb-6">
       <div>
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+        <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
           School Profile & Identity
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
@@ -130,7 +130,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
 
       {/* Subscription Status Card */}
       {school && (
-        <div className={`p-5 rounded-3xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm ${
+        <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 shadow-sm ${
           school.subscription_status === 'active'
             ? 'bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-800'
             : 'bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800'
@@ -167,7 +167,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           <button
             type="button"
             onClick={onOpenPaystack}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm shrink-0 active:scale-95 ${
+            className={`px-3 py-2 rounded-lg text-[11px] font-semibold transition-all shadow-sm shrink-0 self-start sm:self-center active:scale-95 ${
               school.subscription_status === 'active'
                 ? 'bg-white text-emerald-900 hover:bg-emerald-50'
                 : 'bg-white text-blue-900 hover:bg-blue-50'
@@ -181,16 +181,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
       {/* Main Profile Form */}
       <form
         onSubmit={handleSave}
-        className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-xs space-y-5"
+        className="bg-white p-4 sm:p-6 md:p-7 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm space-y-4 sm:space-y-5 min-w-0"
       >
         {/* School Logo Section */}
-        <div className="flex items-center gap-4 pb-5 border-b border-slate-100">
-          <div className="relative w-20 h-20 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
+        <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center gap-3 sm:gap-4 pb-4 sm:pb-5 border-b border-slate-100 min-w-0">
+          <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
             {logoUrl ? (
               <img
                 src={logoUrl}
                 alt="School Logo"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain p-1"
                 referrerPolicy="no-referrer"
               />
             ) : (
@@ -212,7 +212,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <p className="text-[11px] text-slate-500 mt-0.5">
               Appears at the top of your exported DOCX exam papers. PNG, JPG or SVG.
             </p>
-            <label className="inline-block mt-2 text-xs font-semibold text-blue-600 hover:text-blue-800 cursor-pointer">
+            <label className="inline-block mt-2 text-[11px] font-semibold text-blue-600 hover:text-blue-800 cursor-pointer">
               <span>Change Logo</span>
               <input
                 type="file"
@@ -225,7 +225,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
         </div>
 
         {/* Inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Official School Name *
@@ -285,7 +285,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">State *</label>
             <select
@@ -367,21 +367,21 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
         </div>
 
         {canEdit ? (
-          <div className="pt-2 flex items-center justify-between">
+          <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <button
               type="submit"
               disabled={isSaving}
-              className="py-2.5 px-6 rounded-2xl bg-blue-600 hover:bg-blue-800 disabled:opacity-75 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all"
+              className="w-fit max-w-full py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-800 disabled:opacity-75 text-white font-semibold text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition-all"
             >
               <Save className="w-4 h-4" />
               <span>{isSaving ? 'Updating...' : 'Save School Profile Changes'}</span>
             </button>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[10px] sm:text-[11px] text-slate-400 leading-relaxed">
               Changes reflect instantly on all exported exam documents.
             </span>
           </div>
         ) : (
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-600">
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] sm:text-xs text-slate-600">
             You are currently viewing as a Subject Teacher.
           </div>
         )}
