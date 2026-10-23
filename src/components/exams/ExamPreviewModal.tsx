@@ -97,15 +97,27 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
               <div className="space-y-6">
                 {/* Official Header */}
                 <div className="text-center space-y-1 pb-4 border-b-2 border-slate-800">
+                  {school?.logo_url && (
+                    <div className="flex justify-center pb-2">
+                      <img src={school.logo_url} alt={`${school.name || 'School'} logo`} className="h-20 w-20 object-contain" />
+                    </div>
+                  )}
                   <h1 className="text-xl sm:text-2xl font-bold uppercase tracking-tight">
-                    {school?.name || "KING'S COLLEGE LAGOS"}
+                    {school?.name || 'SCHOOL NAME'}
                   </h1>
                   {school?.motto && (
                     <p className="text-xs italic text-slate-600">"{school.motto}"</p>
                   )}
-                  <p className="text-xs text-slate-600">
-                    {school?.address || `${school?.lga || 'Lagos Island'}, ${school?.state || 'Lagos'} State`}
-                  </p>
+                  {(school?.address || school?.lga || school?.state) && (
+                    <p className="text-xs text-slate-600">
+                      {school.address || [school.lga, school.state].filter(Boolean).join(', ')}
+                    </p>
+                  )}
+                  {(school?.phone || school?.email) && (
+                    <p className="text-[11px] text-slate-600">
+                      {[school.phone, school.email].filter(Boolean).join('  •  ')}
+                    </p>
+                  )}
                   <h2 className="text-sm sm:text-base font-bold uppercase underline mt-3">
                     {exam.term.toUpperCase()} EXAMINATION — {exam.session} ACADEMIC SESSION
                   </h2>
@@ -121,9 +133,6 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                     </div>
                   </div>
 
-                  <div className="text-xs font-bold text-left pt-3">
-                    CANDIDATE NAME: <span className="font-normal">____________________________</span>
-                  </div>
 
                   <div className="text-xs italic text-left pt-2 text-slate-700">
                     <strong>GENERAL INSTRUCTIONS:</strong> {exam.instructions}
