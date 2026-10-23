@@ -242,6 +242,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     // checks the current subscription and quota when the exam is published.
 
     setIsGeneratingAI(true);
+    setGenerationStage('working');
+    setMotivationIndex(0);
     setAiError(null);
 
     try {
@@ -309,9 +311,14 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           });
         });
 
+        if (parsedQuestions.length === 0) {
+          throw new Error('The AI returned no usable questions. Please try again or use manual entry.');
+        }
+        setGenerationStage('finishing');
+        await new Promise((resolve) => window.setTimeout(resolve, 1400));
         setQuestions(parsedQuestions);
         setCurrentStep(4);
-        showNotification(`AI drafted ${parsedQuestions.length} standard questions with marking schemes.`);
+        showNotification(`AI drafted ${parsedQuestions.length} questions with marking schemes.`);
       } else {
         setAiError(json.error || 'AI generation failed. You can switch to manual authoring or try again.');
       }
@@ -319,6 +326,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       setAiError(e?.message || 'Network error while contacting AI engine. Try again or switch to manual.');
     } finally {
       setIsGeneratingAI(false);
+      setGenerationStage(null);
     }
   };
 
@@ -670,6 +678,36 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const sectionAQuestions = questions.filter((q) => q.section === 'A');
   const sectionBQuestions = questions.filter((q) => q.section === 'B');
 
+  if (isGeneratingAI) {
+    const quote = motivationQuotes[motivationIndex];
+    const finishing = generationStage === 'finishing';
+    return (
+      <div className="fixed inset-0 z-[100] flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#07152f] px-5 text-center text-white">
+        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
+        <div className="absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-indigo-400/20 blur-3xl" />
+        <div className="relative mx-auto flex w-full max-w-xl flex-col items-center">
+          <div className="mb-10 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15"><BookOpen className="h-5 w-5 text-blue-200" /></div>
+            <span className="text-2xl font-black tracking-tight sm:text-3xl">ROCKCRAFT</span>
+          </div>
+          <div className="mb-7 flex h-20 w-20 items-center justify-center rounded-full border border-white/15 bg-white/5">
+            {finishing ? <CheckCircle2 className="h-10 w-10 text-emerald-300" /> : <Loader2 className="h-10 w-10 animate-spin text-blue-200" />}
+          </div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-blue-200">{finishing ? 'Almost ready' : 'Preparing your examination'}</p>
+          <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-5xl">{finishing ? "It's well." : 'Good things take preparation.'}</h1>
+          <div className="mt-6 min-h-28 max-w-lg">
+            <p key={finishing ? 'finish' : motivationIndex} className="text-lg leading-8 text-slate-100 sm:text-xl animate-in fade-in">
+              {finishing ? 'Your questions and marking scheme are ready. Let’s review your paper.' : '“' + quote.quote + '”'}
+            </p>
+            {!finishing && <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-blue-200">{quote.author}</p>}
+          </div>
+          <div className="mt-10 h-1.5 w-56 overflow-hidden rounded-full bg-white/10"><div className={'h-full rounded-full bg-gradient-to-r from-sky-300 to-indigo-300 ' + (finishing ? 'w-full' : 'w-2/3 animate-pulse')} /></div>
+          <p className="mt-4 text-xs text-slate-300">{finishing ? 'Opening your preview…' : 'Creating thoughtful questions and marking guidance. Please keep this page open.'}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-4 text-left pb-8">
       {/* Toast Notification */}
@@ -745,7 +783,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 onChange={(e) => setSubject(e.target.value)}
                 className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               >
-                {ALL_NIGERIAN_SUBJECTS.map((sub) => (
+                {schoolSubjects.map((sub) => (
                   <option key={sub} value={sub}>
                     {sub}
                   </option>
@@ -760,9 +798,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 onChange={(e) => setClassName(e.target.value)}
                 className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               >
-                {STANDARD_NIGERIAN_CLASSES.map((cls) => (
+                {schoolClasses.map((cls) => (
                   <option key={cls.name} value={cls.name}>
-                    {cls.label}
+                    {cls.name}
                   </option>
                 ))}
               </select>
@@ -1333,7 +1371,15 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             </button>
 
             <button
-              onClick={() => setCurrentStep(4)}
+              onClick={() => {
+                const missing = questions.find((question) => !question.question_text.trim());
+                if (questions.length === 0 || missing) {
+                  setStepError('Add at least one question and complete every question text before previewing.');
+                  return;
+                }
+                setStepError(null);
+                setCurrentStep(4);
+              }}
               className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-800 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-all"
             >
               <span>Live Paper Preview & Verification</span>
