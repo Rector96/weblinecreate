@@ -105,9 +105,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
           RC
         </div>
         <h1 className="text-2xl font-black text-slate-900 tracking-tight">ROCKCRAF</h1>
-        <p className="text-xs text-slate-600 mt-1 font-medium">
-          WAEC, NECO & JAMB Exam Builder for Nigerian Secondary Schools
-        </p>
       </div>
 
       {/* Main Auth Card */}
