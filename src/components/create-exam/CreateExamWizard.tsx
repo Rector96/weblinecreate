@@ -521,18 +521,14 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
       const newExam = publishResult.exam;
 
-      // Download the paper and confidential marking scheme only after all records are saved.
+      // Start both downloads from the publish action; avoid a delayed second download
+      // that mobile browsers may block.
       try {
         await exportExamToDocx(newExam, school);
-        setTimeout(async () => {
-          try {
-            await exportMarkingSchemeToDocx(newExam, school);
-          } catch (error) {
-            console.warn('Marking scheme download failed', error);
-          }
-        }, 600);
+        await exportMarkingSchemeToDocx(newExam, school);
       } catch (error) {
-        console.warn('Automatic exam download failed', error);
+        console.warn('Automatic exam or marking scheme download failed', error);
+        showNotification('Exam saved. If a download was blocked, use the success screen to download it again.');
       }
 
       try {
@@ -555,7 +551,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const sectionBQuestions = questions.filter((q) => q.section === 'B');
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 text-left pb-16">
+    <div className="max-w-4xl mx-auto space-y-4 text-left pb-8">
       {/* Toast Notification */}
       {notification && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
@@ -565,7 +561,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       )}
 
       {/* Wizard Progress Stepper */}
-      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs">
+      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-xs">
         <div className="flex items-center justify-between max-w-xl mx-auto text-xs">
           {[
             { step: 1, label: 'Metadata' },
@@ -606,7 +602,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {/* STEP 1: EXAM METADATA (MANDATORY FIELDS) */}
       {/* ============================================================== */}
       {currentStep === 1 && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-5 animate-in fade-in">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-4 animate-in fade-in">
           <div>
             <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 1: Exam Details & Header</h3>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -734,7 +730,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {/* STEP 2: METHOD SELECTION (AI vs MANUAL) */}
       {/* ============================================================== */}
       {currentStep === 2 && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6 animate-in fade-in">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-4 animate-in fade-in">
           <div>
             <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 2: How would you like to craft this exam?</h3>
             <p className="text-xs text-slate-500 mt-0.5">
