@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
@@ -83,6 +83,10 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [aiNumTheory, setAiNumTheory] = useState(3);
   const [aiDifficulty, setAiDifficulty] = useState<'Standard WAEC/JAMB' | 'Foundational / Basic' | 'Advanced / Rigorous'>('Standard WAEC/JAMB');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [generationStage, setGenerationStage] = useState<'working' | 'finishing' | null>(null);
+  const [motivationIndex, setMotivationIndex] = useState(0);
+  const [schoolClasses, setSchoolClasses] = useState<Array<{ name: string; level?: string }>>([]);
+  const [schoolSubjects, setSchoolSubjects] = useState<string[]>([]);
   const [aiError, setAiError] = useState<string | null>(null);
 
   // Dynamic regeneration and adding states
@@ -124,6 +128,56 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
 
+  const motivationQuotes = [
+    { quote: 'Great things are done by a series of small things brought together.', author: 'Vincent van Gogh' },
+    { quote: 'Education is the most powerful weapon which you can use to change the world.', author: 'Nelson Mandela' },
+    { quote: 'A good teacher can inspire hope, ignite the imagination, and instil a love of learning.', author: 'Brad Henry' },
+    { quote: 'The beautiful thing about learning is that nobody can take it away from you.', author: 'B. B. King' },
+    { quote: 'Success is the sum of small efforts, repeated day in and day out.', author: 'Robert Collier' },
+    { quote: 'Every question you prepare is another opportunity for a learner to grow.', author: 'ROCKCRAFT' },
+  ];
+
+  useEffect(() => {
+    if (!isGeneratingAI || generationStage !== 'working') return;
+    const timer = window.setInterval(() => setMotivationIndex((index) => (index + 1) % motivationQuotes.length), 3200);
+    return () => window.clearInterval(timer);
+  }, [isGeneratingAI, generationStage]);
+
+  useEffect(() => {
+    if (guestSchool) {
+      const classes = guestSchool.classes || [];
+      const subjects = guestSchool.subjects || [];
+      setSchoolClasses(classes.length ? classes : STANDARD_NIGERIAN_CLASSES.map((item) => ({ name: item.name, level: item.level })));
+      setSchoolSubjects(subjects.length ? subjects : ALL_NIGERIAN_SUBJECTS);
+      if (classes.length && !classes.some((item) => item.name === className)) setClassName(classes[0].name);
+      if (subjects.length && !subjects.includes(subject)) setSubject(subjects[0]);
+      return;
+    }
+    if (!school?.id || !isSupabaseConfigured()) {
+      setSchoolClasses(STANDARD_NIGERIAN_CLASSES.map((item) => ({ name: item.name, level: item.level })));
+      setSchoolSubjects(ALL_NIGERIAN_SUBJECTS);
+      return;
+    }
+    let cancelled = false;
+    const loadCurriculum = async () => {
+      const [classResult, subjectResult] = await Promise.all([
+        supabase.from('school_classes').select('name, level').eq('school_id', school.id).order('display_order', { ascending: true }),
+        supabase.from('school_subjects').select('name').eq('school_id', school.id).eq('is_active', true).order('name', { ascending: true }),
+      ]);
+      if (cancelled) return;
+      const classes = (classResult.data || []).map((item) => ({ name: item.name, level: item.level }));
+      const subjects = (subjectResult.data || []).map((item) => item.name);
+      const nextClasses = classes.length ? classes : STANDARD_NIGERIAN_CLASSES.map((item) => ({ name: item.name, level: item.level }));
+      const nextSubjects = subjects.length ? subjects : ALL_NIGERIAN_SUBJECTS;
+      setSchoolClasses(nextClasses);
+      setSchoolSubjects(nextSubjects);
+      if (!nextClasses.some((item) => item.name === className)) setClassName(nextClasses[0]?.name || '');
+      if (!nextSubjects.includes(subject)) setSubject(nextSubjects[0] || '');
+    };
+    void loadCurriculum();
+    return () => { cancelled = true; };
+  }, [school?.id, guestSchool?.id]);
+
   const getAiAuthHeaders = async () => {
     if (!school?.id) throw new Error('A valid school account is required for AI question generation.');
     if (isGuestTeacher && guestInviteToken) {
@@ -146,13 +200,31 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   };
 
   // Step 1 Validation
-  const handleStep1Next = () => {
+  const handleStep1Next = async () => {
     if (!title.trim() || !subject.trim() || !className.trim() || !instructions.trim()) {
-      setStepError('All exam metadata fields are mandatory according to WAEC standards.');
-      return;
+      setStepError('Complete the required exam details before continuing.'); return;
     }
+    if (durationMinutes < 30 || durationMinutes > 240 || !Number.isFinite(durationMinutes)) {
+      setStepError('Choose an exam duration between 30 and 240 minutes.'); return;
+    }
+    if (!session.trim()) { setStepError('Choose the academic session for this exam.'); return; }
+    if (!school?.id) { setStepError('The school details could not be verified. Refresh the page or ask the school admin for a new link.'); return; }
     setStepError(null);
-    setCurrentStep(2);
+    try {
+      if (isGuestTeacher && guestInviteToken) {
+        const params = new URLSearchParams({ token: guestInviteToken, class_name: className, subject, term, session });
+        const response = await fetch('/api/check-exam-conflict?' + params.toString());
+        const result = await response.json();
+        if (response.status === 409 || result.conflict) { setStepError(result.error || (className + ' already has a ' + subject + ' exam for ' + term + ', ' + session + '.')); return; }
+        if (!response.ok) throw new Error(result.error || 'Could not check the class subject schedule.');
+      } else if (isSupabaseConfigured()) {
+        const { data, error } = await supabase.from('exams').select('id').eq('school_id', school.id).eq('status', 'published')
+          .ilike('class_name', className).ilike('subject', subject).eq('term', term).eq('session', session).limit(1);
+        if (error) throw error;
+        if (data?.length) { setStepError(className + ' already has a ' + subject + ' exam for ' + term + ', ' + session + '. Choose a different subject, term or session.'); return; }
+      }
+      setCurrentStep(2);
+    } catch (error) { setStepError(error instanceof Error ? error.message : 'Could not validate these exam details. Please try again.'); }
   };
 
   // Step 2 Choice
