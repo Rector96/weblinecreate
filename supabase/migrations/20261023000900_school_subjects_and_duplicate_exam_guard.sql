@@ -115,7 +115,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
-AS $
+AS $seed_subjects$
 BEGIN
   INSERT INTO public.school_subjects (school_id, name)
   SELECT NEW.id, subjects.name
@@ -137,7 +137,7 @@ BEGIN
   ON CONFLICT DO NOTHING;
   RETURN NEW;
 END;
-$;
+$seed_subjects$;
 
 DROP TRIGGER IF EXISTS schools_seed_default_subjects ON public.schools;
 CREATE TRIGGER schools_seed_default_subjects
