@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { saveExamToSupabase } from '../../lib/examRepository';
 import {
   Exam,
@@ -461,10 +462,26 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     setIsSubmitting(true);
 
     try {
-      const trialRes = db.consumeTrial(school.id, method === 'ai');
-      if (!trialRes.success) {
-        alert(trialRes.message || 'Trial quota exhausted');
-        onOpenPaystack();
+      if (!isSupabaseConfigured()) {
+        throw new Error('Secure publishing is unavailable because Supabase is not configured.');
+      }
+
+      // The quota is checked and incremented atomically in PostgreSQL. Never trust
+      // browser localStorage for subscription state or trial limits.
+      const { data: quotaResult, error: quotaError } = await supabase.rpc('consume_exam_quota', {
+        p_school_id: school.id,
+        p_is_ai: method === 'ai',
+      });
+
+      if (quotaError) {
+        console.error('Secure exam quota check failed', quotaError);
+        throw new Error('Could not verify your school subscription or trial quota. Please try again.');
+      }
+
+      const quota = quotaResult as { success?: boolean; code?: string; message?: string } | null;
+      if (!quota?.success) {
+        alert(quota?.message || 'Your exam trial quota could not be confirmed.');
+        if (quota?.code === 'quota_exceeded') onOpenPaystack();
         return;
       }
 
