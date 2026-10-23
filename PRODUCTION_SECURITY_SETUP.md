@@ -6,11 +6,12 @@
 2. Go to **SQL Editor** → **New query**.
 3. Open [the hardening migration](https://github.com/Rector96/weblinecreate/blob/fix/production-readiness/supabase/migrations/20261023000100_production_security_hardening.sql).
 4. Copy the entire SQL file, paste it into the editor, and click **Run**.
-5. Confirm the query completes successfully before deploying the application changes.
+5. Confirm the query completes successfully.
+6. Repeat with the [secure signup provisioning migration](https://github.com/Rector96/weblinecreate/blob/fix/production-readiness/supabase/migrations/20261023000200_secure_signup_provisioning.sql).
 
-This migration does not delete your existing data. It removes the old permissive RLS policies and replaces them with school-scoped policies. It also prevents client-side inserts into the payments table, because payment records must only be written by a trusted server after Paystack verification.
+The first migration tightens row-level security and prevents client-side payment inserts. The second provisions school and teacher profiles through a trusted database trigger and blocks users from changing their own school membership or granting platform-admin access.
 
-**Important:** apply the original schema first if the project has not been initialized. This migration is for an existing database created from `supabase_schema.sql`.
+**Important:** your existing database already has the required tables. Do not rerun `supabase_schema.sql` on it: that original setup file contains older permissive policies. Apply migrations in order, and confirm each succeeds.
 
 ## 2. Configure server environment variables
 
@@ -18,21 +19,26 @@ In Netlify → **Site configuration** → **Environment variables**, configure:
 
 - `GEMINI_API_KEY`: Gemini API key, server-side only (do not use a `VITE_` prefix).
 - `VITE_SUPABASE_URL`: Supabase project URL.
-- `VITE_SUPABASE_ANON_KEY`: Supabase anon/publishable key.
+- `VITE_SUPABASE_ANON_KEY`: Supabase anon/publishable key for browser authentication.
+- `SUPABASE_URL`: same Supabase project URL, for server-side Netlify functions.
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service-role key, server-side only.
+- `PAYSTACK_SECRET_KEY`: Paystack secret key, server-side only.
+- `SITE_URL`: canonical public site URL, e.g. `https://your-site.netlify.app`, used for the Paystack callback.
 
-Do not put Supabase `service_role` keys or Paystack secret keys in any `VITE_*` variable or in source control. The Paystack modal has been changed to refuse fake success; a trusted initialization/verification endpoint still needs to be connected before real payments can be accepted.
+Never place `SUPABASE_SERVICE_ROLE_KEY` or `PAYSTACK_SECRET_KEY` in a `VITE_*` variable or commit either key to Git. After setting variables, trigger a fresh Netlify deploy.
 
 ## 3. Important production-readiness limitation
 
-The current app's login and database layer in `src/lib/auth.tsx` and `src/lib/db.ts` use demo users and browser localStorage. They do not establish a real Supabase Auth session. Therefore the database migration alone does **not** turn the existing demo login into secure production authentication, and the current client cannot yet safely access school data under these policies.
+The login flow now uses Supabase Auth and no longer offers instant demo sign-in. School membership and invitation-based teacher signup are provisioned by the new database trigger. Paystack initialization and server-side verification endpoints are implemented and require the server environment variables above.
 
-Before opening this app to real schools, replace demo authentication/storage with Supabase Auth and tenant-scoped database operations. Then implement server-side Paystack initialization and verification (using `PAYSTACK_SECRET_KEY` only in Netlify server environment variables) and a secure invitation-token validation endpoint. Do not bypass RLS or re-enable public SELECT/INSERT policies as a workaround.
+However, `src/lib/db.ts` still stores exam, question, and class data in browser localStorage. Those records are not yet fully migrated to Supabase tables, so this is **not yet production-ready for multi-user school data**. Test registration, email confirmation, role permissions, AI generation, and a Paystack test-mode transaction before taking live payments. Do not bypass RLS or re-enable public SELECT/INSERT policies as a workaround.
 
 ## 4. Changes in this branch
 
 - Removed public read access to school rows and invitation tokens.
 - Scoped database reads/writes to the signed-in user's school and roles.
 - Removed direct client inserts into the payments table.
-- Stopped trusting signup metadata to assign the `platform_admin` role.
+- Replaced demo sign-in with Supabase Auth and real password reset requests.
+- Added secure school/teacher signup provisioning and role-escalation guards.
+- Added server-side Paystack initialization and transaction verification; subscriptions activate only after verified successful payment.
 - Removed placeholder/fake questions returned as successful AI output.
-- Removed the payment modal's timer-based fake success and local subscription activation.
