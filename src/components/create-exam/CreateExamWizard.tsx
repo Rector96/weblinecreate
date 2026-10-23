@@ -526,16 +526,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     }
   };
 
-  const handleGenerateToTarget = (section: 'A' | 'B') => {
-    const target = section === 'A' ? aiNumObj : aiNumTheory;
-    const existingCount = questions.filter((q) => q.section === section).length;
-    if (target <= existingCount) {
-      showNotification(`You already have ${existingCount} ${section === 'A' ? 'objective' : 'theory'} questions. Lowering the target will not delete existing questions.`);
-      return;
-    }
-    void handleGenerateMoreQuestions(section, target - existingCount);
-  };
-
   // Add Question Manually
   const handleAddQuestion = (section: 'A' | 'B') => {
     const sectionCount = questions.filter((q) => q.section === section).length;
