@@ -15,7 +15,7 @@ ExamCraft is a multi-tenant SaaS Progressive Web App engineered specifically for
    - Zero marketing landing page — unauthenticated users land directly at Login / Sign Up / Join with Token.
 
 2. **Exam Paper DOCX Export**
-   - Exact official layout: Centered school name (16pt bold), motto, address, exam title, subject, class, session, time allowed, and candidate details line.
+   - Exact official layout: Centered school name (16pt bold), motto, address, exam title, subject, class, session, time allowed, with no candidate-name or class/arm lines.
    - **Section A**: Objectives with lettered options [A] [B] [C] [D].
    - **Section B**: Theory questions with allocated marks in brackets `[15 Marks]`.
    - **Confidential Marking Scheme DOCX**: Separate document containing objective answer grid and step-by-step scoring rubrics (restricted to school admins and examiners).
