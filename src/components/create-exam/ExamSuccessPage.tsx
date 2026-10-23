@@ -2,17 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { Exam } from '../../types';
 import { exportExamToDocx, exportMarkingSchemeToDocx } from '../../utils/docxExport';
-import {
-  CheckCircle2,
-  Download,
-  Eye,
-  PlusCircle,
-  FileText,
-  ShieldCheck,
-  ArrowRight,
-  School as SchoolIcon,
-  BookOpen
-} from 'lucide-react';
+import { CheckCircle2, Download, ShieldCheck } from 'lucide-react';
 
 interface ExamSuccessPageProps {
   exam: Exam;
