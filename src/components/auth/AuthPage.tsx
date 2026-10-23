@@ -125,22 +125,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#e8f1fb] via-[#f0f5fc] to-[#f8fafc] flex flex-col justify-center items-center px-4 py-8">
+    <div className={`${mode === "login" ? "h-[100dvh] max-h-[100dvh] overflow-hidden py-3" : "min-h-[100dvh] py-6"} bg-gradient-to-b from-[#e8f1fb] via-[#f0f5fc] to-[#f8fafc] flex flex-col justify-center items-center px-4`}>
       {/* Brand Header */}
-      <div className="text-center mb-6 max-w-sm">
-        <div className="w-14 h-14 rounded-3xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center font-black text-2xl mx-auto shadow-lg shadow-blue-600/25 mb-3">
+      <div className="text-center mb-4 max-w-sm shrink-0">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center font-black text-2xl mx-auto shadow-lg shadow-blue-600/25 mb-3">
           RC
         </div>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">ROCKCRAF</h1>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">ROCKCRAF</h1>
         <p className="text-xs text-slate-600 mt-1 font-medium">
           WAEC, NECO & JAMB Exam Builder for Nigerian Secondary Schools
         </p>
       </div>
 
       {/* Main Auth Card */}
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-blue-950/5 border border-slate-200/80 p-6 sm:p-8 text-left">
+      <div className={`w-full max-w-md bg-white rounded-3xl shadow-xl shadow-blue-950/5 border border-slate-200/80 ${mode === "login" ? "p-5 sm:p-6" : "p-6 sm:p-8"} text-left`}>
         {/* Navigation Mode Switcher */}
-        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-2xl mb-6">
+        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-2xl mb-4">
           <button
             type="button"
             onClick={() => {
