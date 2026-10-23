@@ -26,7 +26,7 @@ async function getSchoolLogoRun(school?: School | null): Promise<ImageRun | null
     if (!response.ok) return null;
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('svg') || contentType.includes('webp')) return null;
-    const type = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : contentType.includes('gif') ? 'gif' : contentType.includes('bmp') ? 'bmp' : 'png';
+    const type: 'jpg' | 'gif' | 'bmp' | 'png' = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : contentType.includes('gif') ? 'gif' : contentType.includes('bmp') ? 'bmp' : 'png';
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (!bytes.length) return null;
     return new ImageRun({ data: bytes, type, transformation: { width: 68, height: 68 } });
