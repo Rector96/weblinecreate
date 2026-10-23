@@ -28,7 +28,7 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
   navigate,
   onPreviewExam,
 }) => {
-  const { school, user, role } = useAuth();
+  const { school, role } = useAuth();
   const [exams, setExams] = useState<Exam[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('All');
@@ -311,7 +311,7 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
                     <span>Preview Paper</span>
                   </button>
 
-                  {(role === 'school_admin' || exam.created_by === user?.id) && (
+                  {(role === 'school_admin' || role === 'platform_admin') && (
                     <button
                       onClick={() => void handleDelete(exam.id, exam.title)}
                       disabled={deletingId === exam.id}
