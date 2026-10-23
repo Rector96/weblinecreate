@@ -13,14 +13,14 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ onStartExam }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    const hasSeen = localStorage.getItem(WELCOME_SEEN_KEY);
+    const hasSeen = window.localStorage.getItem(WELCOME_SEEN_KEY);
     if (!hasSeen) {
       setIsOpen(true);
     }
   }, []);
 
   const handleClose = () => {
-    localStorage.setItem(WELCOME_SEEN_KEY, 'true');
+    window.localStorage.setItem(WELCOME_SEEN_KEY, 'true');
     setIsOpen(false);
   };
 
