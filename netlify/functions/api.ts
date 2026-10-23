@@ -80,9 +80,19 @@ async function authorizeAiRequest(req: Request, schoolId: unknown) {
 }
 
 function validAiInputs(body: any) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return false;
   const fields = ['subject', 'class_name', 'term', 'topics', 'difficulty', 'instructions'];
   for (const key of fields) {
     if (body[key] !== undefined && (typeof body[key] !== 'string' || body[key].length > (key === 'instructions' || key === 'topics' ? 3000 : 120))) return false;
+  }
+  if (body.subject !== undefined && !body.subject.trim()) return false;
+  if (body.class_name !== undefined && !body.class_name.trim()) return false;
+  if (body.num_objectives !== undefined && (!Number.isInteger(Number(body.num_objectives)) || Number(body.num_objectives) < 5 || Number(body.num_objectives) > 50)) return false;
+  if (body.num_theories !== undefined && (!Number.isInteger(Number(body.num_theories)) || Number(body.num_theories) < 1 || Number(body.num_theories) > 6)) return false;
+  if (body.count !== undefined && (!Number.isInteger(Number(body.count)) || Number(body.count) < 1 || Number(body.count) > 20)) return false;
+  if (body.section !== undefined && !['A', 'B'].includes(body.section)) return false;
+  for (const key of ['question_number', 'start_number']) {
+    if (body[key] !== undefined && (!Number.isInteger(Number(body[key])) || Number(body[key]) < 1 || Number(body[key]) > 200)) return false;
   }
   return true;
 }
@@ -266,6 +276,7 @@ export default async (req: Request) => {
   // 1. GENERATE FULL EXAM QUESTIONS
   if (pathname.endsWith('/generate-questions') && req.method === 'POST') {
     try {
+      if (Number(req.headers.get('content-length') || 0) > 16000) return jsonResponse({ success: false, error: 'AI request is too large.' }, 413);
       const body = await req.json() as any;
       if (!validAiInputs(body)) return jsonResponse({ success: false, error: 'Invalid or oversized AI request fields.' }, 400);
       const authorization = await authorizeAiRequest(req, body.school_id || req.headers.get('x-school-id'));
@@ -372,6 +383,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
   // 2. REGENERATE SINGLE QUESTION
   if (pathname.endsWith('/regenerate-single-question') && req.method === 'POST') {
     try {
+      if (Number(req.headers.get('content-length') || 0) > 16000) return jsonResponse({ success: false, error: 'AI request is too large.' }, 413);
       const body = await req.json() as any;
       if (!validAiInputs(body)) return jsonResponse({ success: false, error: 'Invalid or oversized AI request fields.' }, 400);
       const authorization = await authorizeAiRequest(req, body.school_id || req.headers.get('x-school-id'));
@@ -444,6 +456,7 @@ Return STRICT JSON ONLY.`;
   // 3. GENERATE MORE QUESTIONS
   if (pathname.endsWith('/generate-more-questions') && req.method === 'POST') {
     try {
+      if (Number(req.headers.get('content-length') || 0) > 16000) return jsonResponse({ success: false, error: 'AI request is too large.' }, 413);
       const body = await req.json() as any;
       if (!validAiInputs(body)) return jsonResponse({ success: false, error: 'Invalid or oversized AI request fields.' }, 400);
       const authorization = await authorizeAiRequest(req, body.school_id || req.headers.get('x-school-id'));
