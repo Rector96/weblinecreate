@@ -54,7 +54,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   onOpenPaystack,
   onSuccessExam,
 }) => {
-  const { school, user } = useAuth();
+  const { school, user, role } = useAuth();
 
   // Wizard Step: 1 = Metadata, 2 = Method, 3 = Questions (Manual or AI prompt), 4 = Review & Edit
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -515,7 +515,10 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
       if (!publishResult.success) {
         alert(publishResult.message || 'Your exam could not be published.');
-        if (publishResult.code === 'quota_exceeded') onOpenPaystack();
+        if (publishResult.code === 'quota_exceeded') {
+          if (role === 'teacher') showNotification('The school exam limit has been reached. Please ask your school admin to upgrade the plan.');
+          else onOpenPaystack();
+        }
         return;
       }
 
@@ -944,7 +947,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             <button
               onClick={() => {
                 if (school && school.subscription_status !== 'active' && school.ai_exams_used >= 4) {
-                  onOpenPaystack();
+                  if (role === 'teacher') showNotification('The school exam limit has been reached. Please ask your school admin to upgrade the plan.');
+                  else onOpenPaystack();
                   return;
                 }
                 handleGenerateAI();
