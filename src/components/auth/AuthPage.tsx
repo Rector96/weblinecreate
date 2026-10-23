@@ -434,7 +434,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
         {mode === 'join' && (
           <form onSubmit={handleJoinSubmit} className="space-y-4">
             <div className="p-3 bg-blue-50/80 border border-blue-100 rounded-2xl text-xs text-blue-900">
-              <span className="font-bold">Joining your school team?</span> Enter the 6-character code from your school admin.
+              <span className="font-bold">{inviteSchoolName ? `Welcome to ${inviteSchoolName}` : 'Welcome to your school workspace'}</span>
+              <p className="mt-1">Create your teacher account to generate exams for this school. The teacher workspace does not include the school dashboard.</p>
+              {inviteLookupError && <p role="alert" className="mt-2 text-rose-700">{inviteLookupError}</p>}
             </div>
 
             <div>
