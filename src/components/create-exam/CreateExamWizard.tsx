@@ -9,7 +9,8 @@ import {
   Question,
   ExamTerm,
   ObjectiveAnswer,
-  TheoryMarkingScheme
+  TheoryMarkingScheme,
+  School
 } from '../../types';
 import {
   ALL_NIGERIAN_SUBJECTS,
@@ -47,14 +48,20 @@ interface CreateExamWizardProps {
   navigate: (route: string, param?: string) => void;
   onOpenPaystack: () => void;
   onSuccessExam: (exam: Exam) => void;
+  guestInviteToken?: string;
+  guestSchool?: School;
 }
 
 export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   navigate,
   onOpenPaystack,
   onSuccessExam,
+  guestInviteToken,
+  guestSchool,
 }) => {
-  const { school, user, role } = useAuth();
+  const { school: authenticatedSchool, user, role } = useAuth();
+  const school = guestSchool || authenticatedSchool;
+  const isGuestTeacher = Boolean(guestInviteToken);
 
   // Wizard Step: 1 = Metadata, 2 = Method, 3 = Questions (Manual or AI prompt), 4 = Review & Edit
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -118,9 +125,15 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [stepError, setStepError] = useState<string | null>(null);
 
   const getAiAuthHeaders = async () => {
+    if (!school?.id) throw new Error('A valid school account is required for AI question generation.');
+    if (isGuestTeacher && guestInviteToken) {
+      return {
+        'Content-Type': 'application/json',
+        'X-School-Invite-Token': guestInviteToken,
+      };
+    }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) throw new Error('Please sign in again before using AI question generation.');
-    if (!school?.id) throw new Error('A valid school account is required for AI question generation.');
     return {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.access_token}`,
@@ -473,8 +486,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
   // Step 5: Save the exam and all related questions to Supabase.
   const handleSubmitExam = async () => {
-    if (!school || !user?.id) {
-      alert('Please sign in with a valid school account before publishing an exam.');
+    if (!school || (!user?.id && !isGuestTeacher)) {
+      alert('A valid school invitation or school account is required before publishing an exam.');
       return;
     }
     if (isSubmitting) return;
@@ -491,27 +504,59 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       const sectionAMarks = questions.filter((q) => q.section === 'A').reduce((acc, q) => acc + q.marks, 0);
       const sectionBMarks = questions.filter((q) => q.section === 'B').reduce((acc, q) => acc + q.marks, 0);
 
-      const publishResult = await publishExamWithQuota(
-        {
-          school_id: school.id,
-          created_by: user.id,
-          created_by_name: user.full_name || 'Staff',
-          exam_code: examCode,
-          title,
-          subject,
-          class_name: className,
-          term,
-          session,
-          duration_minutes: durationMinutes,
-          instructions,
-          total_marks: sectionAMarks + sectionBMarks || totalMarks,
-          section_a_marks: sectionAMarks,
-          section_b_marks: sectionBMarks,
-          status: 'published',
-        },
-        questions,
-        method === 'ai'
-      );
+      const examPayload = {
+        school_id: school.id,
+        created_by: user?.id || '',
+        created_by_name: user?.full_name || 'Teacher',
+        exam_code: examCode,
+        title,
+        subject,
+        class_name: className,
+        term,
+        session,
+        duration_minutes: durationMinutes,
+        instructions,
+        total_marks: sectionAMarks + sectionBMarks || totalMarks,
+        section_a_marks: sectionAMarks,
+        section_b_marks: sectionBMarks,
+        status: 'published' as const,
+      };
+
+      let publishResult: Awaited<ReturnType<typeof publishExamWithQuota>>;
+      if (isGuestTeacher && guestInviteToken) {
+        const response = await fetch('/api/publish-exam', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-School-Invite-Token': guestInviteToken,
+          },
+          body: JSON.stringify({
+            exam: examPayload,
+            questions: questions.map((question, index) => ({
+              section: question.section,
+              question_number: question.question_number || index + 1,
+              question_text: question.question_text,
+              marks: question.marks,
+              image_url: question.image_url || null,
+              objective_data: question.objective_data || null,
+              theory_data: question.theory_data || null,
+            })),
+            is_ai: method === 'ai',
+          }),
+        });
+        const guestResult = await response.json();
+        if (!response.ok || !guestResult?.success || !guestResult?.exam) {
+          publishResult = {
+            success: false,
+            code: guestResult?.code,
+            message: guestResult?.error || 'The exam could not be published. Please try again.',
+          };
+        } else {
+          publishResult = { success: true, exam: guestResult.exam as Exam };
+        }
+      } else {
+        publishResult = await publishExamWithQuota(examPayload, questions, method === 'ai');
+      }
 
       if (!publishResult.success) {
         alert(publishResult.message || 'Your exam could not be published.');
