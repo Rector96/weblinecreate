@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 
-const apiKey = process.env.GEMINI_API_KEY; // Server-side secret only; never expose Gemini keys via VITE_ variables.
+// Google AI Studio supports GEMINI_API_KEY and GOOGLE_API_KEY. Keep either server-side only.
+const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // Best models for high accuracy and ultra-low cost / free tier
@@ -505,31 +506,49 @@ You MUST respond strictly with a valid JSON object matching this schema:
 }
 `;
 
-      if (ai) {
-        for (const model of MODELS) {
-          try {
-            const response = await ai.models.generateContent({
-              model,
-              contents: promptText,
-              config: {
-                responseMimeType: 'application/json',
-                temperature: 0.3,
-              },
-            });
-            const rawJson = response.text || '';
-            const parsed = JSON.parse(rawJson);
-            return new Response(JSON.stringify({ success: true, provider: model, data: parsed }), {
-              status: 200,
-              headers: corsHeaders,
-            });
-          } catch (modelErr: any) {
-            console.warn(`Netlify function model ${model} failed, trying next:`, modelErr?.message);
-          }
+      if (!ai) {
+        console.error('AI generation unavailable: neither GEMINI_API_KEY nor GOOGLE_API_KEY is available to the Netlify Function runtime.');
+        return new Response(
+          JSON.stringify({ success: false, error: 'AI generation is not configured on the server. Add GEMINI_API_KEY (recommended) or GOOGLE_API_KEY in Netlify Environment variables, enable Functions scope and Production context, then redeploy.' }),
+          { status: 503, headers: corsHeaders }
+        );
+      }
+
+      let lastModelError: unknown = null;
+      for (const model of MODELS) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: promptText,
+            config: {
+              responseMimeType: 'application/json',
+              temperature: 0.3,
+            },
+          });
+          const rawJson = response.text || '';
+          const parsed = JSON.parse(rawJson);
+          return new Response(JSON.stringify({ success: true, provider: model, data: parsed }), {
+            status: 200,
+            headers: corsHeaders,
+          });
+        } catch (modelErr: any) {
+          lastModelError = modelErr;
+          // Log the SDK error, but never request data or credentials.
+          console.error(`Gemini model request failed (${model})`, modelErr?.status || modelErr?.code || 'unknown status', modelErr?.message || 'No error message');
         }
       }
 
+      const modelErrorText = lastModelError instanceof Error ? lastModelError.message : String(lastModelError || '');
+      const statusCode = (lastModelError as any)?.status || (lastModelError as any)?.code;
+      const likelyKeyProblem = /api.?key|unauthenticated|permission denied|forbidden|leaked|invalid argument/i.test(modelErrorText) || statusCode === 400 || statusCode === 401 || statusCode === 403;
+      const likelyQuotaProblem = statusCode === 429 || /quota|resource_exhausted|rate.?limit|billing/i.test(modelErrorText);
+      const error = likelyKeyProblem
+        ? 'Gemini rejected the configured API key or its permissions. Check that the key is valid in Google AI Studio and allowed to use the Gemini API; see Netlify Function logs for details.'
+        : likelyQuotaProblem
+          ? 'Gemini API quota or billing limit reached. Check quota and billing for the Google AI project; see Netlify Function logs for details.'
+          : 'Gemini generation failed for all configured models. Check Netlify Function logs for the Gemini error details and verify the API key, model access, and quota.';
       return new Response(
-        JSON.stringify({ success: false, error: 'AI generation is unavailable. Configure GEMINI_API_KEY on the server and try again; placeholder questions are never returned as real exam content.' }),
+        JSON.stringify({ success: false, error: error + ' Placeholder questions are never returned as real exam content.' }),
         { status: 503, headers: corsHeaders }
       );
     } catch (e: any) {
