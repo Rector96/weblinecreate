@@ -6,11 +6,23 @@ const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 // Best models for high accuracy and ultra-low cost / free tier
 const MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim().replace(/\/$/, '');
+// Prefer the legacy service-role JWT when configured. Supabase's newer sb_secret_
+// API keys are also supported; they must be sent as apikey, not as a JWT bearer.
+const SUPABASE_SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const SUPABASE_SECRET_KEY = (process.env.SUPABASE_SECRET_KEY || '').trim();
+const SUPABASE_ADMIN_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_SECRET_KEY;
+const SUPABASE_ADMIN_USES_SECRET_API_KEY = !SUPABASE_SERVICE_ROLE_KEY && Boolean(SUPABASE_SECRET_KEY);
 // Supabase Auth's apikey header should use the project publishable/anon key;
 // the user's access token remains the Authorization bearer token.
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim();
+
+function missingSupabaseServerConfig() {
+  const missing: string[] = [];
+  if (!SUPABASE_URL) missing.push('SUPABASE_URL (or VITE_SUPABASE_URL)');
+  if (!SUPABASE_ADMIN_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY)');
+  return missing;
+}
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const SUBSCRIPTION_AMOUNT_KOBO = 1100000;
 const ALLOWED_TERMS = new Set(['First Term', 'Second Term', 'Third Term']);
@@ -28,14 +40,16 @@ function getSiteUrl(req: Request) {
 }
 
 async function supabaseAdminRequest(path: string, init: RequestInit = {}) {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Server Supabase credentials are not configured.');
+  const missing = missingSupabaseServerConfig();
+  if (missing.length) {
+    console.error('Supabase server configuration is missing:', missing.join(', '));
+    throw new Error(`Server Supabase configuration is missing: ${missing.join(', ')}.`);
   }
-  const response = await fetch(`${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${path}`, {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
     headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      apikey: SUPABASE_ADMIN_KEY,
+      ...(SUPABASE_ADMIN_USES_SECRET_API_KEY ? {} : { Authorization: `Bearer ${SUPABASE_ADMIN_KEY}` }),
       'Content-Type': 'application/json',
       ...(init.headers || {}),
     },
@@ -77,8 +91,10 @@ async function getAuthenticatedUser(req: Request) {
 
 
 async function authorizeAiRequest(req: Request, schoolId: unknown) {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return { ok: false as const, response: jsonResponse({ success: false, error: 'AI authorization is not configured on the server. Ask the site administrator to check Supabase server environment variables.' }, 503) };
+  const missingConfig = missingSupabaseServerConfig();
+  if (missingConfig.length) {
+    console.error('AI authorization is unavailable; missing server config:', missingConfig.join(', '));
+    return { ok: false as const, response: jsonResponse({ success: false, error: `AI authorization is not configured on the server. Missing Netlify Function variable(s): ${missingConfig.join(', ')}. Set them in Netlify environment variables with Functions scope, then redeploy.` }, 503) };
   }
   if (typeof schoolId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId)) {
     return { ok: false as const, response: jsonResponse({ success: false, error: 'A valid school account is required.' }, 400) };
@@ -129,7 +145,7 @@ function validAiInputs(body: any) {
 }
 
 async function initializePaystackPayment(req: Request) {
-  if (!PAYSTACK_SECRET_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  if (!PAYSTACK_SECRET_KEY || missingSupabaseServerConfig().length) {
     return jsonResponse({ error: 'Secure payments are not configured. No payment has been taken.' }, 503);
   }
   const user = await getAuthenticatedUser(req);
@@ -222,7 +238,7 @@ async function verifyPaystackPayment(req: Request) {
     return Response.redirect(destination.toString(), 303);
   };
 
-  if (!reference || !PAYSTACK_SECRET_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  if (!reference || !PAYSTACK_SECRET_KEY || missingSupabaseServerConfig().length) {
     return resultUrl('failed');
   }
 
@@ -321,7 +337,11 @@ export default async (req: Request) => {
       }, 200, { 'Cache-Control': 'no-store' });
     } catch (error) {
       console.error('School invite preview failed', error);
-      return jsonResponse({ success: false, error: 'Unable to verify this school link right now.' }, 503, { 'Cache-Control': 'no-store' });
+      const missingConfig = missingSupabaseServerConfig();
+      if (missingConfig.length) {
+        return jsonResponse({ success: false, error: `School link verification is not configured on the server. Missing Netlify Function variable(s): ${missingConfig.join(', ')}. Set them with Functions scope, then redeploy.` }, 503, { 'Cache-Control': 'no-store' });
+      }
+      return jsonResponse({ success: false, error: 'Unable to verify this school link right now. Check the Netlify Function logs for the Supabase request error.' }, 503, { 'Cache-Control': 'no-store' });
     }
   }
 
