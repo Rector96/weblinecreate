@@ -72,14 +72,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         let token = inviteResult.data?.token || '';
 
         // Only school admins may issue invitation tokens. Tokens are persisted in Supabase.
-        if (!token && role === 'school_admin' && user?.id) {
+        if (!token && role === 'school_admin' && user?.user_id) {
           const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
           for (let attempt = 0; attempt < 3 && !token; attempt += 1) {
             const bytes = new Uint8Array(6);
             window.crypto.getRandomValues(bytes);
             const candidate = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
             const { data, error } = await supabase.from('school_invitations')
-              .insert({ school_id: school.id, token: candidate, role: 'teacher', created_by: user.id, is_active: true })
+              .insert({ school_id: school.id, token: candidate, role: 'teacher', created_by: user.user_id, is_active: true })
               .select('token').single();
             if (!error && data) token = data.token;
             else if (attempt === 2) throw error || new Error('Could not create a teacher invitation.');
