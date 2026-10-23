@@ -214,7 +214,6 @@ function AppContent() {
       <div className="h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#f0f4f9]">
         <OfflineBanner />
         <AuthPage
-          initialInviteToken={initialJoinToken}
           onSuccess={() => navigate('dashboard')}
         />
         <WhatsAppButton />
