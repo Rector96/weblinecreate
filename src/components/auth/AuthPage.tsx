@@ -22,11 +22,9 @@ interface AuthPageProps {
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSuccess }) => {
-  const { login, resetPassword, registerSchoolAndAdmin, joinSchoolAsTeacher } = useAuth();
+  const { login, resetPassword, registerSchoolAndAdmin } = useAuth();
 
-  const [mode, setMode] = useState<'login' | 'register' | 'join'>(
-    initialInviteToken ? 'join' : 'login'
-  );
+  const [mode, setMode] = useState<'login' | 'register'>('login');
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -42,32 +40,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
   const [institutionType, setInstitutionType] = useState<InstitutionType>('Secondary');
   const [regPassword, setRegPassword] = useState('');
 
-  // Join form state
-  const [inviteToken, setInviteToken] = useState(initialInviteToken || '');
-  const [inviteSchoolName, setInviteSchoolName] = useState<string | null>(null);
-  const [inviteLookupError, setInviteLookupError] = useState<string | null>(null);
-  const [teacherName, setTeacherName] = useState('');
-  const [teacherEmail, setTeacherEmail] = useState('');
-  const [teacherPassword, setTeacherPassword] = useState('');
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!initialInviteToken) return;
-    let cancelled = false;
-    fetch(`/api/school-invite?token=${encodeURIComponent(initialInviteToken)}`)
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok || !data.success) throw new Error(data.error || 'This school link is invalid or expired.');
-        if (!cancelled) setInviteSchoolName(data.school_name);
-      })
-      .catch((error) => {
-        if (!cancelled) setInviteLookupError(error instanceof Error ? error.message : 'Could not verify this school link.');
-      });
-    return () => { cancelled = true; };
-  }, [initialInviteToken]);
 
   // Update LGA list when State changes
   useEffect(() => {
@@ -123,24 +99,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
     }
   };
 
-  const handleJoinSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inviteToken.trim() || !teacherName.trim() || !teacherEmail.trim()) {
-      setErrorMessage('Please enter the 6-character token, your name, and email.');
-      return;
-    }
-    setErrorMessage(null);
-    setIsLoading(true);
-
-    const res = await joinSchoolAsTeacher(inviteToken.trim().toUpperCase(), teacherName, teacherEmail, teacherPassword);
-    setIsLoading(false);
-    if (res.success) {
-      onSuccess();
-    } else {
-      setErrorMessage(res.error || 'Failed to join school.');
-    }
-  };
-
   return (
     <div className={`${mode === "login" ? "h-[100dvh] max-h-[100dvh] overflow-hidden py-3" : "min-h-[100dvh] py-6"} bg-gradient-to-b from-[#e8f1fb] via-[#f0f5fc] to-[#f8fafc] flex flex-col justify-center items-center px-4`}>
       {/* Brand Header */}
@@ -157,7 +115,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
       {/* Main Auth Card */}
       <div className={`w-full max-w-md bg-white rounded-3xl shadow-xl shadow-blue-950/5 border border-slate-200/80 ${mode === "login" ? "p-5 sm:p-6" : "p-6 sm:p-8"} text-left`}>
         {/* Navigation Mode Switcher */}
-        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-2xl mb-4">
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-2xl mb-4">
           <button
             type="button"
             onClick={() => {
@@ -185,20 +143,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
             }`}
           >
             New School
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode('join');
-              setErrorMessage(null);
-            }}
-            className={`py-2 text-xs font-semibold rounded-xl transition-all ${
-              mode === 'join'
-                ? 'bg-white text-blue-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Join School
           </button>
         </div>
 
@@ -431,105 +375,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
         )}
 
         {/* 3. JOIN SCHOOL AS TEACHER VIA TOKEN */}
-        {mode === 'join' && (
-          <form onSubmit={handleJoinSubmit} className="space-y-4">
-            <div className="p-3 bg-blue-50/80 border border-blue-100 rounded-2xl text-xs text-blue-900">
-              <span className="font-bold">{inviteSchoolName ? `Welcome to ${inviteSchoolName}` : 'Welcome to your school workspace'}</span>
-              <p className="mt-1">Create your teacher account to generate exams for this school. The teacher workspace does not include the school dashboard.</p>
-              {inviteLookupError && <p role="alert" className="mt-2 text-rose-700">{inviteLookupError}</p>}
-            </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                6-Character School Token *
-              </label>
-              <div className="relative">
-                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  placeholder="e.g. KC2026"
-                  value={inviteToken}
-                  onChange={(e) => setInviteToken(e.target.value.toUpperCase())}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono tracking-widest uppercase rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Your Full Name (Teacher) *
-              </label>
-              <div className="relative">
-                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Mr. Chinedu Eze"
-                  value={teacherName}
-                  onChange={(e) => setTeacherName(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Your Email Address *
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="email"
-                  required
-                  placeholder="chinedu@school.edu.ng"
-                  value={teacherEmail}
-                  onChange={(e) => setTeacherEmail(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Create Password (minimum 8 characters) *
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  placeholder="At least 8 characters"
-                  value={teacherPassword}
-                  onChange={(e) => setTeacherPassword(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-75 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 active:scale-[0.99] transition-all"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Verifying Token...</span>
-                </>
-              ) : (
-                <>
-                  <span>Join School Staff</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-
-          </form>
-        )}
       </div>
     </div>
   );
