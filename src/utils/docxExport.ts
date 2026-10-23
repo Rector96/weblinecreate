@@ -25,6 +25,7 @@ async function getSchoolLogoRun(school?: School | null): Promise<ImageRun | null
     const response = await fetch(school.logo_url);
     if (!response.ok) return null;
     const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('svg') || contentType.includes('webp')) return null;
     const type = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : contentType.includes('gif') ? 'gif' : contentType.includes('bmp') ? 'bmp' : 'png';
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (!bytes.length) return null;
@@ -38,7 +39,7 @@ async function getSchoolLogoRun(school?: School | null): Promise<ImageRun | null
 export async function exportExamToDocx(exam: Exam, school?: School | null): Promise<void> {
   const schoolName = (school?.name || 'SCHOOL NAME').toUpperCase();
   const motto = school?.motto ? `"${school.motto}"` : '';
-  const address = school?.address || `${school?.lga || 'Ikeja'}, ${school?.state || 'Lagos'} State, Nigeria`;
+  const address = school?.address || [school?.lga, school?.state].filter(Boolean).join(', ');
 
   const sectionAQuestions = (exam.questions || []).filter((q) => q.section === 'A');
   const sectionBQuestions = (exam.questions || []).filter((q) => q.section === 'B');
@@ -82,19 +83,21 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
     );
   }
 
-  docChildren.push(
-    new Paragraph({
+  if (address) {
+    docChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 60 },
+      children: [new TextRun({ text: address, font: FONT_NAME, size: 20 })],
+    }));
+  }
+  const schoolContacts = [school?.phone, school?.email].filter(Boolean).join('  •  ');
+  if (schoolContacts) {
+    docChildren.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 120 },
-      children: [
-        new TextRun({
-          text: address,
-          font: FONT_NAME,
-          size: 20, // 10pt
-        }),
-      ],
-    })
-  );
+      children: [new TextRun({ text: schoolContacts, font: FONT_NAME, size: 18 })],
+    }));
+  }
 
   // Exam Title & Session
   docChildren.push(
