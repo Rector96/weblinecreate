@@ -159,7 +159,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
 // ==============================================================================
 app.post('/api/regenerate-single-question', async (req, res) => {
   try {
-    const { subject, class_name, section = 'A', question_number = 1, topics = '' } = req.body;
+    const { subject, class_name, section = 'A', question_number = 1, topics = '', previous_question = '', previous_options = null } = req.body;
 
     const isObjective = section === 'A';
     const promptText = `
@@ -167,6 +167,9 @@ You are an experienced Nigerian secondary-school examination setter. Generate a 
 - Subject: ${subject}
 - Class: ${class_name}
 - Topics: ${topics || 'Standard Nigerian curriculum'}
+- Previous question to avoid repeating: ${previous_question || 'None supplied'}
+- Previous options to avoid reusing: ${previous_options ? JSON.stringify(previous_options) : 'None supplied'}
+Create a genuinely different question and fresh answer options; do not paraphrase the previous question.
 
 ${
   isObjective
