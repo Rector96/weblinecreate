@@ -1,6 +1,6 @@
 {
   "name": "ExamCraft",
-  "description": "Multi-tenant SaaS Progressive Web App for Nigerian secondary schools to generate WAEC/JAMB standard exam papers with AI, manual editing, and DOCX exports.",
+  "description": "Multi-tenant exam paper creation platform for Nigerian secondary schools with AI, manual editing, and DOCX exports.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
