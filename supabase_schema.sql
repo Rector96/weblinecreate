@@ -166,12 +166,9 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 AS $$
-  SELECT (
-    COALESCE(auth.jwt() ->> 'email', '') = 'peteroche32@gmail.com'
-    OR EXISTS (
-      SELECT 1 FROM public.user_roles
-      WHERE user_id = auth.uid() AND role = 'platform_admin'
-    )
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid() AND role = 'platform_admin'
   );
 $$;
 
@@ -219,9 +216,9 @@ ALTER TABLE public.theory_marking_schemes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
 -- 4.1 SCHOOLS POLICIES
-CREATE POLICY "Public or Authenticated can view schools"
+CREATE POLICY "Users can view their own school"
     ON public.schools FOR SELECT
-    USING (true);
+    USING (id = public.get_user_school_id() OR public.is_platform_admin());
 
 CREATE POLICY "Platform admin and authenticated school admin can insert school"
     ON public.schools FOR INSERT
@@ -283,9 +280,8 @@ CREATE POLICY "School admins can manage classes"
     );
 
 -- 4.5 INVITATIONS POLICIES
-CREATE POLICY "Anyone can lookup invite token to join"
-    ON public.school_invitations FOR SELECT
-    USING (true);
+-- Invitation token lookups must use the trusted signup trigger or a server-side endpoint.
+-- Do not expose invitation rows/tokens through a public SELECT policy.
 
 CREATE POLICY "School admins can manage invitations"
     ON public.school_invitations FOR ALL
@@ -402,9 +398,7 @@ CREATE POLICY "School admins can view school payments"
         OR public.is_platform_admin()
     );
 
-CREATE POLICY "Authenticated users can record payments"
-    ON public.payments FOR INSERT
-    WITH CHECK (auth.uid() IS NOT NULL);
+-- Payment rows must only be written by trusted server-side Paystack verification.
 
 -- ==============================================================================
 -- 5. AUTOMATED TRIGGERS & PROFILES CREATION
@@ -419,12 +413,8 @@ DECLARE
     target_role TEXT;
 BEGIN
     user_full_name := COALESCE(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1));
-    target_role := COALESCE(new.raw_user_meta_data->>'role', 'school_admin');
-    
-    -- Check if user is platform admin
-    IF LOWER(new.email) = 'peteroche32@gmail.com' THEN
-        target_role := 'platform_admin';
-    END IF;
+    -- Never trust client-supplied role metadata or an email address for elevated access.
+    target_role := 'school_admin';
 
     -- Insert Profile
     INSERT INTO public.profiles (user_id, full_name, email, is_profile_completed)
