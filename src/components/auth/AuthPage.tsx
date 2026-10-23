@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth, PLATFORM_ADMIN_EMAIL } from '../../lib/auth';
+import { useAuth } from '../../lib/auth';
 import { NIGERIAN_STATES, NIGERIAN_STATES_LGAS } from '../../data/nigeriaStatesLgas';
 import { InstitutionType } from '../../types';
 import {
@@ -22,7 +22,7 @@ interface AuthPageProps {
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSuccess }) => {
-  const { login, registerSchoolAndAdmin, joinSchoolAsTeacher, switchDemoUser } = useAuth();
+  const { login, resetPassword, registerSchoolAndAdmin, joinSchoolAsTeacher } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register' | 'join'>(
     initialInviteToken ? 'join' : 'login'
@@ -46,6 +46,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
   const [inviteToken, setInviteToken] = useState(initialInviteToken || '');
   const [teacherName, setTeacherName] = useState('');
   const [teacherEmail, setTeacherEmail] = useState('');
+  const [teacherPassword, setTeacherPassword] = useState('');
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -114,7 +115,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
     setErrorMessage(null);
     setIsLoading(true);
 
-    const res = await joinSchoolAsTeacher(inviteToken.trim().toUpperCase(), teacherName, teacherEmail);
+    const res = await joinSchoolAsTeacher(inviteToken.trim().toUpperCase(), teacherName, teacherEmail, teacherPassword);
     setIsLoading(false);
     if (res.success) {
       onSuccess();
@@ -217,7 +218,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                 <label className="text-xs font-semibold text-slate-700">Password</label>
                 <button
                   type="button"
-                  onClick={() => alert('Password reset link sent to your registered school email.')}
+                  onClick={async () => {
+                    const result = await resetPassword(loginEmail);
+                    if (result.success) alert('Password reset email sent. Check your inbox.');
+                    else setErrorMessage(result.error || 'Unable to send password reset email.');
+                  }}
                   className="text-[11px] text-blue-600 hover:underline"
                 >
                   Forgot?
@@ -227,7 +232,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="password"
-                  placeholder="••••••••"
+                  required
+                  placeholder="Enter your password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
@@ -253,36 +259,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
               )}
             </button>
 
-            {/* Quick Demo Access Bar */}
-            <div className="pt-4 border-t border-slate-100">
-              <span className="block text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider text-center">
-                Instant Demo Access
-              </span>
-              <div className="flex flex-col gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    switchDemoUser('admin');
-                    onSuccess();
-                  }}
-                  className="w-full py-2 px-3 rounded-xl bg-blue-50 text-blue-800 hover:bg-blue-100 text-xs font-semibold text-left flex items-center justify-between transition-colors border border-blue-100"
-                >
-                  <span>Dr. Babatunde Alabi (School Admin)</span>
-                  <span className="text-[10px] text-blue-600 bg-white px-2 py-0.5 rounded-md font-bold">King's College</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    switchDemoUser('teacher');
-                    onSuccess();
-                  }}
-                  className="w-full py-2 px-3 rounded-xl bg-slate-50 text-slate-700 hover:bg-slate-100 text-xs font-medium text-left flex items-center justify-between transition-colors border border-slate-200/70"
-                >
-                  <span>Mr. Adebayo Oladipo (Subject Teacher)</span>
-                  <span className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded-md">Teacher</span>
-                </button>
-              </div>
-            </div>
           </form>
         )}
 
@@ -496,6 +472,25 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
               </div>
             </div>
 
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Create Password (minimum 8 characters) *
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  placeholder="At least 8 characters"
+                  value={teacherPassword}
+                  onChange={(e) => setTeacherPassword(e.target.value)}
+                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+                />
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading}
@@ -514,11 +509,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
               )}
             </button>
 
-            <div className="text-center">
-              <span className="text-[11px] text-slate-400">
-                Sample demo token for testing: <strong className="text-blue-600 font-mono">KC2026</strong>
-              </span>
-            </div>
           </form>
         )}
       </div>
