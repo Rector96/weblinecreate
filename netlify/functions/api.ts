@@ -61,11 +61,23 @@ async function getAuthenticatedUser(req: Request) {
 
 
 async function authorizeAiRequest(req: Request, schoolId: unknown) {
-  const user = await getAuthenticatedUser(req);
-  if (!user?.id) return { ok: false as const, response: jsonResponse({ success: false, error: 'Please sign in before using AI question generation.' }, 401) };
   if (typeof schoolId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId)) {
     return { ok: false as const, response: jsonResponse({ success: false, error: 'A valid school account is required.' }, 400) };
   }
+  const inviteToken = (req.headers.get('x-school-invite-token') || '').trim().toUpperCase();
+  if (inviteToken) {
+    const result = await supabaseAdminRequest('rpc/consume_school_invite_ai_slot', {
+      method: 'POST',
+      body: JSON.stringify({ p_school_id: schoolId, p_invite_token: inviteToken }),
+    }) as { allowed?: boolean; reason?: string };
+    if (result?.allowed !== true) {
+      if (result?.reason === 'rate_limit') return { ok: false as const, response: jsonResponse({ success: false, error: 'AI request limit reached. Please wait one minute and try again.' }, 429) };
+      return { ok: false as const, response: jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 403) };
+    }
+    return { ok: true as const, userId: null };
+  }
+  const user = await getAuthenticatedUser(req);
+  if (!user?.id) return { ok: false as const, response: jsonResponse({ success: false, error: 'Please sign in before using AI question generation.' }, 401) };
   const result = await supabaseAdminRequest('rpc/consume_ai_generation_slot', {
     method: 'POST',
     body: JSON.stringify({ p_user_id: user.id, p_school_id: schoolId }),
@@ -265,14 +277,68 @@ export default async (req: Request) => {
     try {
       const token = (url.searchParams.get('token') || '').trim().toUpperCase();
       if (!/^[A-Z2-9]{6}$/.test(token)) return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 404, { 'Cache-Control': 'no-store' });
-      const invitations = await supabaseAdminRequest(`school_invitations?token=eq.${encodeURIComponent(token)}&is_active=eq.true&select=school_id&limit=1`) as Array<{ school_id: string }>;
-      if (!invitations[0]?.school_id) return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 404, { 'Cache-Control': 'no-store' });
-      const schools = await supabaseAdminRequest(`schools?id=eq.${encodeURIComponent(invitations[0].school_id)}&select=name&limit=1`) as Array<{ name: string }>;
-      if (!schools[0]?.name) return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 404, { 'Cache-Control': 'no-store' });
-      return jsonResponse({ success: true, school_name: schools[0].name }, 200, { 'Cache-Control': 'no-store' });
+      const invitations = await supabaseAdminRequest(`school_invitations?token=eq.${encodeURIComponent(token)}&role=eq.teacher&is_active=eq.true&select=school_id,expires_at&limit=1`) as Array<{ school_id: string; expires_at: string | null }>;
+      if (!invitations[0]?.school_id || (invitations[0].expires_at && new Date(invitations[0].expires_at).getTime() <= Date.now())) {
+        return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 404, { 'Cache-Control': 'no-store' });
+      }
+      const schools = await supabaseAdminRequest(`schools?id=eq.${encodeURIComponent(invitations[0].school_id)}&select=id,name,logo_url,motto,address,institution_type,subscription_status,subscription_expires_at&limit=1`) as Array<{ id: string; name: string; logo_url?: string; motto?: string; address?: string; institution_type?: string; subscription_status?: string; subscription_expires_at?: string | null }>;
+      const school = schools[0];
+      if (!school?.name) return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 404, { 'Cache-Control': 'no-store' });
+      return jsonResponse({
+        success: true,
+        school_name: school.name,
+        school: {
+          id: school.id, name: school.name, logo_url: school.logo_url || '', motto: school.motto || '',
+          address: school.address || '', institution_type: school.institution_type || 'Secondary',
+          subscription_status: school.subscription_status || 'trial',
+          subscription_expires_at: school.subscription_expires_at || undefined,
+          ai_exams_used: 0, manual_exams_used: 0, max_trial_ai_exams: 4, max_trial_manual_exams: 5,
+          admin_name: '', email: '', phone: '', state: '', lga: '', created_at: new Date().toISOString()
+        }
+      }, 200, { 'Cache-Control': 'no-store' });
     } catch (error) {
       console.error('School invite preview failed', error);
       return jsonResponse({ success: false, error: 'Unable to verify this school link right now.' }, 503, { 'Cache-Control': 'no-store' });
+    }
+  }
+
+  // Passwordless teachers publish only through a valid school invitation capability.
+  if (pathname.endsWith('/publish-exam') && req.method === 'POST') {
+    try {
+      if (Number(req.headers.get('content-length') || 0) > 500000) return jsonResponse({ success: false, error: 'Exam payload is too large.' }, 413);
+      const token = (req.headers.get('x-school-invite-token') || '').trim().toUpperCase();
+      if (!token || !/^[A-Z2-9]{6}$/.test(token)) return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 403);
+      const body = await req.json() as any;
+      if (!body || typeof body !== 'object' || !body.exam || typeof body.exam !== 'object' || !Array.isArray(body.questions) || body.questions.length < 1 || body.questions.length > 100 || typeof body.is_ai !== 'boolean') {
+        return jsonResponse({ success: false, error: 'Exam details and valid questions are required.' }, 400);
+      }
+      if (typeof body.exam.school_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.exam.school_id)) {
+        return jsonResponse({ success: false, error: 'A valid school account is required.' }, 400);
+      }
+      const publishResult = await supabaseAdminRequest('rpc/publish_exam_with_invite', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_exam: body.exam,
+          p_questions: body.questions,
+          p_is_ai: body.is_ai,
+          p_invite_token: token,
+        }),
+      }) as any;
+      if (!publishResult?.success) {
+        const status = publishResult?.code === 'quota_exceeded' ? 409 : 403;
+        return jsonResponse({ success: false, code: publishResult?.code, error: publishResult?.message || 'The exam could not be published.' }, status);
+      }
+      const row = publishResult.exam || {};
+      const exam = {
+        ...row,
+        created_by: row.created_by || '',
+        created_by_name: row.created_by_name || body.exam.created_by_name || 'Teacher',
+        questions: Array.isArray(publishResult.questions) ? publishResult.questions : [],
+      };
+      return jsonResponse({ success: true, exam, quota: publishResult.quota });
+    } catch (error) {
+      console.error('Passwordless exam publication failed', error);
+      return jsonResponse({ success: false, error: 'Unable to publish this exam securely. Please try again.' }, 500);
     }
   }
 
@@ -565,5 +631,5 @@ Respond strictly with a JSON object:
 };
 
 export const config = {
-  path: ['/api/generate-questions', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite'],
+  path: ['/api/generate-questions', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite', '/api/publish-exam'],
 };
