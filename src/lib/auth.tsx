@@ -1,9 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserProfile, School, UserRole } from '../types';
-import { db, dbEvents } from './db';
-
-const AUTH_STORAGE_KEY = 'examcraft_session';
-export const PLATFORM_ADMIN_EMAIL = 'peteroche32@gmail.com';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
+import { UserProfile, School, UserRole, InstitutionType } from '../types';
+import { isSupabaseConfigured, supabase } from './supabase';
 
 export interface AuthContextType {
   user: UserProfile | null;
@@ -13,6 +11,7 @@ export interface AuthContextType {
   isLoading: boolean;
   isPlatformAdmin: boolean;
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   registerSchoolAndAdmin: (data: {
     schoolName: string;
     adminName: string;
@@ -20,263 +19,234 @@ export interface AuthContextType {
     phone: string;
     state: string;
     lga: string;
-    institutionType: any;
+    institutionType: InstitutionType;
     password?: string;
   }) => Promise<{ success: boolean; error?: string }>;
-  joinSchoolAsTeacher: (token: string, fullName: string, email: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUserProfile: (updates: Partial<UserProfile>) => void;
   refreshSchool: () => void;
-  switchDemoUser: (target: 'admin' | 'teacher' | 'platform') => void;
 }
-
-const DEFAULT_USERS: Record<string, { profile: UserProfile; schoolId: string }> = {
-  admin: {
-    profile: {
-      id: 'prof_admin_lagos',
-      user_id: 'usr_admin_lagos',
-      full_name: 'Dr. Babatunde Alabi',
-      email: 'principal@kingscollege.edu.ng',
-      school_id: 'sch_kings_college_lagos',
-      phone: '08031234567',
-      is_profile_completed: true,
-      role: 'school_admin',
-      created_at: new Date().toISOString(),
-    },
-    schoolId: 'sch_kings_college_lagos',
-  },
-  teacher: {
-    profile: {
-      id: 'prof_teacher_adebayo',
-      user_id: 'usr_teacher_adebayo',
-      full_name: 'Mr. Adebayo Oladipo',
-      email: 'a.oladipo@kingscollege.edu.ng',
-      school_id: 'sch_kings_college_lagos',
-      phone: '08091234567',
-      is_profile_completed: true,
-      role: 'teacher',
-      created_at: new Date().toISOString(),
-    },
-    schoolId: 'sch_kings_college_lagos',
-  },
-  platform: {
-    profile: {
-      id: 'prof_platform_peter',
-      user_id: 'usr_platform_peter',
-      full_name: 'Peter Oche',
-      email: PLATFORM_ADMIN_EMAIL,
-      school_id: 'sch_kings_college_lagos',
-      phone: '08123456789',
-      is_profile_completed: true,
-      role: 'platform_admin',
-      created_at: new Date().toISOString(),
-    },
-    schoolId: 'sch_kings_college_lagos',
-  }
-};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function mapSchool(row: any): School {
+  return {
+    id: row.id,
+    name: row.name,
+    admin_name: row.admin_name,
+    email: row.email,
+    phone: row.phone,
+    state: row.state,
+    lga: row.lga,
+    institution_type: row.institution_type as InstitutionType,
+    logo_url: row.logo_url || '',
+    motto: row.motto || '',
+    address: row.address || '',
+    subscription_status: row.subscription_status || 'trial',
+    subscription_expires_at: row.subscription_expires_at || undefined,
+    ai_exams_used: Number(row.ai_exams_used || 0),
+    manual_exams_used: Number(row.manual_exams_used || 0),
+    max_trial_ai_exams: Number(row.max_trial_ai_exams ?? 4),
+    max_trial_manual_exams: Number(row.max_trial_manual_exams ?? 5),
+    created_at: row.created_at,
+  };
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    try {
-      const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (stored) return JSON.parse(stored);
-    } catch {
-      // Fallback
-    }
-    // Default to school admin for effortless first view
-    return DEFAULT_USERS.admin.profile;
-  });
-
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [school, setSchool] = useState<School | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [role, setRole] = useState<UserRole>('teacher');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Sync school with user's school_id
-  const refreshSchool = () => {
-    if (user?.school_id) {
-      const s = db.getSchool(user.school_id);
-      setSchool(s);
+  const loadUserContext = useCallback(async (authUser: User | null) => {
+    if (!authUser) {
+      setUser(null);
+      setSchool(null);
+      setRole('teacher');
+      return;
+    }
+    if (!isSupabaseConfigured()) {
+      setUser(null);
+      setSchool(null);
+      return;
+    }
+
+    const [{ data: profile, error: profileError }, { data: roleRows, error: roleError }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('user_id', authUser.id).maybeSingle(),
+      supabase.from('user_roles').select('role, school_id').eq('user_id', authUser.id),
+    ]);
+
+    if (profileError || roleError || !profile) {
+      console.error('Unable to load authenticated profile', profileError || roleError);
+      setUser(null);
+      setSchool(null);
+      return;
+    }
+
+    const roles = (roleRows || []) as Array<{ role: UserRole; school_id: string | null }>;
+    const chosenRole = (roles.find((item) => item.school_id === profile.school_id)?.role
+      || roles[0]?.role
+      || 'teacher') as UserRole;
+
+    setRole(chosenRole);
+    setUser({
+      id: profile.id,
+      user_id: profile.user_id,
+      full_name: profile.full_name,
+      email: profile.email || authUser.email || '',
+      phone: profile.phone || '',
+      school_id: profile.school_id || null,
+      avatar_url: profile.avatar_url || '',
+      is_profile_completed: Boolean(profile.is_profile_completed),
+      role: chosenRole,
+      created_at: profile.created_at,
+    });
+
+    if (profile.school_id) {
+      const { data: schoolRow, error: schoolError } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('id', profile.school_id)
+        .maybeSingle();
+      if (schoolError) {
+        console.error('Unable to load school', schoolError);
+        setSchool(null);
+      } else {
+        setSchool(schoolRow ? mapSchool(schoolRow) : null);
+      }
     } else {
       setSchool(null);
     }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!isSupabaseConfigured()) {
+      setIsLoading(false);
+      return;
+    }
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) console.error('Unable to restore Supabase session', error);
+      if (mounted) {
+        return loadUserContext(data.session?.user || null).finally(() => {
+          if (mounted) setIsLoading(false);
+        });
+      }
+      return undefined;
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      // Defer database reads until after the auth callback to avoid Supabase lock contention.
+      setTimeout(() => {
+        if (mounted) void loadUserContext(session?.user || null);
+      }, 0);
+    });
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [loadUserContext]);
+
+  const login = async (email: string, password?: string) => {
+    if (!isSupabaseConfigured()) {
+      return { success: false, error: 'Authentication is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your deployment environment.' };
+    }
+    if (!password || password.length < 1) {
+      return { success: false, error: 'Enter your password to sign in.' };
+    }
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    if (error || !data.user) return { success: false, error: error?.message || 'Sign-in failed.' };
+    await loadUserContext(data.user);
+    return { success: true };
   };
 
-  useEffect(() => {
-    refreshSchool();
-    setIsLoading(false);
-
-    const unsubscribe = dbEvents.subscribe('schools', () => {
-      refreshSchool();
+  const resetPassword = async (email: string) => {
+    if (!isSupabaseConfigured()) return { success: false, error: 'Supabase authentication is not configured.' };
+    if (!email.trim()) return { success: false, error: 'Enter your email address first.' };
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: window.location.origin,
     });
-    return () => unsubscribe();
-  }, [user?.school_id]);
-
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-    }
-  }, [user]);
-
-  const login = async (email: string): Promise<{ success: boolean; error?: string }> => {
-    const trimmed = email.trim().toLowerCase();
-    
-    // Check if platform admin
-    if (trimmed === PLATFORM_ADMIN_EMAIL.toLowerCase()) {
-      setUser(DEFAULT_USERS.platform.profile);
-      return { success: true };
-    }
-
-    // Check teacher
-    if (trimmed.includes('teacher') || trimmed === DEFAULT_USERS.teacher.profile.email.toLowerCase()) {
-      setUser(DEFAULT_USERS.teacher.profile);
-      return { success: true };
-    }
-
-    // Check existing school admin by email
-    const schools = db.getSchools();
-    const matchedSchool = schools.find((s) => s.email.toLowerCase() === trimmed);
-    if (matchedSchool) {
-      const adminProfile: UserProfile = {
-        id: `prof_${matchedSchool.id}`,
-        user_id: `usr_${matchedSchool.id}`,
-        full_name: matchedSchool.admin_name,
-        email: matchedSchool.email,
-        school_id: matchedSchool.id,
-        phone: matchedSchool.phone,
-        is_profile_completed: true,
-        role: 'school_admin',
-        created_at: matchedSchool.created_at,
-      };
-      setUser(adminProfile);
-      return { success: true };
-    }
-
-    // Generic match fallback to demo admin
-    const customUser: UserProfile = {
-      id: `prof_${Date.now()}`,
-      user_id: `usr_${Date.now()}`,
-      full_name: 'School Administrator',
-      email: trimmed,
-      school_id: DEFAULT_USERS.admin.schoolId,
-      is_profile_completed: true,
-      role: 'school_admin',
-      created_at: new Date().toISOString(),
-    };
-    setUser(customUser);
-    return { success: true };
+    return error
+      ? { success: false, error: error.message }
+      : { success: true };
   };
 
   const registerSchoolAndAdmin = async (data: {
-    schoolName: string;
-    adminName: string;
-    email: string;
-    phone: string;
-    state: string;
-    lga: string;
-    institutionType: any;
-  }): Promise<{ success: boolean; error?: string }> => {
-    try {
-      const createdSchool = db.createSchool({
-        name: data.schoolName,
-        admin_name: data.adminName,
-        email: data.email,
-        phone: data.phone,
-        state: data.state,
-        lga: data.lga,
-        institution_type: data.institutionType,
-        motto: '',
-        address: `${data.lga}, ${data.state} State`,
-      });
+    schoolName: string; adminName: string; email: string; phone: string;
+    state: string; lga: string; institutionType: InstitutionType; password?: string;
+  }) => {
+    if (!isSupabaseConfigured()) return { success: false, error: 'Supabase authentication is not configured.' };
+    if (!data.password || data.password.length < 8) return { success: false, error: 'Use a password with at least 8 characters.' };
 
-      const newAdmin: UserProfile = {
-        id: `prof_${createdSchool.id}`,
-        user_id: `usr_${Date.now()}`,
-        full_name: data.adminName,
-        email: data.email,
-        school_id: createdSchool.id,
-        phone: data.phone,
-        is_profile_completed: true,
-        role: 'school_admin',
-        created_at: new Date().toISOString(),
-      };
-
-      setUser(newAdmin);
-      setSchool(createdSchool);
-      return { success: true };
-    } catch (e: any) {
-      return { success: false, error: e?.message || 'Could not register school' };
+    const { data: result, error } = await supabase.auth.signUp({
+      email: data.email.trim().toLowerCase(),
+      password: data.password,
+      options: {
+        data: {
+          registration_type: 'school',
+          full_name: data.adminName.trim(),
+          phone: data.phone.trim(),
+          school_name: data.schoolName.trim(),
+          school_email: data.email.trim().toLowerCase(),
+          school_phone: data.phone.trim(),
+          school_state: data.state,
+          school_lga: data.lga,
+          institution_type: data.institutionType,
+          school_address: `${data.lga}, ${data.state} State`,
+        },
+      },
+    });
+    if (error) return { success: false, error: error.message };
+    if (result.session?.user) await loadUserContext(result.session.user);
+    if (!result.session) {
+      return { success: false, error: 'Account created. Check your email to confirm it, then sign in. Your school profile is created by the database signup trigger.' };
     }
-  };
-
-  const joinSchoolAsTeacher = async (token: string, fullName: string, email: string): Promise<{ success: boolean; error?: string }> => {
-    const invite = db.findInviteByToken(token);
-    if (!invite) {
-      return { success: false, error: 'Invalid or expired invite token. Please contact your school principal.' };
-    }
-
-    const targetSchool = db.getSchool(invite.school_id);
-    if (!targetSchool) {
-      return { success: false, error: 'Associated school could not be found.' };
-    }
-
-    const teacherProfile: UserProfile = {
-      id: `prof_t_${Date.now()}`,
-      user_id: `usr_t_${Date.now()}`,
-      full_name: fullName,
-      email,
-      school_id: targetSchool.id,
-      is_profile_completed: true,
-      role: 'teacher',
-      created_at: new Date().toISOString(),
-    };
-
-    setUser(teacherProfile);
-    setSchool(targetSchool);
     return { success: true };
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (isSupabaseConfigured()) await supabase.auth.signOut();
     setUser(null);
     setSchool(null);
+    setRole('teacher');
   };
 
   const updateUserProfile = (updates: Partial<UserProfile>) => {
     if (!user) return;
-    const updated = { ...user, ...updates };
-    setUser(updated);
+    const next = { ...user, ...updates };
+    setUser(next);
+    const allowed: Record<string, unknown> = {};
+    if (updates.full_name !== undefined) allowed.full_name = updates.full_name;
+    if (updates.phone !== undefined) allowed.phone = updates.phone;
+    if (updates.avatar_url !== undefined) allowed.avatar_url = updates.avatar_url;
+    if (updates.is_profile_completed !== undefined) allowed.is_profile_completed = updates.is_profile_completed;
+    if (Object.keys(allowed).length) {
+      void supabase.from('profiles').update(allowed).eq('user_id', user.user_id).then(({ error }) => {
+        if (error) console.error('Unable to save profile changes', error);
+      });
+    }
   };
 
-  const switchDemoUser = (target: 'admin' | 'teacher' | 'platform') => {
-    const selected = DEFAULT_USERS[target];
-    setUser(selected.profile);
-    const s = db.getSchool(selected.schoolId);
-    setSchool(s);
+  const refreshSchool = () => {
+    if (user?.user_id) {
+      void supabase.auth.getUser().then(({ data }) => loadUserContext(data.user || null));
+    }
   };
 
-  const role: UserRole = user?.role || 'teacher';
-  const isPlatformAdmin = role === 'platform_admin' || user?.email.toLowerCase() === PLATFORM_ADMIN_EMAIL.toLowerCase();
+  const isPlatformAdmin = role === 'platform_admin';
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        school,
-        role,
-        isAuthenticated: !!user,
-        isLoading,
-        isPlatformAdmin,
-        login,
-        registerSchoolAndAdmin,
-        joinSchoolAsTeacher,
-        logout,
-        updateUserProfile,
-        refreshSchool,
-        switchDemoUser,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user, school, role, isAuthenticated: !!user, isLoading, isPlatformAdmin,
+      login, resetPassword, registerSchoolAndAdmin,
+      logout, updateUserProfile, refreshSchool,
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -284,8 +254,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }

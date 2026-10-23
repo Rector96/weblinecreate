@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase';
+import { publishExamWithQuota } from '../../lib/examRepository';
 import {
   Exam,
   Question,
   ExamTerm,
   ObjectiveAnswer,
-  TheoryMarkingScheme
+  TheoryMarkingScheme,
+  School
 } from '../../types';
 import {
   ALL_NIGERIAN_SUBJECTS,
@@ -45,14 +48,20 @@ interface CreateExamWizardProps {
   navigate: (route: string, param?: string) => void;
   onOpenPaystack: () => void;
   onSuccessExam: (exam: Exam) => void;
+  guestInviteToken?: string;
+  guestSchool?: School;
 }
 
 export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   navigate,
   onOpenPaystack,
   onSuccessExam,
+  guestInviteToken,
+  guestSchool,
 }) => {
-  const { school, user } = useAuth();
+  const { school: authenticatedSchool, user, role } = useAuth();
+  const school = guestSchool || authenticatedSchool;
+  const isGuestTeacher = Boolean(guestInviteToken);
 
   // Wizard Step: 1 = Metadata, 2 = Method, 3 = Questions (Manual or AI prompt), 4 = Review & Edit
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -74,6 +83,11 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [aiNumTheory, setAiNumTheory] = useState(3);
   const [aiDifficulty, setAiDifficulty] = useState<'Standard WAEC/JAMB' | 'Foundational / Basic' | 'Advanced / Rigorous'>('Standard WAEC/JAMB');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [generationStage, setGenerationStage] = useState<'working' | 'finishing' | null>(null);
+  const [motivationIndex, setMotivationIndex] = useState(0);
+  const [schoolClasses, setSchoolClasses] = useState<Array<{ name: string; level?: string }>>([]);
+  const [schoolSubjects, setSchoolSubjects] = useState<string[]>([]);
+  const [curriculumLoaded, setCurriculumLoaded] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
   // Dynamic regeneration and adding states
@@ -115,28 +129,112 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
 
+  const motivationQuotes = [
+    { quote: 'Great things are done by a series of small things brought together.', author: 'Vincent van Gogh' },
+    { quote: 'Education is the most powerful weapon which you can use to change the world.', author: 'Nelson Mandela' },
+    { quote: 'A good teacher can inspire hope, ignite the imagination, and instil a love of learning.', author: 'Brad Henry' },
+    { quote: 'The beautiful thing about learning is that nobody can take it away from you.', author: 'B. B. King' },
+    { quote: 'Success is the sum of small efforts, repeated day in and day out.', author: 'Robert Collier' },
+    { quote: 'Every question you prepare is another opportunity for a learner to grow.', author: 'ROCKCRAFT' },
+  ];
+
+  useEffect(() => {
+    if (!isGeneratingAI || generationStage !== 'working') return;
+    const timer = window.setInterval(() => setMotivationIndex((index) => (index + 1) % motivationQuotes.length), 3200);
+    return () => window.clearInterval(timer);
+  }, [isGeneratingAI, generationStage]);
+
+  useEffect(() => {
+    if (guestSchool) {
+      const classes = guestSchool.classes || [];
+      const subjects = guestSchool.subjects || [];
+      setSchoolClasses(classes.length ? classes : STANDARD_NIGERIAN_CLASSES.map((item) => ({ name: item.name, level: item.level })));
+      setSchoolSubjects(subjects.length ? subjects : ALL_NIGERIAN_SUBJECTS);
+      setCurriculumLoaded(true);
+      if (classes.length && !classes.some((item) => item.name === className)) setClassName(classes[0].name);
+      if (subjects.length && !subjects.includes(subject)) setSubject(subjects[0]);
+      return;
+    }
+    if (!school?.id || !isSupabaseConfigured()) {
+      setSchoolClasses(STANDARD_NIGERIAN_CLASSES.map((item) => ({ name: item.name, level: item.level })));
+      setSchoolSubjects(ALL_NIGERIAN_SUBJECTS);
+      setCurriculumLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    const loadCurriculum = async () => {
+      const [classResult, subjectResult] = await Promise.all([
+        supabase.from('school_classes').select('name, level').eq('school_id', school.id).order('display_order', { ascending: true }),
+        supabase.from('school_subjects').select('name').eq('school_id', school.id).eq('is_active', true).order('name', { ascending: true }),
+      ]);
+      if (cancelled) return;
+      const classes = (classResult.data || []).map((item) => ({ name: item.name, level: item.level }));
+      const subjects = (subjectResult.data || []).map((item) => item.name);
+      const nextClasses = classes.length ? classes : STANDARD_NIGERIAN_CLASSES.map((item) => ({ name: item.name, level: item.level }));
+      const nextSubjects = subjects.length ? subjects : ALL_NIGERIAN_SUBJECTS;
+      setSchoolClasses(nextClasses);
+      setSchoolSubjects(nextSubjects);
+      setCurriculumLoaded(true);
+      if (!nextClasses.some((item) => item.name === className)) setClassName(nextClasses[0]?.name || '');
+      if (!nextSubjects.includes(subject)) setSubject(nextSubjects[0] || '');
+    };
+    void loadCurriculum();
+    return () => { cancelled = true; };
+  }, [school?.id, guestSchool?.id]);
+
+  const getAiAuthHeaders = async () => {
+    if (!school?.id) throw new Error('A valid school account is required for AI question generation.');
+    if (isGuestTeacher && guestInviteToken) {
+      return {
+        'Content-Type': 'application/json',
+        'X-School-Invite-Token': guestInviteToken,
+      };
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('Please sign in again before using AI question generation.');
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    };
+  };
+
   const showNotification = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3500);
   };
 
   // Step 1 Validation
-  const handleStep1Next = () => {
+  const handleStep1Next = async () => {
+    if (!curriculumLoaded) { setStepError('Loading your school classes and subjects. Please wait a moment.'); return; }
     if (!title.trim() || !subject.trim() || !className.trim() || !instructions.trim()) {
-      setStepError('All exam metadata fields are mandatory according to WAEC standards.');
-      return;
+      setStepError('Complete the required exam details before continuing.'); return;
     }
+    if (durationMinutes < 30 || durationMinutes > 240 || !Number.isFinite(durationMinutes)) {
+      setStepError('Choose an exam duration between 30 and 240 minutes.'); return;
+    }
+    if (!session.trim()) { setStepError('Choose the academic session for this exam.'); return; }
+    if (!school?.id) { setStepError('The school details could not be verified. Refresh the page or ask the school admin for a new link.'); return; }
     setStepError(null);
-    setCurrentStep(2);
+    try {
+      if (isGuestTeacher && guestInviteToken) {
+        const params = new URLSearchParams({ token: guestInviteToken, class_name: className, subject, term, session });
+        const response = await fetch('/api/check-exam-conflict?' + params.toString());
+        const result = await response.json();
+        if (response.status === 409 || result.conflict) { setStepError(result.error || (className + ' already has a ' + subject + ' exam for ' + term + ', ' + session + '.')); return; }
+        if (!response.ok) throw new Error(result.error || 'Could not check the class subject schedule.');
+      } else if (isSupabaseConfigured()) {
+        const { data, error } = await supabase.from('exams').select('id').eq('school_id', school.id).eq('status', 'published')
+          .ilike('class_name', className).ilike('subject', subject).eq('term', term).eq('session', session).limit(1);
+        if (error) throw error;
+        if (data?.length) { setStepError(className + ' already has a ' + subject + ' exam for ' + term + ', ' + session + '. Choose a different subject, term or session.'); return; }
+      }
+      setCurrentStep(2);
+    } catch (error) { setStepError(error instanceof Error ? error.message : 'Could not validate these exam details. Please try again.'); }
   };
 
   // Step 2 Choice
   const handleSelectMethod = (selected: 'ai' | 'manual') => {
-    if (selected === 'ai' && school && school.subscription_status !== 'active' && school.ai_exams_used >= 4) {
-      setAiError('You have used all 4 free trial exams. On your 5th generation, please complete payment for full term access.');
-      onOpenPaystack();
-      return;
-    }
+    // The database is authoritative for quota checks at publication time.
     setMethod(selected);
     setCurrentStep(3);
   };
@@ -145,24 +243,20 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const handleGenerateAI = async () => {
     if (!school) return;
 
-    // Enforce 4 free trial limit: 5th attempt triggers Paystack payment popup immediately
-    if (school.subscription_status !== 'active' && school.ai_exams_used >= 4) {
-      setAiError(
-        'Trial limit reached (4 of 4 free exams used). Please pay ₦11,000 for full term access to generate your 5th exam.'
-      );
-      setIsGeneratingAI(false);
-      onOpenPaystack();
-      return;
-    }
+    // Do not trust cached browser subscription counters here. The secure database
+    // checks the current subscription and quota when the exam is published.
 
     setIsGeneratingAI(true);
+    setGenerationStage('working');
+    setMotivationIndex(0);
     setAiError(null);
 
     try {
       const response = await fetch('/api/generate-questions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAiAuthHeaders(),
         body: JSON.stringify({
+          school_id: school.id,
           subject,
           class_name: className,
           term,
@@ -222,9 +316,14 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           });
         });
 
+        if (parsedQuestions.length === 0) {
+          throw new Error('The AI returned no usable questions. Please try again or use manual entry.');
+        }
+        setGenerationStage('finishing');
+        await new Promise((resolve) => window.setTimeout(resolve, 1400));
         setQuestions(parsedQuestions);
         setCurrentStep(4);
-        showNotification(`AI drafted ${parsedQuestions.length} standard questions with marking schemes.`);
+        showNotification(`AI drafted ${parsedQuestions.length} questions with marking schemes.`);
       } else {
         setAiError(json.error || 'AI generation failed. You can switch to manual authoring or try again.');
       }
@@ -232,6 +331,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       setAiError(e?.message || 'Network error while contacting AI engine. Try again or switch to manual.');
     } finally {
       setIsGeneratingAI(false);
+      setGenerationStage(null);
     }
   };
 
@@ -241,8 +341,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     try {
       const response = await fetch('/api/regenerate-single-question', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAiAuthHeaders(),
         body: JSON.stringify({
+          school_id: school?.id,
           subject,
           class_name: className,
           section: targetQuestion.section,
@@ -252,6 +353,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       });
 
       const res = await response.json();
+      if (!response.ok || !res.success) throw new Error(res.error || 'AI regeneration failed. Please try again.');
       if (res.success && res.data) {
         const d = res.data;
         const updatedQuestion: Question = {
@@ -278,54 +380,69 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               : undefined,
         };
 
-        setQuestions(questions.map((q) => (q.id === targetQuestion.id ? updatedQuestion : q)));
+        setQuestions((current) => current.map((q) => (q.id === targetQuestion.id ? updatedQuestion : q)));
         showNotification(`Question ${targetQuestion.question_number} regenerated with AI!`);
       }
-    } catch {
-      // Client-side instant fallback swap
-      if (targetQuestion.section === 'A') {
-        const replacementObj: Question = {
-          ...targetQuestion,
-          question_text: `[${subject}] Evaluate the alternative WAEC condition for ${aiTopics || 'the topic'} in ${className}:`,
-          objective_data: {
-            option_a: 'Standard constant value',
-            option_b: 'Inverse relationship under standard pressure',
-            option_c: 'Empirical equivalent metric',
-            option_d: 'Linear coefficient',
-            correct_option: 'B',
-          },
-        };
-        setQuestions(questions.map((q) => (q.id === targetQuestion.id ? replacementObj : q)));
-      }
+    } catch (error: any) {
+      showNotification(error?.message || 'AI regeneration failed. Please try again.');
     } finally {
       setRegeneratingId(null);
     }
   };
 
-  // GENERATE MORE QUESTIONS (e.g. +5 objectives or +1 theory)
+  // Generate only the requested missing questions. The API accepts at most 20 per call,
+  // so larger gaps are filled in small batches without replacing questions already accepted.
   const handleGenerateMoreQuestions = async (section: 'A' | 'B', countToAdd: number = 5) => {
+    const requestedCount = Math.max(0, Math.floor(countToAdd));
+    if (requestedCount === 0) {
+      showNotification('You already have the requested number of questions.');
+      return;
+    }
+
     setIsAddingMore(true);
-    const currentSectionCount = questions.filter((q) => q.section === section).length;
-    const startNumber = currentSectionCount + 1;
+    let totalAdded = 0;
+    let remaining = requestedCount;
+    let attempts = 0;
 
     try {
-      const response = await fetch('/api/generate-more-questions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject,
-          class_name: className,
-          section,
-          count: countToAdd,
-          start_number: startNumber,
-          topics: aiTopics,
-        }),
-      });
+      while (remaining > 0 && attempts < 5) {
+        attempts += 1;
+        const batchCount = Math.min(remaining, 20);
+        const currentMaxNumber = questions
+          .filter((q) => q.section === section)
+          .reduce((max, q) => Math.max(max, q.question_number || 0), 0);
+        // Each response is committed to state immediately so a later failed batch
+        // never discards questions already generated (or wastes their tokens).
+        const startNumber = currentMaxNumber + totalAdded + 1;
+        const response = await fetch('/api/generate-more-questions', {
+          method: 'POST',
+          headers: await getAiAuthHeaders(),
+          body: JSON.stringify({
+            school_id: school?.id,
+            subject,
+            class_name: className,
+            section,
+            count: batchCount,
+            start_number: startNumber,
+            topics: aiTopics,
+            difficulty: aiDifficulty,
+            instructions,
+            term,
+          }),
+        });
 
-      const res = await response.json();
-      if (res.success && Array.isArray(res.data)) {
-        const newQs: Question[] = res.data.map((item: any, idx: number) => ({
-          id: `q_more_${Date.now()}_${idx}`,
+        const res = await response.json();
+        if (!response.ok || !res.success || !Array.isArray(res.data)) {
+          throw new Error(res.error || 'AI question generation failed. Please try again.');
+        }
+
+        const items = res.data.slice(0, batchCount);
+        if (items.length === 0) {
+          throw new Error('The AI returned no questions. Your existing questions have been kept; please try again.');
+        }
+
+        const newQs: Question[] = items.map((item: any, idx: number) => ({
+          id: `q_more_${Date.now()}_${attempts}_${idx}`,
           section,
           question_number: startNumber + idx,
           question_text: item.question_text || `Additional Question ${startNumber + idx}`,
@@ -350,37 +467,31 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               : undefined,
         }));
 
-        setQuestions([...questions, ...newQs]);
-        showNotification(`Added ${newQs.length} new ${section === 'A' ? 'objective' : 'theory'} questions!`);
+        setQuestions((current) => [...current, ...newQs]);
+        totalAdded += newQs.length;
+        remaining -= newQs.length;
       }
-    } catch {
-      // Fallback batch
-      const newQs: Question[] = [];
-      for (let i = 0; i < countToAdd; i++) {
-        const qNum = startNumber + i;
-        newQs.push({
-          id: `q_more_fb_${Date.now()}_${i}`,
-          section,
-          question_number: qNum,
-          question_text: `[${subject} Q${qNum}] Which of the following best represents standard WAEC principle ${qNum}?`,
-          marks: section === 'A' ? 1 : 15,
-          objective_data:
-            section === 'A'
-              ? {
-                  option_a: 'Standard property A',
-                  option_b: 'Derived formula B',
-                  option_c: 'Empirical condition C',
-                  option_d: 'Universal constant D',
-                  correct_option: 'A',
-                }
-              : undefined,
-        });
+
+      if (remaining > 0) {
+        showNotification(`Generated ${totalAdded} of ${requestedCount} requested questions. Your new questions are saved in the preview; use Generate Missing again to finish.`);
+      } else {
+        showNotification(`Added ${totalAdded} new ${section === 'A' ? 'objective' : 'theory'} questions.`);
       }
-      setQuestions([...questions, ...newQs]);
-      showNotification(`Added ${countToAdd} questions!`);
+    } catch (error: any) {
+      showNotification(`${error?.message || 'AI generation failed. Please try again.'}${totalAdded ? ` ${totalAdded} generated question(s) were kept.` : ''}`);
     } finally {
       setIsAddingMore(false);
     }
+  };
+
+  const handleGenerateToTarget = (section: 'A' | 'B') => {
+    const target = section === 'A' ? aiNumObj : aiNumTheory;
+    const existingCount = questions.filter((q) => q.section === section).length;
+    if (target <= existingCount) {
+      showNotification(`You already have ${existingCount} ${section === 'A' ? 'objective' : 'theory'} questions. Lowering the target will not delete existing questions.`);
+      return;
+    }
+    void handleGenerateMoreQuestions(section, target - existingCount);
   };
 
   // Add Question Manually
@@ -416,7 +527,15 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   };
 
   const handleRemoveQuestion = (id: string) => {
-    setQuestions(questions.filter((q) => q.id !== id));
+    setQuestions((current) => {
+      const remaining = current.filter((q) => q.id !== id);
+      // Keep section numbering contiguous after a teacher removes a question.
+      return (['A', 'B'] as const).flatMap((section) =>
+        remaining
+          .filter((q) => q.section === section)
+          .map((q, index) => ({ ...q, question_number: index + 1 })),
+      );
+    });
   };
 
   const handleUpdateQuestion = (id: string, updates: Partial<Question>) => {
@@ -450,28 +569,30 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     showNotification('Exam draft safely stored in offline storage!');
   };
 
-  // Step 5: Final Submission, Automatic Download & Dashboard Sync
+  // Step 5: Save the exam and all related questions to Supabase.
   const handleSubmitExam = async () => {
-    if (!school) return;
-    setIsSubmitting(true);
-
-    const trialRes = db.consumeTrial(school.id, method === 'ai');
-    if (!trialRes.success) {
-      alert(trialRes.message || 'Trial quota exhausted');
-      setIsSubmitting(false);
-      onOpenPaystack();
+    if (!school || (!user?.id && !isGuestTeacher)) {
+      alert('A valid school invitation or school account is required before publishing an exam.');
       return;
     }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    const examCode = `EC-${session.slice(0, 4)}-${subject.slice(0, 3).toUpperCase()}-${className.replace(/\s+/g, '')}`;
-    const sectionAMarks = questions.filter((q) => q.section === 'A').reduce((acc, q) => acc + q.marks, 0);
-    const sectionBMarks = questions.filter((q) => q.section === 'B').reduce((acc, q) => acc + q.marks, 0);
+    try {
+      if (!isGuestTeacher && !isSupabaseConfigured()) {
+        throw new Error('Secure publishing is unavailable because Supabase is not configured.');
+      }
 
-    const newExam = db.saveExam(
-      {
+      // Exam rows, answers, marking schemes, and quota usage are committed together
+      // by one PostgreSQL function. Any failed insert rolls back the entire publication.
+      const examCode = `EC-${session.slice(0, 4)}-${subject.slice(0, 3).toUpperCase()}-${className.replace(/\\s+/g, '')}-${Date.now().toString().slice(-5)}`;
+      const sectionAMarks = questions.filter((q) => q.section === 'A').reduce((acc, q) => acc + q.marks, 0);
+      const sectionBMarks = questions.filter((q) => q.section === 'B').reduce((acc, q) => acc + q.marks, 0);
+
+      const examPayload = {
         school_id: school.id,
-        created_by: user?.id || 'admin',
-        created_by_name: user?.full_name || 'Staff',
+        created_by: user?.id || '',
+        created_by_name: user?.full_name || 'Teacher',
         exam_code: examCode,
         title,
         subject,
@@ -483,46 +604,127 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         total_marks: sectionAMarks + sectionBMarks || totalMarks,
         section_a_marks: sectionAMarks,
         section_b_marks: sectionBMarks,
-        status: 'published',
-      },
-      questions
-    );
+        status: 'published' as const,
+      };
 
-    // AUTOMATIC DOWNLOAD: Both Exam Paper DOCX and Confidential Marking Scheme DOCX
-    try {
-      await exportExamToDocx(newExam, school);
-      // Small pause before second download so browser doesn't block dual download popup
-      setTimeout(async () => {
-        try {
-          await exportMarkingSchemeToDocx(newExam, school);
-        } catch {
-          // Handled
+      let publishResult: Awaited<ReturnType<typeof publishExamWithQuota>>;
+      if (isGuestTeacher && guestInviteToken) {
+        const response = await fetch('/api/publish-exam', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-School-Invite-Token': guestInviteToken,
+          },
+          body: JSON.stringify({
+            exam: examPayload,
+            questions: questions.map((question, index) => ({
+              section: question.section,
+              question_number: question.question_number || index + 1,
+              question_text: question.question_text,
+              marks: question.marks,
+              image_url: question.image_url || null,
+              objective_data: question.objective_data || null,
+              theory_data: question.theory_data || null,
+            })),
+            is_ai: method === 'ai',
+          }),
+        });
+        const guestResult = await response.json();
+        if (!response.ok || !guestResult?.success || !guestResult?.exam) {
+          publishResult = {
+            success: false,
+            code: guestResult?.code,
+            message: guestResult?.error || 'The exam could not be published. Please try again.',
+          };
+        } else {
+          publishResult = { success: true, exam: guestResult.exam as Exam };
         }
-      }, 600);
-    } catch (e) {
-      console.warn('Auto download error', e);
-    }
+      } else {
+        publishResult = await publishExamWithQuota(examPayload, questions, method === 'ai');
+      }
 
-    // Trigger celebration confetti
-    try {
-      confetti({
-        particleCount: 80,
-        spread: 60,
-        origin: { y: 0.6 },
-      });
-    } catch {
-      // Ignored
-    }
+      if (!publishResult.success) {
+        if (publishResult.code === 'duplicate_class_subject' || (publishResult.message || '').toLowerCase().includes('already has an exam for this subject')) {
+          setStepError(publishResult.message || 'This class already has an exam for this subject, term and session. Choose a different combination.');
+          setCurrentStep(1);
+          return;
+        }
+        alert(publishResult.message || 'Your exam could not be published.');
+        if (publishResult.code === 'quota_exceeded') {
+          if (role === 'teacher') showNotification('The school exam limit has been reached. Please ask your school admin to upgrade the plan.');
+          else onOpenPaystack();
+        }
+        return;
+      }
 
-    setIsSubmitting(false);
-    onSuccessExam(newExam);
+      const newExam = publishResult.exam;
+
+      // Start both downloads from the publish action; avoid a delayed second download
+      // that mobile browsers may block.
+      try {
+        await exportExamToDocx(newExam, school);
+        await exportMarkingSchemeToDocx(newExam, school);
+      } catch (error) {
+        console.warn('Automatic exam or marking scheme download failed', error);
+        showNotification('Exam saved. If a download was blocked, use the success screen to download it again.');
+      }
+
+      try {
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
+      } catch {
+        // Confetti is decorative and must not block a saved exam.
+      }
+
+      onSuccessExam(newExam);
+    } catch (error) {
+      console.error('Exam publication failed', error);
+      const message = error instanceof Error ? error.message : 'Unexpected error while saving the exam.';
+      if (message.toLowerCase().includes('already has an exam for this subject')) {
+        setStepError(message);
+        setCurrentStep(1);
+      } else {
+        alert(`The exam was not published: ${message}`);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const sectionAQuestions = questions.filter((q) => q.section === 'A');
   const sectionBQuestions = questions.filter((q) => q.section === 'B');
 
+  if (isGeneratingAI) {
+    const quote = motivationQuotes[motivationIndex];
+    const finishing = generationStage === 'finishing';
+    return (
+      <div className="fixed inset-0 z-[100] flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#07152f] px-5 text-center text-white">
+        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
+        <div className="absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-indigo-400/20 blur-3xl" />
+        <div className="relative mx-auto flex w-full max-w-xl flex-col items-center">
+          <div className="mb-10 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15"><BookOpen className="h-5 w-5 text-blue-200" /></div>
+            <span className="text-2xl font-black tracking-tight sm:text-3xl">ROCKCRAFT</span>
+          </div>
+          <div className="mb-7 flex h-20 w-20 items-center justify-center rounded-full border border-white/15 bg-white/5">
+            {finishing ? <CheckCircle2 className="h-10 w-10 text-emerald-300" /> : <Loader2 className="h-10 w-10 animate-spin text-blue-200" />}
+          </div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-blue-200">{finishing ? 'Almost ready' : 'Preparing your examination'}</p>
+          <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-5xl">{finishing ? "It's well." : 'Good things take preparation.'}</h1>
+          <div className="mt-6 min-h-28 max-w-lg">
+            <p key={finishing ? 'finish' : motivationIndex} className="text-lg leading-8 text-slate-100 sm:text-xl animate-in fade-in">
+              {finishing ? 'Your questions and marking scheme are ready. Let’s review your paper.' : '“' + quote.quote + '”'}
+            </p>
+            {!finishing && <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-blue-200">{quote.author}</p>}
+          </div>
+          <div className="mt-10 h-1.5 w-56 overflow-hidden rounded-full bg-white/10"><div className={'h-full rounded-full bg-gradient-to-r from-sky-300 to-indigo-300 ' + (finishing ? 'w-full' : 'w-2/3 animate-pulse')} /></div>
+          <p className="mt-4 text-xs text-slate-300">{finishing ? 'Opening your preview…' : 'Creating thoughtful questions and marking guidance. Please keep this page open.'}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6 text-left pb-16">
+    <div className="max-w-4xl mx-auto space-y-4 text-left pb-8">
       {/* Toast Notification */}
       {notification && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
@@ -532,7 +734,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       )}
 
       {/* Wizard Progress Stepper */}
-      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs">
+      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-xs">
         <div className="flex items-center justify-between max-w-xl mx-auto text-xs">
           {[
             { step: 1, label: 'Metadata' },
@@ -573,11 +775,11 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {/* STEP 1: EXAM METADATA (MANDATORY FIELDS) */}
       {/* ============================================================== */}
       {currentStep === 1 && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-5 animate-in fade-in">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-4 animate-in fade-in">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 1: Exam Details & Header</h3>
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">Exam details</h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Specify subject, class, and examination parameters for official WAEC formatting.
+              Choose the class, subject and exam details.
             </p>
           </div>
 
@@ -596,7 +798,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 onChange={(e) => setSubject(e.target.value)}
                 className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               >
-                {ALL_NIGERIAN_SUBJECTS.map((sub) => (
+                {schoolSubjects.map((sub) => (
                   <option key={sub} value={sub}>
                     {sub}
                   </option>
@@ -611,9 +813,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 onChange={(e) => setClassName(e.target.value)}
                 className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               >
-                {STANDARD_NIGERIAN_CLASSES.map((cls) => (
+                {schoolClasses.map((cls) => (
                   <option key={cls.name} value={cls.name}>
-                    {cls.label}
+                    {cls.name}
                   </option>
                 ))}
               </select>
@@ -701,11 +903,11 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {/* STEP 2: METHOD SELECTION (AI vs MANUAL) */}
       {/* ============================================================== */}
       {currentStep === 2 && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6 animate-in fade-in">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-4 animate-in fade-in">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 2: How would you like to craft this exam?</h3>
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">How would you like to create it?</h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Select between instant AI generation or manual question authoring.
+              Choose AI to draft questions or enter them yourself.
             </p>
           </div>
 
@@ -825,9 +1027,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-5 animate-in fade-in">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 3: AI Generator Parameters</h3>
+              <h3 className="text-lg font-bold text-slate-900 tracking-tight">Set up your AI questions</h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Specifying topics for <strong className="text-blue-600">{subject}</strong> ({className} · {term})
+                Topics for <strong className="text-blue-600">{subject}</strong> ({className} · {term})
               </p>
             </div>
             <button
@@ -915,7 +1117,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             <button
               onClick={() => {
                 if (school && school.subscription_status !== 'active' && school.ai_exams_used >= 4) {
-                  onOpenPaystack();
+                  if (role === 'teacher') showNotification('The school exam limit has been reached. Please ask your school admin to upgrade the plan.');
+                  else onOpenPaystack();
                   return;
                 }
                 handleGenerateAI();
@@ -952,12 +1155,13 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {/* STEP 3B: MANUAL QUESTION AUTHORING */}
       {/* ============================================================== */}
       {currentStep === 3 && method === 'manual' && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6 animate-in fade-in">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs space-y-5 animate-in fade-in">
+          {stepError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{stepError}</div>}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 3: Manual Authoring</h3>
               <p className="text-xs text-slate-500">
-                Craft questions with scientific symbols and voice speech-to-text.
+                Add and edit your questions below.
               </p>
             </div>
             <div className="flex gap-2">
@@ -1183,7 +1387,17 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             </button>
 
             <button
-              onClick={() => setCurrentStep(4)}
+              onClick={() => {
+                const missing = questions.find((question) => !question.question_text.trim());
+                const missingObjectiveOption = questions.find((question) => question.section === 'A' && question.objective_data && [question.objective_data.option_a, question.objective_data.option_b, question.objective_data.option_c, question.objective_data.option_d].some((option) => !option.trim()));
+                const missingTheoryGuide = questions.find((question) => question.section === 'B' && question.theory_data && (!question.theory_data.model_answer.trim() || !question.theory_data.score_breakdown.trim()));
+                if (questions.length === 0 || missing || missingObjectiveOption || missingTheoryGuide) {
+                  setStepError('Complete each question, its answer options and marking guide before previewing.');
+                  return;
+                }
+                setStepError(null);
+                setCurrentStep(4);
+              }}
               className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-800 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-all"
             >
               <span>Live Paper Preview & Verification</span>
@@ -1209,10 +1423,10 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 <span className="text-xs text-slate-600 font-medium">{subject} ({className})</span>
               </div>
               <h3 className="text-base font-bold text-slate-900 mt-0.5">
-                Review & Edit Examination Paper
+                Review your paper
               </h3>
               <p className="text-xs text-slate-500">
-                Click any question to edit text or options. Regenerate questions or add more objectives below.
+                Tap a question to edit it. Check the answers and marking guide before publishing.
               </p>
             </div>
 
@@ -1243,45 +1457,68 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             </div>
           </div>
 
-          {/* Quick AI Addition Toolbar: Add more objectives or theories */}
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/40 to-slate-50 border border-blue-200/70 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+          {/* Target counts let teachers fill only the missing questions without discarding accepted work. */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/40 to-slate-50 border border-blue-200/70 space-y-3">
+            <div className="flex items-start gap-2">
+              <div className="w-7 h-7 shrink-0 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                 <Sparkles className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-blue-950">
-                Want to add more questions?
-              </span>
+              <div>
+                <p className="text-xs font-bold text-blue-950">Adjust question totals</p>
+                <p className="text-xs text-slate-600 mt-1">Choose the total number you want. We generate only the missing questions and keep the ones you have already reviewed. Regenerating one question never replaces the rest.</p>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleGenerateMoreQuestions('A', 5)}
-                disabled={isAddingMore}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-900 font-semibold text-xs border border-blue-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5 text-blue-600" />
-                <span>+5 Objectives</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleGenerateMoreQuestions('A', 1)}
-                disabled={isAddingMore}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-900 font-semibold text-xs border border-blue-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5 text-blue-600" />
-                <span>+1 Objective</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleGenerateMoreQuestions('B', 1)}
-                disabled={isAddingMore}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-900 font-semibold text-xs border border-blue-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5 text-blue-600" />
-                <span>+1 Theory Question</span>
-              </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-white/80 border border-blue-100 rounded-xl p-3 space-y-2">
+                <label htmlFor="target-objectives" className="block text-xs font-semibold text-slate-700">Objective questions (Section A)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="target-objectives"
+                    type="number"
+                    min={5}
+                    max={50}
+                    value={aiNumObj}
+                    onChange={(event) => setAiNumObj(Math.min(50, Math.max(5, Number(event.target.value) || 5)))}
+                    className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    aria-label="Target total objective questions"
+                  />
+                  <span className="text-xs text-slate-500">{questions.filter((q) => q.section === 'A').length} currently in preview</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateToTarget('A')}
+                  disabled={isAddingMore || aiNumObj <= questions.filter((q) => q.section === 'A').length}
+                  className="w-full px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs disabled:opacity-50"
+                >
+                  {isAddingMore ? 'Generating questions...' : `Generate ${Math.max(0, aiNumObj - questions.filter((q) => q.section === 'A').length)} missing objective(s)`}
+                </button>
+              </div>
+
+              <div className="bg-white/80 border border-indigo-100 rounded-xl p-3 space-y-2">
+                <label htmlFor="target-theory" className="block text-xs font-semibold text-slate-700">Theory questions (Section B)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="target-theory"
+                    type="number"
+                    min={1}
+                    max={6}
+                    value={aiNumTheory}
+                    onChange={(event) => setAiNumTheory(Math.min(6, Math.max(1, Number(event.target.value) || 1)))}
+                    className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    aria-label="Target total theory questions"
+                  />
+                  <span className="text-xs text-slate-500">{questions.filter((q) => q.section === 'B').length} currently in preview</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateToTarget('B')}
+                  disabled={isAddingMore || aiNumTheory <= questions.filter((q) => q.section === 'B').length}
+                  className="w-full px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs disabled:opacity-50"
+                >
+                  {isAddingMore ? 'Generating questions...' : `Generate ${Math.max(0, aiNumTheory - questions.filter((q) => q.section === 'B').length)} missing theory question(s)`}
+                </button>
+              </div>
             </div>
           </div>
 

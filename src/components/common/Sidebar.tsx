@@ -8,9 +8,6 @@ import {
   School as SchoolIcon,
   ShieldCheck,
   CreditCard,
-  UserCheck,
-  Users,
-  Sparkles,
   Check
 } from 'lucide-react';
 
@@ -21,14 +18,14 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpenPaystack }) => {
-  const { user, school, role, isPlatformAdmin, switchDemoUser } = useAuth();
+  const { school, isPlatformAdmin } = useAuth();
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'exams', label: 'Exams Repository', icon: FileText },
-    { id: 'create-exam', label: 'Create New Exam', icon: PlusCircle, isPrimary: true },
-    { id: 'classes', label: 'Manage Classes', icon: BookOpen },
-    { id: 'profile', label: 'School Settings', icon: SchoolIcon },
+    { id: 'exams', label: 'Exams', icon: FileText },
+    { id: 'create-exam', label: 'Create exam', icon: PlusCircle, isPrimary: true },
+    { id: 'classes', label: 'Classes', icon: BookOpen },
+    { id: 'profile', label: 'School', icon: SchoolIcon },
   ];
 
   if (isPlatformAdmin) {
@@ -47,45 +44,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
           <span className="text-xs text-slate-500 font-medium truncate">
             {school?.name || 'WAEC Paper Engine'}
           </span>
-        </div>
-      </div>
-
-      {/* Demo Role Switcher */}
-      <div className="mt-4 p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs">
-        <span className="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
-          Active Role: {role.replace('_', ' ')}
-        </span>
-        <div className="grid grid-cols-3 gap-1">
-          <button
-            onClick={() => switchDemoUser('admin')}
-            className={`py-1 px-1.5 rounded-md font-medium text-center transition-colors ${
-              role === 'school_admin'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
-            }`}
-          >
-            Admin
-          </button>
-          <button
-            onClick={() => switchDemoUser('teacher')}
-            className={`py-1 px-1.5 rounded-md font-medium text-center transition-colors ${
-              role === 'teacher'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
-            }`}
-          >
-            Teacher
-          </button>
-          <button
-            onClick={() => switchDemoUser('platform')}
-            className={`py-1 px-1.5 rounded-md font-medium text-center transition-colors ${
-              role === 'platform_admin'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
-            }`}
-          >
-            Platform
-          </button>
         </div>
       </div>
 
@@ -108,9 +66,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
               >
                 <Icon className="w-5 h-5 shrink-0" />
                 <span className="truncate">{item.label}</span>
-                <span className="ml-auto text-[10px] bg-white/20 text-current px-1.5 py-0.5 rounded-md font-bold">
-                  AI + Manual
-                </span>
               </button>
             );
           }
@@ -138,14 +93,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
           {school.subscription_status === 'active' ? (
             <div className="p-3.5 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-left">
               <div className="flex items-center justify-between text-xs font-bold text-emerald-950 mb-1">
-                <span>School Subscription</span>
+                <span>Plan</span>
                 <span className="flex items-center gap-1 uppercase px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900 text-[10px] font-black">
                   <Check className="w-3 h-3" />
                   PAID
                 </span>
               </div>
               <p className="text-xs text-emerald-800 font-medium mt-1 leading-relaxed">
-                Full Term Active · Unlimited AI questions, DOCX exports & marking schemes.
+                Unlimited access
               </p>
             </div>
           ) : (
@@ -163,14 +118,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
               <p className="text-xs text-slate-600 mt-1">
                 {school.ai_exams_used >= 4 ? (
                   <span className="text-amber-800 font-semibold">
-                    4 of 4 trial exams used. 5th exam requires term access.
+                    Trial limit reached.
                   </span>
                 ) : (
                   <>
                     <span className="font-semibold text-blue-900">
                       {Math.max(0, 4 - school.ai_exams_used)}
                     </span>{' '}
-                    AI trial exams remaining.
+                    trials remaining.
                   </>
                 )}
               </p>
@@ -179,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
                 className="mt-3 w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5"
               >
                 <CreditCard className="w-3.5 h-3.5" />
-                <span>{school.ai_exams_used >= 4 ? 'Pay ₦11,000 via Paystack' : 'Upgrade (₦11,000/Term)'}</span>
+                <span>{school.ai_exams_used >= 4 ? 'Upgrade · ₦11,000' : 'Upgrade · ₦11,000'}</span>
               </button>
             </div>
           )}

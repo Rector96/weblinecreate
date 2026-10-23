@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth, PLATFORM_ADMIN_EMAIL } from '../../lib/auth';
+import { useAuth } from '../../lib/auth';
 import { NIGERIAN_STATES, NIGERIAN_STATES_LGAS } from '../../data/nigeriaStatesLgas';
 import { InstitutionType } from '../../types';
 import {
@@ -10,23 +10,19 @@ import {
   Phone,
   MapPin,
   Building,
-  KeyRound,
   ArrowRight,
   AlertCircle,
   Loader2
 } from 'lucide-react';
 
 interface AuthPageProps {
-  initialInviteToken?: string;
   onSuccess: () => void;
 }
 
-export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSuccess }) => {
-  const { login, registerSchoolAndAdmin, joinSchoolAsTeacher, switchDemoUser } = useAuth();
+export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
+  const { login, resetPassword, registerSchoolAndAdmin } = useAuth();
 
-  const [mode, setMode] = useState<'login' | 'register' | 'join'>(
-    initialInviteToken ? 'join' : 'login'
-  );
+  const [mode, setMode] = useState<'login' | 'register'>('login');
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -42,10 +38,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
   const [institutionType, setInstitutionType] = useState<InstitutionType>('Secondary');
   const [regPassword, setRegPassword] = useState('');
 
-  // Join form state
-  const [inviteToken, setInviteToken] = useState(initialInviteToken || '');
-  const [teacherName, setTeacherName] = useState('');
-  const [teacherEmail, setTeacherEmail] = useState('');
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -105,41 +97,23 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
     }
   };
 
-  const handleJoinSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inviteToken.trim() || !teacherName.trim() || !teacherEmail.trim()) {
-      setErrorMessage('Please enter the 6-character token, your name, and email.');
-      return;
-    }
-    setErrorMessage(null);
-    setIsLoading(true);
-
-    const res = await joinSchoolAsTeacher(inviteToken.trim().toUpperCase(), teacherName, teacherEmail);
-    setIsLoading(false);
-    if (res.success) {
-      onSuccess();
-    } else {
-      setErrorMessage(res.error || 'Failed to join school.');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#e8f1fb] via-[#f0f5fc] to-[#f8fafc] flex flex-col justify-center items-center px-4 py-8">
+    <div className={`${mode === "login" ? "h-[100dvh] max-h-[100dvh] overflow-hidden py-3" : "min-h-[100dvh] py-6"} bg-gradient-to-b from-[#e8f1fb] via-[#f0f5fc] to-[#f8fafc] flex flex-col justify-center items-center px-4`}>
       {/* Brand Header */}
-      <div className="text-center mb-6 max-w-sm">
-        <div className="w-14 h-14 rounded-3xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center font-black text-2xl mx-auto shadow-lg shadow-blue-600/25 mb-3">
+      <div className="text-center mb-4 max-w-sm shrink-0">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center font-black text-2xl mx-auto shadow-lg shadow-blue-600/25 mb-3">
           RC
         </div>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">ROCKCRAF</h1>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">ROCKCRAF</h1>
         <p className="text-xs text-slate-600 mt-1 font-medium">
           WAEC, NECO & JAMB Exam Builder for Nigerian Secondary Schools
         </p>
       </div>
 
       {/* Main Auth Card */}
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-blue-950/5 border border-slate-200/80 p-6 sm:p-8 text-left">
+      <div className={`w-full max-w-md bg-white rounded-3xl shadow-xl shadow-blue-950/5 border border-slate-200/80 ${mode === "login" ? "p-5 sm:p-6" : "p-6 sm:p-8"} text-left`}>
         {/* Navigation Mode Switcher */}
-        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-2xl mb-6">
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-2xl mb-4">
           <button
             type="button"
             onClick={() => {
@@ -167,20 +141,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
             }`}
           >
             New School
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode('join');
-              setErrorMessage(null);
-            }}
-            className={`py-2 text-xs font-semibold rounded-xl transition-all ${
-              mode === 'join'
-                ? 'bg-white text-blue-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Join School
           </button>
         </div>
 
@@ -217,7 +177,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                 <label className="text-xs font-semibold text-slate-700">Password</label>
                 <button
                   type="button"
-                  onClick={() => alert('Password reset link sent to your registered school email.')}
+                  onClick={async () => {
+                    const result = await resetPassword(loginEmail);
+                    if (result.success) alert('Password reset email sent. Check your inbox.');
+                    else setErrorMessage(result.error || 'Unable to send password reset email.');
+                  }}
                   className="text-[11px] text-blue-600 hover:underline"
                 >
                   Forgot?
@@ -227,7 +191,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="password"
-                  placeholder="••••••••"
+                  required
+                  placeholder="Enter your password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
@@ -253,36 +218,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
               )}
             </button>
 
-            {/* Quick Demo Access Bar */}
-            <div className="pt-4 border-t border-slate-100">
-              <span className="block text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider text-center">
-                Instant Demo Access
-              </span>
-              <div className="flex flex-col gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    switchDemoUser('admin');
-                    onSuccess();
-                  }}
-                  className="w-full py-2 px-3 rounded-xl bg-blue-50 text-blue-800 hover:bg-blue-100 text-xs font-semibold text-left flex items-center justify-between transition-colors border border-blue-100"
-                >
-                  <span>Dr. Babatunde Alabi (School Admin)</span>
-                  <span className="text-[10px] text-blue-600 bg-white px-2 py-0.5 rounded-md font-bold">King's College</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    switchDemoUser('teacher');
-                    onSuccess();
-                  }}
-                  className="w-full py-2 px-3 rounded-xl bg-slate-50 text-slate-700 hover:bg-slate-100 text-xs font-medium text-left flex items-center justify-between transition-colors border border-slate-200/70"
-                >
-                  <span>Mr. Adebayo Oladipo (Subject Teacher)</span>
-                  <span className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded-md">Teacher</span>
-                </button>
-              </div>
-            </div>
           </form>
         )}
 
@@ -437,90 +372,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
           </form>
         )}
 
-        {/* 3. JOIN SCHOOL AS TEACHER VIA TOKEN */}
-        {mode === 'join' && (
-          <form onSubmit={handleJoinSubmit} className="space-y-4">
-            <div className="p-3 bg-blue-50/80 border border-blue-100 rounded-2xl text-xs text-blue-900">
-              <span className="font-bold">Joining your school team?</span> Enter the 6-character code from your school admin.
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                6-Character School Token *
-              </label>
-              <div className="relative">
-                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  placeholder="e.g. KC2026"
-                  value={inviteToken}
-                  onChange={(e) => setInviteToken(e.target.value.toUpperCase())}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono tracking-widest uppercase rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Your Full Name (Teacher) *
-              </label>
-              <div className="relative">
-                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Mr. Chinedu Eze"
-                  value={teacherName}
-                  onChange={(e) => setTeacherName(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Your Email Address *
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="email"
-                  required
-                  placeholder="chinedu@school.edu.ng"
-                  value={teacherEmail}
-                  onChange={(e) => setTeacherEmail(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-75 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 active:scale-[0.99] transition-all"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Verifying Token...</span>
-                </>
-              ) : (
-                <>
-                  <span>Join School Staff</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-
-            <div className="text-center">
-              <span className="text-[11px] text-slate-400">
-                Sample demo token for testing: <strong className="text-blue-600 font-mono">KC2026</strong>
-              </span>
-            </div>
-          </form>
-        )}
       </div>
     </div>
   );

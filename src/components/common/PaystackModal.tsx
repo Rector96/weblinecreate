@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../../lib/auth';
-import { db, dbEvents } from '../../lib/db';
+import { supabase } from '../../lib/supabase';
 import {
   X,
   CheckCircle2,
@@ -31,6 +31,28 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'idle' | 'authorizing' | 'success'>('idle');
   const [successReceipt, setSuccessReceipt] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get('payment');
+    const reference = params.get('reference');
+    if (!paymentStatus) return;
+
+    if (paymentStatus === 'success' && reference) {
+      setSuccessReceipt(reference);
+      setPaymentStep('success');
+      refreshSchool();
+    } else if (paymentStatus === 'failed') {
+      setPaymentError('Payment was not verified. Your subscription has not been activated. If you were charged, contact support with your payment reference.');
+      setPaymentStep('idle');
+    }
+
+    params.delete('payment');
+    params.delete('reference');
+    const query = params.toString();
+    window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+  }, [refreshSchool]);
 
   if (!isOpen || !school) return null;
 
@@ -67,46 +89,46 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
 
   const handlePay = async () => {
     setIsProcessing(true);
+    setPaymentError(null);
     setPaymentStep('authorizing');
 
-    const reference = `EC_PAY_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-
-    // Try server initialization if endpoint available
     try {
-      await fetch('/api/initialize-payment', {
+      // Never activate a subscription based on a timer or a client-generated reference.
+      // This app currently has no verified payment endpoint wired to this modal.
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session?.access_token) {
+        throw new Error('Your secure session has expired. Please sign in again before paying.');
+      }
+
+      const response = await fetch('/api/initialize-payment', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
         body: JSON.stringify({
           school_id: school.id,
-          school_name: school.name,
-          email: school.email,
           term,
           session,
-          reference,
         }),
-      }).catch(() => null);
-    } catch {
-      // Continue locally
-    }
+      });
 
-    // Process payment detection
-    setTimeout(() => {
-      // Record payment in DB
-      db.recordPayment(school.id, reference, 11000, term, session);
-      // Immediately notify subscribers and refresh auth context
-      refreshSchool();
-      dbEvents.notify('schools');
-      dbEvents.notify('payments');
-
-      setIsProcessing(false);
-      setPaymentStep('success');
-      setSuccessReceipt(reference);
-      triggerCelebration();
-
-      if (onPaidSuccess) {
-        onPaidSuccess();
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || typeof result.authorization_url !== 'string') {
+        throw new Error(
+          typeof result.error === 'string'
+            ? result.error
+            : 'Secure Paystack checkout is not configured yet. No payment has been taken.'
+        );
       }
-    }, 1200);
+
+      window.location.assign(result.authorization_url);
+    } catch (error) {
+      setPaymentStep('idle');
+      setPaymentError(error instanceof Error ? error.message : 'Unable to start secure payment. No payment has been taken.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -295,6 +317,11 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
             </div>
 
             {/* Pay Button */}
+            {paymentError && (
+              <div role="alert" className="mb-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+                {paymentError}
+              </div>
+            )}
             <button
               onClick={handlePay}
               disabled={isProcessing}

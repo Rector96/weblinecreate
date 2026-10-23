@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth';
-import { db } from '../../lib/db';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { NIGERIAN_STATES, NIGERIAN_STATES_LGAS } from '../../data/nigeriaStatesLgas';
 import { InstitutionType } from '../../types';
 import {
@@ -77,12 +77,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!school) return;
+    if (!school || isSaving) return;
+    if (!isSupabaseConfigured()) {
+      setMessage('Supabase is not configured. School details were not saved.');
+      return;
+    }
     setIsSaving(true);
 
-    db.updateSchool(school.id, {
+    const { error } = await supabase.from('schools').update({
       name,
       admin_name: adminName,
       email,
@@ -93,10 +97,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
       motto,
       address,
       logo_url: logoUrl,
-    });
+    }).eq('id', school.id);
 
-    refreshSchool();
     setIsSaving(false);
+    if (error) {
+      console.error('School profile update failed', error);
+      setMessage('Could not save school details. Please check your connection and try again.');
+      return;
+    }
+    refreshSchool();
     setMessage('School details updated successfully.');
     setTimeout(() => setMessage(null), 3000);
   };
@@ -108,7 +117,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           School Profile & Identity
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          These details are automatically printed on the official WAEC/JAMB exam header.
+          School details and subscription.
         </p>
       </div>
 
@@ -129,56 +138,30 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
-                School Subscription
+                Plan
               </span>
               {school.subscription_status === 'active' && (
                 <span className="px-2 py-0.5 rounded-md bg-emerald-400 text-emerald-950 font-black text-[10px] uppercase">
-                  PAID ACTIVE
+                  ACTIVE
                 </span>
               )}
             </div>
             <div className="text-lg font-extrabold capitalize mt-0.5">
-              {school.subscription_status === 'active' ? 'Full Term Active · Paid' : 'Free Trial Mode'}
+              {school.subscription_status === 'active' ? 'Active' : 'Free trial'}
             </div>
             <p className="text-xs text-blue-100 mt-1">
               {school.subscription_status === 'active' ? (
-                'Unlimited AI examination paper and marking scheme generation active for this academic term.'
+                'Unlimited access.'
               ) : (
                 <>
                   <span className="font-bold text-white">
                     {Math.max(0, 4 - school.ai_exams_used)} of 4
                   </span>{' '}
-                  free AI exams remaining. (5th attempt requires payment of ₦11,000).
+                  trials remaining.
                 </>
               )}
             </p>
 
-            {/* Quick test control for user / testing */}
-            <div className="mt-3 flex items-center gap-2 text-[11px]">
-              <span className="text-blue-200 font-medium">Trial Simulator:</span>
-              <button
-                type="button"
-                onClick={() => {
-                  db.setSchoolTrialUsage(school.id, 4);
-                  refreshSchool();
-                }}
-                className="px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white font-medium transition-colors"
-                title="Fast-forward to 4/4 used so the 5th generation triggers Paystack"
-              >
-                Set to 4/4 Used (Test 5th Attempt)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  db.setSchoolTrialUsage(school.id, 0);
-                  refreshSchool();
-                }}
-                className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-blue-200 font-medium transition-colors"
-                title="Reset usage counter back to 0"
-              >
-                Reset to 0/4
-              </button>
-            </div>
           </div>
 
           <button
@@ -190,7 +173,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
                 : 'bg-white text-blue-900 hover:bg-blue-50'
             }`}
           >
-            {school.subscription_status === 'active' ? 'Manage Term Subscription' : 'Upgrade for ₦11,000'}
+            {school.subscription_status === 'active' ? 'Manage plan' : 'Upgrade · ₦11,000'}
           </button>
         </div>
       )}

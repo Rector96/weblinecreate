@@ -8,14 +8,14 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentRoute, navigate }) => {
   return (
-    <nav className="md:hidden fixed bottom-3 left-4 right-4 z-40">
-      <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-lg shadow-blue-950/5 rounded-2xl px-2 py-1.5 flex items-center justify-around">
+    <nav className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-40 px-3 pb-safe pt-2">
+      <div className="bg-white/90 backdrop-blur-2xl border border-slate-200/80 shadow-[0_-6px_30px_rgba(15,23,42,0.06)] rounded-[1.4rem] px-1.5 py-1.5 flex items-center justify-around max-w-xl mx-auto">
         {/* 1. Dashboard */}
         <button
           onClick={() => navigate('dashboard')}
-          className={`flex flex-col items-center justify-center min-w-[52px] min-h-[48px] py-1 rounded-xl transition-all ${
+          className={`flex flex-col items-center justify-center min-w-[52px] min-h-[48px] px-2 py-1 rounded-xl transition-all duration-200 ${
             currentRoute === 'dashboard'
-              ? 'text-blue-600 font-bold'
+              ? 'bg-blue-50 text-blue-700 font-bold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -28,7 +28,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentRoute, navigate }) 
           onClick={() => navigate('exams')}
           className={`flex flex-col items-center justify-center min-w-[52px] min-h-[48px] py-1 rounded-xl transition-all ${
             currentRoute === 'exams'
-              ? 'text-blue-600 font-bold'
+              ? 'bg-blue-50 text-blue-700 font-bold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -41,10 +41,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentRoute, navigate }) 
           onClick={() => navigate('create-exam')}
           className="flex flex-col items-center justify-center -mt-5 min-w-[52px] group"
         >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-600/30 group-active:scale-95 transition-transform duration-150">
+          <div className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center shadow-md transition-transform duration-150 group-active:scale-95 ${currentRoute === 'create-exam' ? 'bg-slate-900 shadow-slate-900/20' : 'bg-gradient-to-tr from-blue-700 to-blue-500 shadow-blue-600/30'}`}>
             <Plus className="w-6 h-6 stroke-[2.5]" />
           </div>
-          <span className="text-[10px] font-bold text-blue-600 tracking-tight mt-1">Create</span>
+          <span className={`text-[10px] font-bold tracking-tight mt-1 ${currentRoute === 'create-exam' ? 'text-slate-900' : 'text-blue-600'}`}>Create</span>
         </button>
 
         {/* 4. Classes */}
@@ -52,7 +52,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentRoute, navigate }) 
           onClick={() => navigate('classes')}
           className={`flex flex-col items-center justify-center min-w-[52px] min-h-[48px] py-1 rounded-xl transition-all ${
             currentRoute === 'classes'
-              ? 'text-blue-600 font-bold'
+              ? 'bg-blue-50 text-blue-700 font-bold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -65,7 +65,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentRoute, navigate }) 
           onClick={() => navigate('profile')}
           className={`flex flex-col items-center justify-center min-w-[52px] min-h-[48px] py-1 rounded-xl transition-all ${
             currentRoute === 'profile'
-              ? 'text-blue-600 font-bold'
+              ? 'bg-blue-50 text-blue-700 font-bold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
