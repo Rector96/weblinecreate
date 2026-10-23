@@ -361,7 +361,7 @@ export default async (req: Request) => {
       const schools = await supabaseAdminRequest(`schools?id=eq.${encodeURIComponent(invitations[0].school_id)}&select=id,name,logo_url,motto,address,institution_type,subscription_status,subscription_expires_at&limit=1`) as Array<{ id: string; name: string; logo_url?: string; motto?: string; address?: string; institution_type?: string; subscription_status?: string; subscription_expires_at?: string | null }>;
       const school = schools[0];
       if (!school?.name) return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 404, { 'Cache-Control': 'no-store' });
-      const classes = await supabaseAdminRequest(`school_classes?school_id=eq.${encodeURIComponent(school.id)}&select=name,level,display_order&order=display_order.asc`) as Array<{ name: string; level: string; display_order: number }>;
+      const classes = await supabaseAdminRequest(`school_classes?school_id=eq.${encodeURIComponent(school.id)}&select=id,name,level,display_order&order=display_order.asc`) as Array<{ id: string; name: string; level: string; display_order: number }>;
       const subjects = await supabaseAdminRequest(`school_subjects?school_id=eq.${encodeURIComponent(school.id)}&is_active=eq.true&select=name&order=name.asc`) as Array<{ name: string }>;
       return jsonResponse({
         success: true,
@@ -373,7 +373,7 @@ export default async (req: Request) => {
           subscription_expires_at: school.subscription_expires_at || undefined,
           ai_exams_used: 0, manual_exams_used: 0, max_trial_ai_exams: 4, max_trial_manual_exams: 5,
           admin_name: '', email: '', phone: '', state: '', lga: '', created_at: new Date().toISOString(),
-          classes: classes.map((item) => ({ name: item.name, level: item.level, display_order: item.display_order })),
+          classes: classes.map((item) => ({ id: item.id, name: item.name, level: item.level, display_order: item.display_order })),
           subjects: subjects.map((item) => item.name)
         }
       }, 200, { 'Cache-Control': 'no-store' });
@@ -430,6 +430,17 @@ export default async (req: Request) => {
       }
       if (typeof body.exam.school_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.exam.school_id)) {
         return jsonResponse({ success: false, error: 'A valid school account is required.' }, 400);
+      }
+      // Resolve the share token to its issuing school before accepting the exam payload.
+      const inviteRows = await supabaseAdminRequest(
+        'school_invitations?token=eq.' + encodeURIComponent(token) + '&role=eq.teacher&is_active=eq.true&select=school_id,expires_at&limit=1'
+      ) as Array<{ school_id: string; expires_at: string | null }>;
+      const invite = inviteRows[0];
+      if (!invite?.school_id || (invite.expires_at && new Date(invite.expires_at).getTime() <= Date.now())) {
+        return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 403);
+      }
+      if (invite.school_id !== body.exam.school_id) {
+        return jsonResponse({ success: false, error: 'This exam must be published to the school that issued this link.' }, 403);
       }
       const schoolControlRows = await supabaseAdminRequest(
         'schools?id=eq.' + encodeURIComponent(body.exam.school_id) + '&select=account_status,generation_enabled&limit=1'
@@ -531,6 +542,7 @@ REQUIREMENTS:
 2. Generate EXACTLY ${safeTheoryCount} Section B Essay/Theory questions.
    - Each theory question should reflect clear, curriculum-aligned examination style (with sub-parts like (a), (b) if applicable).
    - Allocate marks (e.g. 10 to 15 marks per question).
+   - Keep question_text limited to the question prompt only. Put answers exclusively in the separate marking-scheme fields.
    - Provide a thorough model_answer showing step-by-step solutions or detailed essay points.
    - Provide an exact score_breakdown (e.g. "Step 1 formula: 2 mks, Substitution: 3 mks, Correct unit: 1 mk").
    - max_score: total marks for this question.
@@ -724,7 +736,7 @@ You are an experienced Nigerian secondary-school examination setter. Generate EX
 - Exam instructions: ${instructions || 'Use clear, age-appropriate Nigerian secondary-school examination language.'}
 - Starting Question Number: ${start_number}
 
-Do not repeat questions already likely to appear in this section. Make each question complete and self-contained. For objectives, provide four plausible options and exactly one correct option. For theory, provide a complete model answer and a clear marking breakdown.
+Do not repeat questions already likely to appear in this section. Make each question complete and self-contained. For objectives, provide four plausible options and exactly one correct option. For theory, keep question_text as the question only; provide the answer and marking breakdown separately for the confidential marking scheme.
 
 Respond strictly with a JSON object:
 {

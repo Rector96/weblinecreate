@@ -75,7 +75,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [term, setTerm] = useState<ExamTerm>('First Term');
   const [session, setSession] = useState('2025/2026');
   const [durationMinutes, setDurationMinutes] = useState(90);
-  const [instructions, setInstructions] = useState(DEFAULT_WAEC_INSTRUCTIONS);
+  const [instructions, setInstructions] = useState(DEFAULT_EXAM_INSTRUCTIONS);
   const [totalMarks, setTotalMarks] = useState(100);
 
   // Step 3b: AI Generator Configuration
@@ -86,7 +86,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [generationStage, setGenerationStage] = useState<'working' | 'finishing' | null>(null);
   const [motivationIndex, setMotivationIndex] = useState(0);
-  const [schoolClasses, setSchoolClasses] = useState<Array<{ name: string; level?: string }>>([]);
+  const [schoolClasses, setSchoolClasses] = useState<Array<{ id?: string; name: string; level?: string }>>([]);
   const [schoolSubjects, setSchoolSubjects] = useState<string[]>([]);
   const [curriculumLoaded, setCurriculumLoaded] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -177,11 +177,11 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     let cancelled = false;
     const loadCurriculum = async () => {
       const [classResult, subjectResult] = await Promise.all([
-        supabase.from('school_classes').select('name, level').eq('school_id', school.id).order('display_order', { ascending: true }),
+        supabase.from('school_classes').select('id, name, level').eq('school_id', school.id).order('display_order', { ascending: true }),
         supabase.from('school_subjects').select('name').eq('school_id', school.id).eq('is_active', true).order('name', { ascending: true }),
       ]);
       if (cancelled) return;
-      const classes = (classResult.data || []).map((item) => ({ name: item.name, level: item.level }));
+      const classes = (classResult.data || []).map((item) => ({ id: item.id, name: item.name, level: item.level }));
       const subjects = (subjectResult.data || []).map((item) => item.name);
       const nextClasses = classes.length ? classes : STANDARD_NIGERIAN_CLASSES.map((item) => ({ name: item.name, level: item.level }));
       const nextSubjects = subjects.length ? subjects : ALL_NIGERIAN_SUBJECTS;
@@ -641,8 +641,11 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       const sectionAMarks = questions.filter((q) => q.section === 'A').reduce((acc, q) => acc + q.marks, 0);
       const sectionBMarks = questions.filter((q) => q.section === 'B').reduce((acc, q) => acc + q.marks, 0);
 
+      const selectedClassId = schoolClasses.find((item) => item.name.toLowerCase() === className.toLowerCase())?.id
+        || school.classes?.find((item) => item.name.toLowerCase() === className.toLowerCase())?.id;
       const examPayload = {
         school_id: school.id,
+        class_id: selectedClassId,
         created_by: user?.id || '',
         created_by_name: user?.full_name || 'Teacher',
         exam_code: examCode,
@@ -1484,7 +1487,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 Review your paper
               </h3>
               <p className="text-xs text-slate-500">
-                Tap a question to edit it. Check the answers and marking guide before publishing.
+                Review the full questions and options below. Edit or regenerate any item before publishing; answers stay in the separate marking scheme.
               </p>
             </div>
 
@@ -1702,19 +1705,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                         </div>
                       </div>
 
-                      {/* Model Answer Preview */}
-                      {q.theory_data && (
-                        <div className="pl-4 text-[10px] text-slate-500 font-sans bg-slate-50/70 p-2 rounded-lg border border-slate-200/60 space-y-0.5">
-                          <p>
-                            <strong className="text-blue-900">Model Answer: </strong>
-                            <span>{q.theory_data.model_answer}</span>
-                          </p>
-                          <p>
-                            <strong className="text-emerald-800">Scoring Rubric: </strong>
-                            <span>{q.theory_data.score_breakdown}</span>
-                          </p>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>

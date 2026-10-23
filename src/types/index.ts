@@ -22,7 +22,7 @@ export interface School {
   max_trial_manual_exams: number;
   created_at: string;
   // Available only on a validated passwordless school-invite response.
-  classes?: Array<{ name: string; level?: string; display_order?: number }>;
+  classes?: Array<{ id?: string; name: string; level?: string; display_order?: number }>;
   subjects?: string[];
 }
 
