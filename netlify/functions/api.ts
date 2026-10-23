@@ -59,6 +59,44 @@ async function getAuthenticatedUser(req: Request) {
   return await response.json() as { id: string; email?: string };
 }
 
+
+const aiRequestWindows = new Map<string, number[]>();
+
+async function authorizeAiRequest(req: Request, schoolId: unknown) {
+  const user = await getAuthenticatedUser(req);
+  if (!user?.id) return { ok: false as const, response: jsonResponse({ success: false, error: 'Please sign in before using AI question generation.' }, 401) };
+  if (typeof schoolId !== 'string' || !/^[0-9a-f-]{36}$/i.test(schoolId)) {
+    return { ok: false as const, response: jsonResponse({ success: false, error: 'A valid school account is required.' }, 400) };
+  }
+  const userId = encodeURIComponent(user.id);
+  const [profiles, roles] = await Promise.all([
+    supabaseAdminRequest(`profiles?user_id=eq.${userId}&select=user_id,school_id`),
+    supabaseAdminRequest(`user_roles?user_id=eq.${userId}&select=role,school_id`),
+  ]) as [Array<{ user_id: string; school_id: string | null }>, Array<{ role: string; school_id: string | null }>];
+  const isPlatformAdmin = roles.some((row) => row.role === 'platform_admin');
+  const isMember = profiles.some((row) => row.school_id === schoolId) ||
+    roles.some((row) => row.school_id === schoolId && ['school_admin', 'teacher'].includes(row.role));
+  if (!isPlatformAdmin && !isMember) {
+    return { ok: false as const, response: jsonResponse({ success: false, error: 'You are not authorized to use AI for this school.' }, 403) };
+  }
+  const now = Date.now();
+  const recent = (aiRequestWindows.get(user.id) || []).filter((stamp) => now - stamp < 60_000);
+  if (recent.length >= 5) {
+    return { ok: false as const, response: jsonResponse({ success: false, error: 'AI request limit reached. Wait one minute and try again.' }, 429) };
+  }
+  recent.push(now);
+  aiRequestWindows.set(user.id, recent);
+  return { ok: true as const, userId: user.id };
+}
+
+function validAiInputs(body: any) {
+  const fields = ['subject', 'class_name', 'term', 'topics', 'difficulty', 'instructions'];
+  for (const key of fields) {
+    if (body[key] !== undefined && (typeof body[key] !== 'string' || body[key].length > (key === 'instructions' || key === 'topics' ? 3000 : 120))) return false;
+  }
+  return true;
+}
+
 async function initializePaystackPayment(req: Request) {
   if (!PAYSTACK_SECRET_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return jsonResponse({ error: 'Secure payments are not configured. No payment has been taken.' }, 503);
@@ -238,7 +276,10 @@ export default async (req: Request) => {
   // 1. GENERATE FULL EXAM QUESTIONS
   if (pathname.endsWith('/generate-questions') && req.method === 'POST') {
     try {
-      const body = await req.json();
+      const body = await req.json() as any;
+      if (!validAiInputs(body)) return jsonResponse({ success: false, error: 'Invalid or oversized AI request fields.' }, 400);
+      const authorization = await authorizeAiRequest(req, body.school_id || req.headers.get('x-school-id'));
+      if (!authorization.ok) return authorization.response;
       const {
         subject = 'General Mathematics',
         class_name = 'SSS 3',
@@ -341,7 +382,10 @@ You MUST respond strictly with a valid JSON object matching this schema:
   // 2. REGENERATE SINGLE QUESTION
   if (pathname.endsWith('/regenerate-single-question') && req.method === 'POST') {
     try {
-      const body = await req.json();
+      const body = await req.json() as any;
+      if (!validAiInputs(body)) return jsonResponse({ success: false, error: 'Invalid or oversized AI request fields.' }, 400);
+      const authorization = await authorizeAiRequest(req, body.school_id || req.headers.get('x-school-id'));
+      if (!authorization.ok) return authorization.response;
       const { subject, class_name, section = 'A', question_number = 1, topics = '' } = body;
       const isObjective = section === 'A';
 
@@ -410,7 +454,10 @@ Return STRICT JSON ONLY.`;
   // 3. GENERATE MORE QUESTIONS
   if (pathname.endsWith('/generate-more-questions') && req.method === 'POST') {
     try {
-      const body = await req.json();
+      const body = await req.json() as any;
+      if (!validAiInputs(body)) return jsonResponse({ success: false, error: 'Invalid or oversized AI request fields.' }, 400);
+      const authorization = await authorizeAiRequest(req, body.school_id || req.headers.get('x-school-id'));
+      if (!authorization.ok) return authorization.response;
       const { subject, class_name, section = 'A', count = 5, start_number = 1, topics = '' } = body;
       const safeCount = Math.min(Math.max(Number(count) || 5, 1), 20);
       const isObjective = section === 'A';
