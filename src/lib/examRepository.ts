@@ -277,6 +277,9 @@ export async function publishExamWithQuota(
   });
   if (error) {
     console.error('Atomic exam publication failed', error);
+    if (error.message?.toLowerCase().includes('already has an exam for this subject')) {
+      throw new Error(error.message);
+    }
     throw new Error('Could not publish the exam securely. Please check your connection and try again.');
   }
 
