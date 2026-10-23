@@ -12,7 +12,9 @@ import {
   Building,
   ArrowRight,
   AlertCircle,
-  Loader2
+  Loader2,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface AuthPageProps {
@@ -27,6 +29,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   // Register form state
   const [schoolName, setSchoolName] = useState('');
@@ -37,6 +40,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
   const [regLga, setRegLga] = useState('Lagos Island');
   const [institutionType, setInstitutionType] = useState<InstitutionType>('Secondary');
   const [regPassword, setRegPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
 
 
   // UI state
@@ -187,13 +191,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
-                  type="password"
+                  type={showLoginPassword ? 'text' : 'password'}
                   required
                   placeholder="Enter your password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+                  className="w-full pl-10 pr-10 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword((visible) => !visible)}
+                  className="absolute right-3 top-2.5 rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                  aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                  title={showLoginPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
@@ -338,14 +351,25 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Create Password *
                 </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
-                />
+                <div className="relative">
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    required
+                    placeholder="••••••••"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    className="w-full px-3 pr-10 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword((visible) => !visible)}
+                    className="absolute right-3 top-1.5 rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                    aria-label={showRegPassword ? 'Hide password' : 'Show password'}
+                    title={showRegPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showRegPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 
