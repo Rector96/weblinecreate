@@ -3,22 +3,23 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-type BoundaryState = { hasError: boolean };
+type BoundaryState = { hasError: boolean; errorMessage: string };
 
 class AppErrorBoundary extends React.Component<React.PropsWithChildren, BoundaryState> {
-  state: BoundaryState = { hasError: false };
+  state: BoundaryState = { hasError: false, errorMessage: '' };
 
-  static getDerivedStateFromError(): BoundaryState {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown): BoundaryState {
+    return {
+      hasError: true,
+      errorMessage: error instanceof Error ? error.message : String(error || 'Unknown rendering error'),
+    };
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // Keep diagnostics available without exposing technical details to users.
     console.error('[ROCKCRAFT] Application render failed:', error, info.componentStack);
   }
 
   private recover = () => {
-    // A full reload also refreshes cached application assets.
     window.location.reload();
   };
 
@@ -26,10 +27,14 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, Boundary
     if (this.state.hasError) {
       return (
         <main style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24, background: '#f4f7fc', fontFamily: 'system-ui, sans-serif' }}>
-          <section role="alert" style={{ width: '100%', maxWidth: 420, padding: 28, borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 12px 36px rgba(15,23,42,.08)', textAlign: 'center', boxSizing: 'border-box' }}>
+          <section role="alert" style={{ width: '100%', maxWidth: 460, padding: 28, borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 12px 36px rgba(15,23,42,.08)', textAlign: 'center', boxSizing: 'border-box' }}>
             <h1 style={{ margin: 0, color: '#0f172a', fontSize: 28, fontWeight: 900 }}>ROCKCRAFT</h1>
             <h2 style={{ margin: '22px 0 8px', color: '#0f172a', fontSize: 18 }}>The page could not load</h2>
-            <p style={{ margin: '0 0 22px', color: '#475569', lineHeight: 1.6 }}>Your work has not been intentionally deleted. Reload the page to try again. If this keeps happening, check your internet connection and contact support.</p>
+            <p style={{ margin: '0 0 18px', color: '#475569', lineHeight: 1.6 }}>Your work has not been intentionally deleted. We have recorded a technical error to help diagnose this problem.</p>
+            <div style={{ margin: '0 0 20px', padding: 12, borderRadius: 12, background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', textAlign: 'left', overflowWrap: 'anywhere', fontSize: 13 }}>
+              <strong>Error details:</strong>
+              <p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{this.state.errorMessage || 'No error message was provided.'}</p>
+            </div>
             <button onClick={this.recover} style={{ width: '100%', minHeight: 48, border: 0, borderRadius: 12, background: '#1d4ed8', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Reload ROCKCRAFT</button>
           </section>
         </main>
