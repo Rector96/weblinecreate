@@ -87,6 +87,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [motivationIndex, setMotivationIndex] = useState(0);
   const [schoolClasses, setSchoolClasses] = useState<Array<{ name: string; level?: string }>>([]);
   const [schoolSubjects, setSchoolSubjects] = useState<string[]>([]);
+  const [curriculumLoaded, setCurriculumLoaded] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
   // Dynamic regeneration and adding states
@@ -149,6 +150,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       const subjects = guestSchool.subjects || [];
       setSchoolClasses(classes.length ? classes : STANDARD_NIGERIAN_CLASSES.map((item) => ({ name: item.name, level: item.level })));
       setSchoolSubjects(subjects.length ? subjects : ALL_NIGERIAN_SUBJECTS);
+      setCurriculumLoaded(true);
       if (classes.length && !classes.some((item) => item.name === className)) setClassName(classes[0].name);
       if (subjects.length && !subjects.includes(subject)) setSubject(subjects[0]);
       return;
@@ -156,6 +158,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     if (!school?.id || !isSupabaseConfigured()) {
       setSchoolClasses(STANDARD_NIGERIAN_CLASSES.map((item) => ({ name: item.name, level: item.level })));
       setSchoolSubjects(ALL_NIGERIAN_SUBJECTS);
+      setCurriculumLoaded(true);
       return;
     }
     let cancelled = false;
@@ -171,6 +174,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       const nextSubjects = subjects.length ? subjects : ALL_NIGERIAN_SUBJECTS;
       setSchoolClasses(nextClasses);
       setSchoolSubjects(nextSubjects);
+      setCurriculumLoaded(true);
       if (!nextClasses.some((item) => item.name === className)) setClassName(nextClasses[0]?.name || '');
       if (!nextSubjects.includes(subject)) setSubject(nextSubjects[0] || '');
     };
@@ -201,6 +205,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
   // Step 1 Validation
   const handleStep1Next = async () => {
+    if (!curriculumLoaded) { setStepError('Loading your school classes and subjects. Please wait a moment.'); return; }
     if (!title.trim() || !subject.trim() || !className.trim() || !instructions.trim()) {
       setStepError('Complete the required exam details before continuing.'); return;
     }
