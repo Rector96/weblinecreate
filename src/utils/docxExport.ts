@@ -12,14 +12,31 @@ import {
   Header,
   Footer,
   PageNumber,
+  ImageRun,
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { Exam, School } from '../types';
 
 const FONT_NAME = 'Times New Roman';
 
+async function getSchoolLogoRun(school?: School | null): Promise<ImageRun | null> {
+  if (!school?.logo_url) return null;
+  try {
+    const response = await fetch(school.logo_url);
+    if (!response.ok) return null;
+    const contentType = response.headers.get('content-type') || '';
+    const type = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : contentType.includes('gif') ? 'gif' : contentType.includes('bmp') ? 'bmp' : 'png';
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (!bytes.length) return null;
+    return new ImageRun({ data: bytes, type, transformation: { width: 68, height: 68 } });
+  } catch (error) {
+    console.warn('[ROCKCRAFT] Could not embed school logo in DOCX export:', error);
+    return null;
+  }
+}
+
 export async function exportExamToDocx(exam: Exam, school?: School | null): Promise<void> {
-  const schoolName = (school?.name || 'EXAMCRAFT SECONDARY SCHOOL').toUpperCase();
+  const schoolName = (school?.name || 'SCHOOL NAME').toUpperCase();
   const motto = school?.motto ? `"${school.motto}"` : '';
   const address = school?.address || `${school?.lga || 'Ikeja'}, ${school?.state || 'Lagos'} State, Nigeria`;
 
@@ -27,6 +44,8 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
   const sectionBQuestions = (exam.questions || []).filter((q) => q.section === 'B');
 
   const docChildren: any[] = [];
+  const schoolLogoRun = await getSchoolLogoRun(school);
+  if (schoolLogoRun) docChildren.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [schoolLogoRun] }));
 
   // ==========================================
   // 1. OFFICIAL WAEC / JAMB SCHOOL HEADER
@@ -153,16 +172,6 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
 
   docChildren.push(metaTable);
 
-  // Candidate Name line
-  docChildren.push(
-    new Paragraph({
-      spacing: { before: 140, after: 120 },
-      children: [
-        new TextRun({ text: 'CANDIDATE NAME: _________________________________________  ', font: FONT_NAME, size: 22, bold: true }),
-        new TextRun({ text: 'CLASS/ARM: ____________', font: FONT_NAME, size: 22, bold: true }),
-      ],
-    })
-  );
 
   // General Instructions
   docChildren.push(
