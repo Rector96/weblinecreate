@@ -65,6 +65,7 @@ REQUIREMENTS:
 2. Generate EXACTLY ${safeTheoryCount} Section B Essay/Theory questions.
    - Each theory question should reflect clear, curriculum-aligned examination style (with sub-parts like (a), (b) if applicable).
    - Allocate marks (e.g. 10 to 15 marks per question).
+   - Keep question_text limited to the question prompt only. Put answers exclusively in the separate marking-scheme fields.
    - Provide a thorough model_answer showing step-by-step solutions or detailed essay points.
    - Provide an exact score_breakdown (e.g. "Step 1 formula: 2 mks, Substitution: 3 mks, Correct unit: 1 mk").
    - max_score: total marks for this question.
