@@ -494,7 +494,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     setIsSubmitting(true);
 
     try {
-      if (!isSupabaseConfigured()) {
+      if (!isGuestTeacher && !isSupabaseConfigured()) {
         throw new Error('Secure publishing is unavailable because Supabase is not configured.');
       }
 
