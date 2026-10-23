@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth, PLATFORM_ADMIN_EMAIL } from '../../lib/auth';
+import { useAuth } from '../../lib/auth';
 import { db, dbEvents } from '../../lib/db';
 import { School, PaymentTransaction } from '../../types';
 import {
@@ -41,7 +41,7 @@ export const PlatformAdminPage: React.FC = () => {
         <ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" />
         <h3 className="text-base font-bold text-slate-900">Restricted Platform Access</h3>
         <p className="text-xs text-slate-500 mt-1">
-          This console is strictly reserved for the ROCKCRAF platform administrator ({PLATFORM_ADMIN_EMAIL}).
+          This console is strictly reserved for authorized ROCKCRAF platform administrators.
         </p>
       </div>
     );
