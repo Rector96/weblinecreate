@@ -81,8 +81,8 @@ export const ClassesPage: React.FC = () => {
           onSubmit={handleAddClass}
           className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs space-y-4"
         >
-          <div className="flex items-center gap-2 text-xs font-bold text-purple-900">
-            <GraduationCap className="w-4 h-4 text-purple-700" />
+          <div className="flex items-center gap-2 text-xs font-bold text-blue-900">
+            <GraduationCap className="w-4 h-4 text-blue-600" />
             <span>Add Class / Normalization Engine</span>
           </div>
 
@@ -97,7 +97,7 @@ export const ClassesPage: React.FC = () => {
                 placeholder="e.g. ss2 or jss 1"
                 value={newClassName}
                 onChange={(e) => setNewClassName(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none"
+                className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
               />
             </div>
 
@@ -124,14 +124,14 @@ export const ClassesPage: React.FC = () => {
                 placeholder="e.g. Gold, Silver, Diamond"
                 value={armsInput}
                 onChange={(e) => setArmsInput(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none"
+                className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
               />
             </div>
           </div>
 
           <button
             type="submit"
-            className="py-2.5 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs transition-colors"
+            className="py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-800 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Add Class</span>
@@ -149,7 +149,7 @@ export const ClassesPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h4 className="text-base font-bold text-slate-900">{cls.name}</h4>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-600">
                   {cls.level}
                 </span>
               </div>

@@ -71,7 +71,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({ isOpen, onClose })
             <h3 className="text-xl font-bold text-slate-900">Payment Successful!</h3>
             <p className="text-sm text-slate-600 mt-2">
               <strong className="text-slate-800">{school.name}</strong> is now subscribed for the{' '}
-              <strong className="text-purple-700">{term} ({session})</strong>.
+              <strong className="text-blue-600">{term} ({session})</strong>.
             </p>
             <div className="my-5 p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs text-left space-y-1 font-mono">
               <div className="flex justify-between">
@@ -80,7 +80,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({ isOpen, onClose })
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Reference:</span>
-                <span className="text-purple-700">{successReceipt}</span>
+                <span className="text-blue-600">{successReceipt}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Status:</span>
@@ -92,7 +92,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({ isOpen, onClose })
                 setSuccessReceipt(null);
                 onClose();
               }}
-              className="w-full py-3 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white font-semibold text-sm transition-all"
+              className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-800 text-white font-semibold text-sm transition-all"
             >
               Continue to Dashboard
             </button>
@@ -100,7 +100,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({ isOpen, onClose })
         ) : (
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
                 <CreditCard className="w-5 h-5" />
               </div>
               <div>
@@ -110,21 +110,21 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({ isOpen, onClose })
             </div>
 
             {/* Trial Usage Summary Card */}
-            <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-100 mb-5">
-              <div className="flex justify-between items-center text-xs font-semibold text-purple-950 mb-2">
+            <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-100 mb-5">
+              <div className="flex justify-between items-center text-xs font-semibold text-blue-950 mb-2">
                 <span>Current Trial Consumption</span>
-                <span className="uppercase text-[10px] tracking-wider font-bold px-2 py-0.5 rounded-full bg-purple-200 text-purple-900">
+                <span className="uppercase text-[10px] tracking-wider font-bold px-2 py-0.5 rounded-full bg-blue-200 text-blue-900">
                   {school.subscription_status}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-2.5 bg-white rounded-xl border border-purple-100">
+                <div className="p-2.5 bg-white rounded-xl border border-blue-100">
                   <span className="block text-slate-500 text-[11px]">AI Generated Exams</span>
                   <span className="text-sm font-bold text-slate-900 tabular-nums">
                     {school.ai_exams_used} / {school.max_trial_ai_exams} used
                   </span>
                 </div>
-                <div className="p-2.5 bg-white rounded-xl border border-purple-100">
+                <div className="p-2.5 bg-white rounded-xl border border-blue-100">
                   <span className="block text-slate-500 text-[11px]">Manual Exams</span>
                   <span className="text-sm font-bold text-slate-900 tabular-nums">
                     {school.manual_exams_used} / {school.max_trial_manual_exams} used
@@ -172,7 +172,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({ isOpen, onClose })
                 <select
                   value={term}
                   onChange={(e) => setTerm(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 >
                   <option value="First Term">First Term</option>
                   <option value="Second Term">Second Term</option>
@@ -184,7 +184,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({ isOpen, onClose })
                 <select
                   value={session}
                   onChange={(e) => setSession(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 >
                   <option value="2025/2026">2025/2026</option>
                   <option value="2026/2027">2026/2027</option>
@@ -195,7 +195,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({ isOpen, onClose })
             <button
               onClick={handlePay}
               disabled={isProcessing}
-              className="w-full py-3 rounded-2xl bg-purple-700 hover:bg-purple-800 disabled:opacity-70 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-md shadow-purple-700/25 transition-all"
+              className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-800 disabled:opacity-70 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-600/25 transition-all"
             >
               {isProcessing ? (
                 <>

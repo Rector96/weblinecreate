@@ -68,7 +68,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({ onTranscript
       className={`p-1.5 rounded-lg transition-colors border ${
         isListening
           ? 'bg-rose-50 text-rose-600 border-rose-300 ring-2 ring-rose-400/30 animate-pulse'
-          : 'bg-white text-slate-500 hover:text-purple-700 hover:bg-purple-50 border-slate-200/80'
+          : 'bg-white text-slate-500 hover:text-blue-600 hover:bg-blue-50 border-slate-200/80'
       }`}
       title={isListening ? 'Listening... Speak question' : 'Voice-to-text dictation'}
     >

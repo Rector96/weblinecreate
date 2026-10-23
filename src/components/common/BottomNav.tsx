@@ -9,13 +9,13 @@ interface BottomNavProps {
 export const BottomNav: React.FC<BottomNavProps> = ({ currentRoute, navigate }) => {
   return (
     <nav className="md:hidden fixed bottom-3 left-4 right-4 z-40">
-      <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-lg shadow-purple-950/5 rounded-2xl px-2 py-1.5 flex items-center justify-around">
+      <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-lg shadow-blue-950/5 rounded-2xl px-2 py-1.5 flex items-center justify-around">
         {/* 1. Dashboard */}
         <button
           onClick={() => navigate('dashboard')}
           className={`flex flex-col items-center justify-center min-w-[52px] min-h-[48px] py-1 rounded-xl transition-all ${
             currentRoute === 'dashboard'
-              ? 'text-purple-700 font-bold'
+              ? 'text-blue-600 font-bold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -28,7 +28,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentRoute, navigate }) 
           onClick={() => navigate('exams')}
           className={`flex flex-col items-center justify-center min-w-[52px] min-h-[48px] py-1 rounded-xl transition-all ${
             currentRoute === 'exams'
-              ? 'text-purple-700 font-bold'
+              ? 'text-blue-600 font-bold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -41,10 +41,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentRoute, navigate }) 
           onClick={() => navigate('create-exam')}
           className="flex flex-col items-center justify-center -mt-5 min-w-[52px] group"
         >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-700 to-violet-500 text-white flex items-center justify-center shadow-md shadow-purple-600/30 group-active:scale-95 transition-transform duration-150">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-600/30 group-active:scale-95 transition-transform duration-150">
             <Plus className="w-6 h-6 stroke-[2.5]" />
           </div>
-          <span className="text-[10px] font-bold text-purple-700 tracking-tight mt-1">Create</span>
+          <span className="text-[10px] font-bold text-blue-600 tracking-tight mt-1">Create</span>
         </button>
 
         {/* 4. Classes */}
@@ -52,7 +52,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentRoute, navigate }) 
           onClick={() => navigate('classes')}
           className={`flex flex-col items-center justify-center min-w-[52px] min-h-[48px] py-1 rounded-xl transition-all ${
             currentRoute === 'classes'
-              ? 'text-purple-700 font-bold'
+              ? 'text-blue-600 font-bold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -65,7 +65,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentRoute, navigate }) 
           onClick={() => navigate('profile')}
           className={`flex flex-col items-center justify-center min-w-[52px] min-h-[48px] py-1 rounded-xl transition-all ${
             currentRoute === 'profile'
-              ? 'text-purple-700 font-bold'
+              ? 'text-blue-600 font-bold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >

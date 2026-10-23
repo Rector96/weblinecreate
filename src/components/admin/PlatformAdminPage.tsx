@@ -41,7 +41,7 @@ export const PlatformAdminPage: React.FC = () => {
         <ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" />
         <h3 className="text-base font-bold text-slate-900">Restricted Platform Access</h3>
         <p className="text-xs text-slate-500 mt-1">
-          This console is strictly reserved for the ExamCraft platform administrator ({PLATFORM_ADMIN_EMAIL}).
+          This console is strictly reserved for the ROCKCRAF platform administrator ({PLATFORM_ADMIN_EMAIL}).
         </p>
       </div>
     );
@@ -80,7 +80,7 @@ export const PlatformAdminPage: React.FC = () => {
     <div className="space-y-6 text-left max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 text-white p-6 rounded-3xl">
         <div>
-          <div className="flex items-center gap-2 text-xs text-purple-400 font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-xs text-blue-400 font-bold uppercase tracking-wider">
             <ShieldAlert className="w-4 h-4" />
             <span>Super Administrator Console</span>
           </div>
@@ -164,7 +164,7 @@ export const PlatformAdminPage: React.FC = () => {
                   <td className="py-3 px-3 text-right space-x-1.5 whitespace-nowrap">
                     <button
                       onClick={() => handleResetTrials(s.id)}
-                      className="p-1 text-slate-400 hover:text-purple-700 rounded-md"
+                      className="p-1 text-slate-400 hover:text-blue-600 rounded-md"
                       title="Reset trial counters"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />

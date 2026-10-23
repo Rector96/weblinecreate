@@ -53,7 +53,7 @@ function AppContent() {
   // If unauthenticated: only render auth screens (no public marketing landing)
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-[#f0f4f9]">
         <OfflineBanner />
         <AuthPage
           initialInviteToken={initialJoinToken}
@@ -68,7 +68,7 @@ function AppContent() {
   const isProfileIncomplete = !school?.id;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-[#f0f4f9] flex flex-col md:flex-row text-slate-900 font-sans antialiased">
       <OfflineBanner />
 
       {/* Desktop/Tablet Left Sidebar */}

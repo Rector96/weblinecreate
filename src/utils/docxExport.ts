@@ -430,7 +430,7 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
                     size: 18,
                   }),
                   new TextRun({
-                    text: '  •  ExamCraft Academic Engine',
+                    text: '  •  ROCKCRAF Academic Engine',
                     font: FONT_NAME,
                     size: 18,
                     color: '888888',

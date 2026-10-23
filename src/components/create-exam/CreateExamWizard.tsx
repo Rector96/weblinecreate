@@ -530,7 +530,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                     currentStep === item.step
-                      ? 'bg-purple-700 text-white shadow-sm ring-4 ring-purple-100'
+                      ? 'bg-blue-600 text-white shadow-sm ring-4 ring-blue-100'
                       : currentStep > item.step
                       ? 'bg-emerald-600 text-white'
                       : 'bg-slate-100 text-slate-400'
@@ -579,7 +579,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               <select
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               >
                 {ALL_NIGERIAN_SUBJECTS.map((sub) => (
                   <option key={sub} value={sub}>
@@ -594,7 +594,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               <select
                 value={className}
                 onChange={(e) => setClassName(e.target.value)}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               >
                 {STANDARD_NIGERIAN_CLASSES.map((cls) => (
                   <option key={cls.name} value={cls.name}>
@@ -611,7 +611,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               <select
                 value={term}
                 onChange={(e) => setTerm(e.target.value as ExamTerm)}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               >
                 {EXAM_TERMS.map((t) => (
                   <option key={t} value={t}>
@@ -626,7 +626,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               <select
                 value={session}
                 onChange={(e) => setSession(e.target.value)}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               >
                 {ACADEMIC_SESSIONS.map((ses) => (
                   <option key={ses} value={ses}>
@@ -644,7 +644,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 max={240}
                 value={durationMinutes}
                 onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               />
             </div>
           </div>
@@ -656,7 +656,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. First Term Mock Examination"
-              className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+              className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
             />
           </div>
 
@@ -666,14 +666,14 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               rows={3}
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+              className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
             />
           </div>
 
           <div className="pt-4 flex justify-end">
             <button
               onClick={handleStep1Next}
-              className="px-6 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-all"
+              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-800 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-all"
             >
               <span>Continue to Question Method</span>
               <ArrowRight className="w-4 h-4" />
@@ -697,21 +697,21 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div
               onClick={() => handleSelectMethod('ai')}
-              className="p-5 rounded-3xl border-2 border-purple-200 hover:border-purple-600 bg-gradient-to-br from-purple-50/50 to-white hover:shadow-md transition-all cursor-pointer text-left group"
+              className="p-5 rounded-3xl border-2 border-blue-200 hover:border-blue-600 bg-gradient-to-br from-blue-50/50 to-white hover:shadow-md transition-all cursor-pointer text-left group"
             >
-              <div className="w-12 h-12 rounded-2xl bg-purple-700 text-white flex items-center justify-center mb-4 shadow-sm shadow-purple-600/30 group-hover:scale-105 transition-transform">
+              <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center mb-4 shadow-sm shadow-blue-600/30 group-hover:scale-105 transition-transform">
                 <Sparkles className="w-6 h-6" />
               </div>
               <div className="flex items-center gap-2">
-                <h4 className="text-base font-bold text-purple-950">AI Question Generator</h4>
-                <span className="text-[10px] bg-purple-200 text-purple-900 font-bold px-2 py-0.5 rounded-full">
+                <h4 className="text-base font-bold text-blue-950">AI Question Generator</h4>
+                <span className="text-[10px] bg-blue-200 text-blue-900 font-bold px-2 py-0.5 rounded-full">
                   Recommended
                 </span>
               </div>
               <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
                 Generate authentic WAEC-standard multiple choice questions, essay problems, and confidential scoring rubrics in seconds from Nigerian curriculum topics.
               </p>
-              <div className="mt-4 text-xs font-bold text-purple-700 flex items-center gap-1">
+              <div className="mt-4 text-xs font-bold text-blue-600 flex items-center gap-1">
                 <span>Configure AI Generator</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </div>
@@ -756,12 +756,12 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             <div>
               <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 3: AI Generator Parameters</h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Specifying topics for <strong className="text-purple-700">{subject}</strong> ({className} · {term})
+                Specifying topics for <strong className="text-blue-600">{subject}</strong> ({className} · {term})
               </p>
             </div>
             <button
               onClick={() => setMethod('manual')}
-              className="text-xs font-semibold text-purple-700 hover:underline"
+              className="text-xs font-semibold text-blue-600 hover:underline"
             >
               Switch to Manual Input
             </button>
@@ -783,7 +783,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               value={aiTopics}
               onChange={(e) => setAiTopics(e.target.value)}
               placeholder="e.g. Quadratic Equations, Indices, Circle Theorems, Commercial Arithmetic"
-              className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+              className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
             />
           </div>
 
@@ -798,7 +798,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 max={50}
                 value={aiNumObj}
                 onChange={(e) => setAiNumObj(Number(e.target.value))}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               />
             </div>
 
@@ -812,7 +812,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 max={6}
                 value={aiNumTheory}
                 onChange={(e) => setAiNumTheory(Number(e.target.value))}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               />
             </div>
 
@@ -823,7 +823,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               <select
                 value={aiDifficulty}
                 onChange={(e) => setAiDifficulty(e.target.value as any)}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
               >
                 <option value="Standard WAEC/JAMB">Standard WAEC / JAMB</option>
                 <option value="Foundational / Basic">Foundational / Basic</option>
@@ -844,7 +844,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             <button
               onClick={handleGenerateAI}
               disabled={isGeneratingAI}
-              className="px-6 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-75 text-white font-semibold text-xs flex items-center gap-2 shadow-md shadow-purple-700/20 transition-all"
+              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-800 disabled:opacity-75 text-white font-semibold text-xs flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all"
             >
               {isGeneratingAI ? (
                 <>
@@ -892,7 +892,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               onClick={() => setActiveManualSection('A')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 activeManualSection === 'A'
-                  ? 'bg-purple-700 text-white shadow-xs'
+                  ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -903,7 +903,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               onClick={() => setActiveManualSection('B')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 activeManualSection === 'B'
-                  ? 'bg-purple-700 text-white shadow-xs'
+                  ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -919,7 +919,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-purple-900">
+                  <span className="text-xs font-bold text-blue-900">
                     Question {idx + 1} ({q.marks} Mark{q.marks > 1 ? 's' : ''})
                   </span>
                   <div className="flex items-center gap-1.5">
@@ -927,7 +927,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                       type="button"
                       onClick={() => handleRegenerateQuestion(q)}
                       disabled={regeneratingId === q.id}
-                      className="px-2 py-1 text-[11px] font-semibold text-purple-700 hover:bg-purple-100 rounded-lg flex items-center gap-1 border border-purple-200 bg-white"
+                      className="px-2 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-100 rounded-lg flex items-center gap-1 border border-blue-200 bg-white"
                       title="Regenerate this question with AI"
                     >
                       <RefreshCw className={`w-3 h-3 ${regeneratingId === q.id ? 'animate-spin' : ''}`} />
@@ -967,7 +967,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                     rows={2}
                     value={q.question_text}
                     onChange={(e) => handleUpdateQuestion(q.id, { question_text: e.target.value })}
-                    className="w-full text-xs rounded-xl border border-slate-300 p-2.5 bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                    className="w-full text-xs rounded-xl border border-slate-300 p-2.5 bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                   />
                 </div>
 
@@ -1066,7 +1066,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 onClick={() => handleAddQuestion(activeManualSection)}
-                className="py-2.5 px-3 rounded-2xl border-2 border-dashed border-purple-300 hover:border-purple-600 text-purple-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors bg-purple-50/40"
+                className="py-2.5 px-3 rounded-2xl border-2 border-dashed border-blue-300 hover:border-blue-600 text-blue-600 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors bg-blue-50/40"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Blank Question</span>
@@ -1075,9 +1075,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               <button
                 onClick={() => handleGenerateMoreQuestions(activeManualSection, activeManualSection === 'A' ? 5 : 2)}
                 disabled={isAddingMore}
-                className="py-2.5 px-3 rounded-2xl bg-purple-100 hover:bg-purple-200 text-purple-900 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                className="py-2.5 px-3 rounded-2xl bg-blue-100 hover:bg-blue-200 text-blue-900 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
               >
-                <Sparkles className="w-4 h-4 text-purple-700" />
+                <Sparkles className="w-4 h-4 text-blue-600" />
                 <span>
                   {isAddingMore
                     ? 'AI Adding Questions...'
@@ -1098,7 +1098,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
             <button
               onClick={() => setCurrentStep(4)}
-              className="px-6 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-all"
+              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-800 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-all"
             >
               <span>Live Paper Preview & Verification</span>
               <ArrowRight className="w-4 h-4" />
@@ -1116,7 +1116,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md uppercase tracking-wider">
                   Official WAEC/JAMB Preview
                 </span>
                 <span className="text-xs text-slate-400">·</span>
@@ -1140,7 +1140,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               <button
                 onClick={handleSubmitExam}
                 disabled={isSubmitting}
-                className="px-5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-75 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-purple-700/25 active:scale-95 transition-all"
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-800 disabled:opacity-75 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-600/25 active:scale-95 transition-all"
               >
                 {isSubmitting ? (
                   <>
@@ -1158,12 +1158,12 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           </div>
 
           {/* Quick AI Addition Toolbar: Add more objectives or theories */}
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50/40 to-slate-50 border border-purple-200/70 flex flex-wrap items-center justify-between gap-3">
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/40 to-slate-50 border border-blue-200/70 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-purple-700 text-white flex items-center justify-center text-xs font-bold">
+              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                 <Sparkles className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-purple-950">
+              <span className="text-xs font-bold text-blue-950">
                 Want to add more questions?
               </span>
             </div>
@@ -1173,27 +1173,27 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 type="button"
                 onClick={() => handleGenerateMoreQuestions('A', 5)}
                 disabled={isAddingMore}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-50 text-purple-900 font-semibold text-xs border border-purple-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-900 font-semibold text-xs border border-blue-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
               >
-                <Plus className="w-3.5 h-3.5 text-purple-700" />
+                <Plus className="w-3.5 h-3.5 text-blue-600" />
                 <span>+5 Objectives</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleGenerateMoreQuestions('A', 1)}
                 disabled={isAddingMore}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-50 text-purple-900 font-semibold text-xs border border-purple-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-900 font-semibold text-xs border border-blue-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
               >
-                <Plus className="w-3.5 h-3.5 text-purple-700" />
+                <Plus className="w-3.5 h-3.5 text-blue-600" />
                 <span>+1 Objective</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleGenerateMoreQuestions('B', 1)}
                 disabled={isAddingMore}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-50 text-purple-900 font-semibold text-xs border border-purple-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-900 font-semibold text-xs border border-blue-200 shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
               >
-                <Plus className="w-3.5 h-3.5 text-purple-700" />
+                <Plus className="w-3.5 h-3.5 text-blue-600" />
                 <span>+1 Theory Question</span>
               </button>
             </div>
@@ -1261,7 +1261,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                             type="text"
                             value={q.question_text}
                             onChange={(e) => handleUpdateQuestion(q.id, { question_text: e.target.value })}
-                            className="w-full bg-transparent border-b border-transparent hover:border-purple-300 focus:border-purple-600 outline-none font-serif text-xs font-medium"
+                            className="w-full bg-transparent border-b border-transparent hover:border-blue-300 focus:border-blue-600 outline-none font-serif text-xs font-medium"
                           />
                         </div>
                         {/* Regenerate Question Action */}
@@ -1270,7 +1270,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                             type="button"
                             onClick={() => handleRegenerateQuestion(q)}
                             disabled={regeneratingId === q.id}
-                            className="px-1.5 py-0.5 rounded text-[10px] bg-purple-50 text-purple-700 hover:bg-purple-100 font-sans font-semibold flex items-center gap-1"
+                            className="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-sans font-semibold flex items-center gap-1"
                             title="Regenerate with AI"
                           >
                             <RefreshCw className={`w-2.5 h-2.5 ${regeneratingId === q.id ? 'animate-spin' : ''}`} />
@@ -1323,7 +1323,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                                       },
                                     })
                                   }
-                                  className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-purple-600 outline-none w-24 sm:w-32"
+                                  className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-600 outline-none w-24 sm:w-32"
                                 />
                               </div>
                             );
@@ -1361,7 +1361,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                             rows={2}
                             value={q.question_text}
                             onChange={(e) => handleUpdateQuestion(q.id, { question_text: e.target.value })}
-                            className="w-full bg-transparent border-b border-transparent hover:border-purple-300 focus:border-purple-600 outline-none font-serif text-xs"
+                            className="w-full bg-transparent border-b border-transparent hover:border-blue-300 focus:border-blue-600 outline-none font-serif text-xs"
                           />
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -1370,7 +1370,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                             type="button"
                             onClick={() => handleRegenerateQuestion(q)}
                             disabled={regeneratingId === q.id}
-                            className="px-1.5 py-0.5 rounded text-[10px] bg-purple-50 text-purple-700 hover:bg-purple-100 font-sans font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-sans font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                             title="Regenerate with AI"
                           >
                             <RefreshCw className={`w-2.5 h-2.5 ${regeneratingId === q.id ? 'animate-spin' : ''}`} />
@@ -1383,7 +1383,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                       {q.theory_data && (
                         <div className="pl-4 text-[10px] text-slate-500 font-sans bg-slate-50/70 p-2 rounded-lg border border-slate-200/60 space-y-0.5">
                           <p>
-                            <strong className="text-purple-900">Model Answer: </strong>
+                            <strong className="text-blue-900">Model Answer: </strong>
                             <span>{q.theory_data.model_answer}</span>
                           </p>
                           <p>

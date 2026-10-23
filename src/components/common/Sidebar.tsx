@@ -38,18 +38,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
     <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-white border-r border-slate-200/90 h-screen sticky top-0 shrink-0 p-5 overflow-y-auto">
       {/* Brand Header */}
       <div className="flex items-center gap-3 pb-6 border-b border-slate-100">
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-700 to-violet-500 flex items-center justify-center text-white shadow-md shadow-purple-600/20 font-black text-lg">
-          EC
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-700 to-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-600/20 font-black text-sm">
+          RC
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-base font-bold text-slate-900 tracking-tight">ExamCraft</span>
+          <span className="text-base font-extrabold text-slate-900 tracking-tight">ROCKCRAF</span>
           <span className="text-xs text-slate-500 font-medium truncate">
             {school?.name || 'WAEC Paper Engine'}
           </span>
         </div>
       </div>
 
-      {/* Demo Role Switcher (Convenient for evaluators & teachers) */}
+      {/* Demo Role Switcher */}
       <div className="mt-4 p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs">
         <span className="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
           Active Role: {role.replace('_', ' ')}
@@ -59,7 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
             onClick={() => switchDemoUser('admin')}
             className={`py-1 px-1.5 rounded-md font-medium text-center transition-colors ${
               role === 'school_admin'
-                ? 'bg-purple-700 text-white shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
             }`}
           >
@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
             onClick={() => switchDemoUser('teacher')}
             className={`py-1 px-1.5 rounded-md font-medium text-center transition-colors ${
               role === 'teacher'
-                ? 'bg-purple-700 text-white shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
             }`}
           >
@@ -79,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
             onClick={() => switchDemoUser('platform')}
             className={`py-1 px-1.5 rounded-md font-medium text-center transition-colors ${
               role === 'platform_admin'
-                ? 'bg-purple-700 text-white shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
             }`}
           >
@@ -101,8 +101,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
                 onClick={() => navigate(item.id)}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all my-2 ${
                   isActive
-                    ? 'bg-purple-700 text-white shadow-md shadow-purple-700/25'
-                    : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
+                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
                 }`}
               >
                 <Icon className="w-5 h-5 shrink-0" />
@@ -120,11 +120,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
               onClick={() => navigate(item.id)}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-slate-100 text-purple-900 font-semibold'
+                  ? 'bg-blue-50 text-blue-800 font-semibold'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              <Icon className="w-5 h-5 shrink-0 text-slate-400 group-hover:text-purple-600" />
+              <Icon className="w-5 h-5 shrink-0 text-slate-400 group-hover:text-blue-600" />
               <span className="truncate">{item.label}</span>
             </button>
           );
@@ -134,10 +134,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
       {/* Subscription Card */}
       {school && (
         <div className="mt-auto pt-4 border-t border-slate-100">
-          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-purple-50 via-violet-50/50 to-slate-50 border border-purple-100 text-left">
-            <div className="flex items-center justify-between text-xs font-bold text-purple-900 mb-1">
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50 via-sky-50/50 to-slate-50 border border-blue-100 text-left">
+            <div className="flex items-center justify-between text-xs font-bold text-blue-900 mb-1">
               <span>Subscription</span>
-              <span className="capitalize px-2 py-0.5 rounded-full bg-purple-200/60 text-purple-800 text-[10px]">
+              <span className="capitalize px-2 py-0.5 rounded-full bg-blue-200/60 text-blue-800 text-[10px]">
                 {school.subscription_status}
               </span>
             </div>
@@ -146,11 +146,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
                 'Unlimited AI & Manual exams for this term.'
               ) : (
                 <>
-                  <span className="font-semibold text-purple-900">
+                  <span className="font-semibold text-blue-900">
                     {Math.max(0, school.max_trial_ai_exams - school.ai_exams_used)}
                   </span>{' '}
                   AI &{' '}
-                  <span className="font-semibold text-purple-900">
+                  <span className="font-semibold text-blue-900">
                     {Math.max(0, school.max_trial_manual_exams - school.manual_exams_used)}
                   </span>{' '}
                   manual trial exams remaining.
@@ -160,7 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
             {school.subscription_status !== 'active' && (
               <button
                 onClick={onOpenPaystack}
-                className="mt-3 w-full py-2 px-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-semibold shadow-sm transition-all"
+                className="mt-3 w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-all"
               >
                 Upgrade (₦11,000/Term)
               </button>

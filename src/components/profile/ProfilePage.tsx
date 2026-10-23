@@ -121,15 +121,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
 
       {/* Subscription Status Card */}
       {school && (
-        <div className="p-5 rounded-3xl bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-800 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-200">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
               Subscription Plan
             </span>
             <div className="text-lg font-extrabold capitalize mt-0.5">
               {school.subscription_status === 'active' ? 'Full Term Active' : 'Free Trial Mode'}
             </div>
-            <p className="text-xs text-purple-200 mt-1">
+            <p className="text-xs text-blue-200 mt-1">
               {school.subscription_status === 'active' ? (
                 'Unlimited exam generation active for this academic term.'
               ) : (
@@ -143,7 +143,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
 
           <button
             onClick={onOpenPaystack}
-            className="px-4 py-2.5 rounded-xl bg-white text-purple-900 hover:bg-purple-50 text-xs font-bold transition-all shadow-sm shrink-0"
+            className="px-4 py-2.5 rounded-xl bg-white text-blue-900 hover:bg-blue-50 text-xs font-bold transition-all shadow-sm shrink-0"
           >
             {school.subscription_status === 'active' ? 'Manage Term' : 'Upgrade for ₦11,000'}
           </button>
@@ -184,7 +184,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <p className="text-[11px] text-slate-500 mt-0.5">
               Appears at the top of your exported DOCX exam papers. PNG, JPG or SVG.
             </p>
-            <label className="inline-block mt-2 text-xs font-semibold text-purple-700 hover:text-purple-800 cursor-pointer">
+            <label className="inline-block mt-2 text-xs font-semibold text-blue-600 hover:text-blue-800 cursor-pointer">
               <span>Change Logo</span>
               <input
                 type="file"
@@ -208,7 +208,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={!canEdit}
-              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
 
@@ -222,7 +222,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               value={adminName}
               onChange={(e) => setAdminName(e.target.value)}
               disabled={!canEdit}
-              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
         </div>
@@ -238,7 +238,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={!canEdit}
-              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
 
@@ -252,7 +252,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               disabled={!canEdit}
-              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
         </div>
@@ -320,7 +320,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             value={motto}
             onChange={(e) => setMotto(e.target.value)}
             disabled={!canEdit}
-            className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+            className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
           />
         </div>
 
@@ -334,7 +334,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             onChange={(e) => setAddress(e.target.value)}
             placeholder="e.g. 3 Catholic Mission Street, Lagos Island, Lagos"
             disabled={!canEdit}
-            className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+            className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
           />
         </div>
 
@@ -343,7 +343,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <button
               type="submit"
               disabled={isSaving}
-              className="py-2.5 px-6 rounded-2xl bg-purple-700 hover:bg-purple-800 disabled:opacity-75 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-purple-700/20 transition-all"
+              className="py-2.5 px-6 rounded-2xl bg-blue-600 hover:bg-blue-800 disabled:opacity-75 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all"
             >
               <Save className="w-4 h-4" />
               <span>{isSaving ? 'Updating...' : 'Save School Profile Changes'}</span>
@@ -358,7 +358,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <button
               type="button"
               onClick={() => switchDemoUser('admin')}
-              className="px-3 py-1.5 rounded-xl bg-purple-700 text-white font-semibold text-xs hover:bg-purple-800"
+              className="px-3 py-1.5 rounded-xl bg-blue-600 text-white font-semibold text-xs hover:bg-blue-800"
             >
               Switch to School Admin to Edit
             </button>

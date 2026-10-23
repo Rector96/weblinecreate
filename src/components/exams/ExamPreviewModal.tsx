@@ -41,7 +41,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
               onClick={() => setActiveTab('paper')}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 activeTab === 'paper'
-                  ? 'bg-purple-700 text-white shadow-xs'
+                  ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -75,9 +75,9 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                   ? exportExamToDocx(exam, school)
                   : exportMarkingSchemeToDocx(exam, school)
               }
-              className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
             >
-              <Download className="w-3.5 h-3.5 text-purple-700" />
+              <Download className="w-3.5 h-3.5 text-blue-600" />
               <span>Export DOCX</span>
             </button>
 
@@ -239,12 +239,12 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                       <div key={q.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
                         <div className="flex items-center justify-between font-bold text-slate-900">
                           <span>Question {idx + 1}</span>
-                          <span className="text-purple-700">{q.marks} Marks Total</span>
+                          <span className="text-blue-600">{q.marks} Marks Total</span>
                         </div>
                         <p className="text-slate-700 italic font-serif">{q.question_text}</p>
                         {q.theory_data?.model_answer && (
                           <div className="p-2.5 rounded-xl bg-white border border-slate-200/80">
-                            <span className="font-bold text-purple-900 block mb-0.5">Model Solution:</span>
+                            <span className="font-bold text-blue-900 block mb-0.5">Model Solution:</span>
                             <p className="text-slate-800 whitespace-pre-line">{q.theory_data.model_answer}</p>
                           </div>
                         )}

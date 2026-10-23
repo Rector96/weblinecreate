@@ -12,11 +12,8 @@ import {
   Building,
   KeyRound,
   ArrowRight,
-  Sparkles,
-  CheckCircle2,
   AlertCircle,
-  Loader2,
-  ShieldCheck
+  Loader2
 } from 'lucide-react';
 
 interface AuthPageProps {
@@ -127,20 +124,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-purple-50/20 to-white flex flex-col justify-center items-center px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-[#e8f1fb] via-[#f0f5fc] to-[#f8fafc] flex flex-col justify-center items-center px-4 py-8">
       {/* Brand Header */}
       <div className="text-center mb-6 max-w-sm">
-        <div className="w-14 h-14 rounded-3xl bg-gradient-to-tr from-purple-700 to-violet-500 text-white flex items-center justify-center font-black text-2xl mx-auto shadow-lg shadow-purple-600/25 mb-3">
-          EC
+        <div className="w-14 h-14 rounded-3xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center font-black text-2xl mx-auto shadow-lg shadow-blue-600/25 mb-3">
+          RC
         </div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">ExamCraft</h1>
-        <p className="text-xs text-slate-500 mt-1">
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight">ROCKCRAF</h1>
+        <p className="text-xs text-slate-600 mt-1 font-medium">
           WAEC, NECO & JAMB Exam Builder for Nigerian Secondary Schools
         </p>
       </div>
 
       {/* Main Auth Card */}
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-purple-950/5 border border-slate-200/80 p-6 sm:p-8 text-left">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-blue-950/5 border border-slate-200/80 p-6 sm:p-8 text-left">
         {/* Navigation Mode Switcher */}
         <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-2xl mb-6">
           <button
@@ -151,7 +148,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
             }}
             className={`py-2 text-xs font-semibold rounded-xl transition-all ${
               mode === 'login'
-                ? 'bg-white text-purple-900 shadow-xs'
+                ? 'bg-white text-blue-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -165,7 +162,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
             }}
             className={`py-2 text-xs font-semibold rounded-xl transition-all ${
               mode === 'register'
-                ? 'bg-white text-purple-900 shadow-xs'
+                ? 'bg-white text-blue-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -179,7 +176,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
             }}
             className={`py-2 text-xs font-semibold rounded-xl transition-all ${
               mode === 'join'
-                ? 'bg-white text-purple-900 shadow-xs'
+                ? 'bg-white text-blue-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -195,9 +192,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
           </div>
         )}
 
-        {/* ======================================================== */}
         {/* 1. SIGN IN FLOW */}
-        {/* ======================================================== */}
         {mode === 'login' && (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
@@ -212,7 +207,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                   placeholder="principal@school.edu.ng"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 />
               </div>
             </div>
@@ -223,7 +218,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                 <button
                   type="button"
                   onClick={() => alert('Password reset link sent to your registered school email.')}
-                  className="text-[11px] text-purple-700 hover:underline"
+                  className="text-[11px] text-blue-600 hover:underline"
                 >
                   Forgot?
                 </button>
@@ -235,7 +230,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                   placeholder="••••••••"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 />
               </div>
             </div>
@@ -243,7 +238,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 rounded-2xl bg-purple-700 hover:bg-purple-800 disabled:opacity-75 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-700/20 active:scale-[0.99] transition-all"
+              className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-75 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 active:scale-[0.99] transition-all"
             >
               {isLoading ? (
                 <>
@@ -258,7 +253,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
               )}
             </button>
 
-            {/* Quick Demo Access Bar for Evaluators */}
+            {/* Quick Demo Access Bar */}
             <div className="pt-4 border-t border-slate-100">
               <span className="block text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider text-center">
                 Instant Demo Access
@@ -270,10 +265,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                     switchDemoUser('admin');
                     onSuccess();
                   }}
-                  className="w-full py-2 px-3 rounded-xl bg-purple-50 text-purple-800 hover:bg-purple-100 text-xs font-semibold text-left flex items-center justify-between transition-colors"
+                  className="w-full py-2 px-3 rounded-xl bg-blue-50 text-blue-800 hover:bg-blue-100 text-xs font-semibold text-left flex items-center justify-between transition-colors border border-blue-100"
                 >
                   <span>Dr. Babatunde Alabi (School Admin)</span>
-                  <span className="text-[10px] text-purple-600 bg-white px-2 py-0.5 rounded-md font-bold">King's College</span>
+                  <span className="text-[10px] text-blue-600 bg-white px-2 py-0.5 rounded-md font-bold">King's College</span>
                 </button>
                 <button
                   type="button"
@@ -291,9 +286,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
           </form>
         )}
 
-        {/* ======================================================== */}
         {/* 2. REGISTER NEW SCHOOL FLOW */}
-        {/* ======================================================== */}
         {mode === 'register' && (
           <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
             <div>
@@ -308,7 +301,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                   placeholder="e.g. Grace Model College"
                   value={schoolName}
                   onChange={(e) => setSchoolName(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 />
               </div>
             </div>
@@ -325,7 +318,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                   placeholder="e.g. Mrs. Ngozi Okonkwo"
                   value={adminName}
                   onChange={(e) => setAdminName(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 />
               </div>
             </div>
@@ -341,7 +334,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                   placeholder="admin@school.com"
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 />
               </div>
               <div>
@@ -354,7 +347,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                   placeholder="08012345678"
                   value={regPhone}
                   onChange={(e) => setRegPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 />
               </div>
             </div>
@@ -366,7 +359,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                 <select
                   value={regState}
                   onChange={(e) => setRegState(e.target.value)}
-                  className="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 >
                   {NIGERIAN_STATES.map((s) => (
                     <option key={s} value={s}>
@@ -380,7 +373,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                 <select
                   value={regLga}
                   onChange={(e) => setRegLga(e.target.value)}
-                  className="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 >
                   {(NIGERIAN_STATES_LGAS[regState] || []).map((l) => (
                     <option key={l} value={l}>
@@ -399,7 +392,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                 <select
                   value={institutionType}
                   onChange={(e) => setInstitutionType(e.target.value as any)}
-                  className="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 >
                   <option value="Secondary">Secondary School</option>
                   <option value="College">College</option>
@@ -419,7 +412,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                   placeholder="••••••••"
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 />
               </div>
             </div>
@@ -427,7 +420,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 rounded-2xl bg-purple-700 hover:bg-purple-800 disabled:opacity-75 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-700/20 active:scale-[0.99] transition-all mt-4"
+              className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-75 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 active:scale-[0.99] transition-all mt-4"
             >
               {isLoading ? (
                 <>
@@ -444,13 +437,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
           </form>
         )}
 
-        {/* ======================================================== */}
         {/* 3. JOIN SCHOOL AS TEACHER VIA TOKEN */}
-        {/* ======================================================== */}
         {mode === 'join' && (
           <form onSubmit={handleJoinSubmit} className="space-y-4">
-            <div className="p-3 bg-purple-50/70 border border-purple-100 rounded-2xl text-xs text-purple-900">
-              <span className="font-bold">Joining your school team?</span> Ask your principal or exam officer for the 6-character uppercase invite code.
+            <div className="p-3 bg-blue-50/80 border border-blue-100 rounded-2xl text-xs text-blue-900">
+              <span className="font-bold">Joining your school team?</span> Enter the 6-character code from your school admin.
             </div>
 
             <div>
@@ -466,7 +457,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                   placeholder="e.g. KC2026"
                   value={inviteToken}
                   onChange={(e) => setInviteToken(e.target.value.toUpperCase())}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono tracking-widest uppercase rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono tracking-widest uppercase rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 />
               </div>
             </div>
@@ -483,7 +474,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                   placeholder="e.g. Mr. Chinedu Eze"
                   value={teacherName}
                   onChange={(e) => setTeacherName(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 />
               </div>
             </div>
@@ -500,7 +491,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
                   placeholder="chinedu@school.edu.ng"
                   value={teacherEmail}
                   onChange={(e) => setTeacherEmail(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white"
+                  className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
                 />
               </div>
             </div>
@@ -508,7 +499,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 rounded-2xl bg-purple-700 hover:bg-purple-800 disabled:opacity-75 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-700/20 active:scale-[0.99] transition-all"
+              className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-75 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 active:scale-[0.99] transition-all"
             >
               {isLoading ? (
                 <>
@@ -525,7 +516,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
 
             <div className="text-center">
               <span className="text-[11px] text-slate-400">
-                Sample demo token for testing: <strong className="text-purple-700 font-mono">KC2026</strong>
+                Sample demo token for testing: <strong className="text-blue-600 font-mono">KC2026</strong>
               </span>
             </div>
           </form>

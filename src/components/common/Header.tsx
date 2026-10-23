@@ -13,18 +13,18 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-8">
-      {/* Zone 1: Single Brand Wordmark */}
+      {/* Zone 1: Single Brand Wordmark ROCKCRAF */}
       <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={() => navigate('dashboard')}
-          className="flex items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 rounded-lg group"
+          className="flex items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-lg group"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-700 to-violet-500 flex items-center justify-center text-white shadow-sm shadow-purple-600/20 group-hover:scale-105 transition-transform duration-150">
-            <span className="font-extrabold text-base tracking-tighter">EC</span>
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-blue-500 flex items-center justify-center text-white shadow-sm shadow-blue-600/20 group-hover:scale-105 transition-transform duration-150">
+            <span className="font-extrabold text-sm tracking-tighter">RC</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-purple-700 transition-colors">
-              ExamCraft
+            <span className="text-base font-extrabold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
+              ROCKCRAF
             </span>
             {school?.name && (
               <span className="text-[11px] font-medium text-slate-500 truncate max-w-[150px] sm:max-w-[220px]">
@@ -40,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
         <button
           onClick={() => navigate('dashboard')}
           className={`whitespace-nowrap shrink-0 transition-colors ${
-            currentRoute === 'dashboard' ? 'text-purple-700 font-semibold' : 'hover:text-slate-900'
+            currentRoute === 'dashboard' ? 'text-blue-600 font-semibold' : 'hover:text-slate-900'
           }`}
         >
           Dashboard
@@ -48,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
         <button
           onClick={() => navigate('exams')}
           className={`whitespace-nowrap shrink-0 transition-colors ${
-            currentRoute === 'exams' ? 'text-purple-700 font-semibold' : 'hover:text-slate-900'
+            currentRoute === 'exams' ? 'text-blue-600 font-semibold' : 'hover:text-slate-900'
           }`}
         >
           Exams
@@ -56,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
         <button
           onClick={() => navigate('create-exam')}
           className={`whitespace-nowrap shrink-0 transition-colors ${
-            currentRoute === 'create-exam' ? 'text-purple-700 font-semibold' : 'hover:text-slate-900'
+            currentRoute === 'create-exam' ? 'text-blue-600 font-semibold' : 'hover:text-slate-900'
           }`}
         >
           Create Exam
@@ -64,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
         <button
           onClick={() => navigate('classes')}
           className={`whitespace-nowrap shrink-0 transition-colors ${
-            currentRoute === 'classes' ? 'text-purple-700 font-semibold' : 'hover:text-slate-900'
+            currentRoute === 'classes' ? 'text-blue-600 font-semibold' : 'hover:text-slate-900'
           }`}
         >
           Classes
@@ -73,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
           <button
             onClick={() => navigate('admin')}
             className={`whitespace-nowrap shrink-0 transition-colors ${
-              currentRoute === 'admin' ? 'text-purple-700 font-semibold' : 'hover:text-slate-900'
+              currentRoute === 'admin' ? 'text-blue-600 font-semibold' : 'hover:text-slate-900'
             }`}
           >
             Platform Admin
@@ -89,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
             className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               school.subscription_status === 'active'
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100'
+                : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
             }`}
             title="Manage School Subscription"
           >
@@ -107,7 +107,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
           className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 transition-colors text-slate-700"
           title="School & User Profile"
         >
-          <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-xs ring-1 ring-purple-300">
+          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs ring-1 ring-blue-300">
             {user?.full_name?.charAt(0) || 'U'}
           </div>
           <span className="hidden lg:inline text-xs font-medium text-slate-700 max-w-[120px] truncate">

@@ -118,7 +118,7 @@ async function generateExamBlob(exam: Exam, school?: School | null): Promise<Blo
 
 export async function exportAllExamsZip(exams: Exam[], school?: School | null): Promise<void> {
   const zip = new JSZip();
-  const folderName = `${(school?.name || 'ExamCraft').replace(/[^a-zA-Z0-9]/g, '_')}_Exams_Bundle`;
+  const folderName = `${(school?.name || 'ROCKCRAF').replace(/[^a-zA-Z0-9]/g, '_')}_Exams_Bundle`;
   const folder = zip.folder(folderName);
 
   for (const exam of exams) {

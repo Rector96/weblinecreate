@@ -136,7 +136,7 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
 
           <button
             onClick={() => navigate('create-exam')}
-            className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs transition-colors"
+            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-800 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs transition-colors"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Create Exam</span>
@@ -153,7 +153,7 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
             placeholder="Search by subject, title, or exam code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none"
+            className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
           />
         </div>
 
@@ -219,11 +219,11 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
           {filteredExams.map((exam) => (
             <div
               key={exam.id}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 hover:border-purple-300 hover:shadow-md transition-all flex flex-col justify-between"
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 hover:border-blue-300 hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between gap-2 text-[11px] font-medium text-slate-500">
-                  <span className="font-bold text-purple-700">{exam.subject}</span>
+                  <span className="font-bold text-blue-600">{exam.subject}</span>
                   <span className="font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">
                     {exam.class_name}
                   </span>
@@ -252,9 +252,9 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
                   <button
                     onClick={() => handleDownloadDocx(exam)}
                     disabled={actionId === `docx_${exam.id}`}
-                    className="py-1.5 px-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                    className="py-1.5 px-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                   >
-                    <Download className="w-3.5 h-3.5 text-purple-700" />
+                    <Download className="w-3.5 h-3.5 text-blue-600" />
                     <span>{actionId === `docx_${exam.id}` ? 'Exporting...' : 'DOCX Paper'}</span>
                   </button>
 
@@ -272,7 +272,7 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
                 <div className="flex items-center justify-between pt-1">
                   <button
                     onClick={() => onPreviewExam(exam)}
-                    className="text-xs font-semibold text-purple-700 hover:underline flex items-center gap-1"
+                    className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     <span>Preview Paper</span>

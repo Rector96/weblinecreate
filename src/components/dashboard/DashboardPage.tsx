@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth';
 import { db, dbEvents } from '../../lib/db';
-import { Exam, InviteLink } from '../../types';
+import { Exam } from '../../types';
 import { exportExamToDocx, exportMarkingSchemeToDocx } from '../../utils/docxExport';
 import {
   FileText,
@@ -11,13 +11,9 @@ import {
   Copy,
   Check,
   Download,
-  Eye,
-  Sparkles,
   BookOpen,
-  Calendar,
   Clock,
-  ExternalLink,
-  ShieldAlert
+  Sparkles
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -90,14 +86,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const totalQuestions = exams.reduce((acc, ex) => acc + (ex.questions?.length || 0), 0);
   const remainingAi = school ? Math.max(0, school.max_trial_ai_exams - school.ai_exams_used) : 0;
-  const remainingManual = school ? Math.max(0, school.max_trial_manual_exams - school.manual_exams_used) : 0;
 
   return (
     <div className="space-y-6 text-left">
-      {/* 1. Welcome Greeting Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-800 text-white rounded-3xl p-6 sm:p-8 shadow-lg shadow-purple-950/10">
+      {/* 1. Welcome Greeting Header (Smooth Blue) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white rounded-3xl p-6 sm:p-8 shadow-lg shadow-blue-950/10">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-purple-200 text-xs font-semibold">
+          <div className="flex items-center gap-2 text-blue-200 text-xs font-semibold">
             <span>{school?.name || 'School Dashboard'}</span>
             <span>·</span>
             <span>{school?.state || 'Nigeria'}</span>
@@ -105,17 +100,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
             Welcome back, {user?.full_name?.split(' ')[0] || 'Educator'}
           </h2>
-          <p className="text-xs text-purple-200/90 max-w-xl">
-            Generate and manage WAEC/NECO/JAMB standard examination question papers with automatic 12pt Times New Roman formatting.
+          <p className="text-xs text-blue-200/90 max-w-xl">
+            Author and download official WAEC, NECO, and JAMB-standard examination papers with instant Times New Roman formatting.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
           <button
             onClick={() => navigate('create-exam')}
-            className="px-4 py-2.5 rounded-xl bg-white text-purple-900 font-bold text-xs hover:bg-purple-50 shadow-md active:scale-95 transition-all flex items-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-white text-blue-900 font-bold text-xs hover:bg-blue-50 shadow-md active:scale-95 transition-all flex items-center gap-2"
           >
-            <PlusCircle className="w-4 h-4 text-purple-700" />
+            <PlusCircle className="w-4 h-4 text-blue-600" />
             <span>New Exam Paper</span>
           </button>
         </div>
@@ -127,7 +122,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-semibold text-slate-500">Exams Created</span>
-            <FileText className="w-4 h-4 text-purple-600" />
+            <FileText className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-2xl font-black text-slate-900 tabular-nums">{exams.length}</div>
           <div className="text-[11px] text-slate-500 mt-1">
@@ -139,7 +134,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-semibold text-slate-500">Subscription</span>
-            <CreditCard className="w-4 h-4 text-indigo-600" />
+            <CreditCard className="w-4 h-4 text-sky-600" />
           </div>
           <div className="text-base sm:text-lg font-black text-slate-900 capitalize">
             {school?.subscription_status === 'active' ? 'Active Term' : 'Free Trial'}
@@ -150,7 +145,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             ) : (
               <button
                 onClick={onOpenPaystack}
-                className="text-purple-700 font-semibold hover:underline"
+                className="text-blue-600 font-semibold hover:underline"
               >
                 {remainingAi} AI trials left · Upgrade
               </button>
@@ -162,7 +157,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-semibold text-slate-500">Standard Classes</span>
-            <BookOpen className="w-4 h-4 text-purple-600" />
+            <BookOpen className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-2xl font-black text-slate-900 tabular-nums">
             {school ? db.getClasses(school.id).length : 6}
@@ -174,15 +169,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-semibold text-slate-500">Teacher Code</span>
-            <Users className="w-4 h-4 text-purple-600" />
+            <Users className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="text-lg font-mono font-black text-purple-700 tracking-wider">
+          <div className="text-lg font-mono font-black text-blue-600 tracking-wider">
             {inviteToken}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            <button onClick={copyInvite} className="hover:text-purple-700 flex items-center gap-1 font-medium">
+            <button onClick={copyInvite} className="hover:text-blue-600 flex items-center gap-1 font-medium">
               {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-              <span>{copied ? 'Link Copied' : 'Share invite link'}</span>
+              <span>{copied ? 'Link Copied' : 'Share staff invite'}</span>
             </button>
           </div>
         </div>
@@ -190,23 +185,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* 3. Teacher Invitation Banner Card */}
       {role === 'school_admin' && (
-        <div className="p-4 sm:p-5 rounded-3xl bg-slate-50 border border-slate-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 rounded-3xl bg-white border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Invite Subject Teachers to ExamCraft</h3>
+              <h3 className="text-sm font-bold text-slate-900">Invite Subject Teachers</h3>
               <p className="text-xs text-slate-500 mt-0.5 max-w-xl">
-                Allow your teachers to craft exams for their classes under your school banner. Share the 6-character code or link:
+                Teachers can author exams for their subjects directly inside your school repository.
               </p>
               <div className="flex items-center gap-2 mt-2">
-                <span className="font-mono text-xs font-bold bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-purple-900">
+                <span className="font-mono text-xs font-bold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-blue-900">
                   {inviteToken}
                 </span>
                 <button
                   onClick={copyInvite}
-                  className="px-2.5 py-1 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
                 >
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied ? 'Link Copied!' : 'Copy Staff Link'}</span>
@@ -226,7 +221,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
           <button
             onClick={() => navigate('exams')}
-            className="text-xs font-semibold text-purple-700 hover:text-purple-800 hover:underline"
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
           >
             View All ({exams.length})
           </button>
@@ -237,11 +232,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <h4 className="text-sm font-bold text-slate-800">No exams generated yet</h4>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Start by crafting your first examination paper either with AI or manual input.
+              Start by crafting your first examination paper with AI or manual input.
             </p>
             <button
               onClick={() => navigate('create-exam')}
-              className="mt-4 px-4 py-2 rounded-xl bg-purple-700 text-white text-xs font-semibold hover:bg-purple-800 transition-colors"
+              className="mt-4 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
             >
               Create First Exam
             </button>
@@ -252,18 +247,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <div
                 key={exam.id}
                 onClick={() => onPreviewExam(exam)}
-                className="bg-white p-4 rounded-2xl border border-slate-200/80 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer group"
+                className="bg-white p-4 rounded-2xl border border-slate-200/80 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-                      <span className="font-semibold text-purple-700">{exam.subject}</span>
+                      <span className="font-semibold text-blue-600">{exam.subject}</span>
                       <span>·</span>
                       <span>{exam.class_name}</span>
                       <span>·</span>
                       <span>{exam.term}</span>
                     </div>
-                    <h4 className="text-sm font-bold text-slate-900 mt-1 group-hover:text-purple-800 transition-colors">
+                    <h4 className="text-sm font-bold text-slate-900 mt-1 group-hover:text-blue-700 transition-colors">
                       {exam.title}
                     </h4>
                   </div>
@@ -290,10 +285,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <div className="flex items-center gap-2 mt-3 pt-2">
                   <button
                     onClick={(e) => handleDownloadDocx(exam, e)}
-                    className="flex-1 py-1.5 px-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                    className="flex-1 py-1.5 px-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                   >
-                    <Download className="w-3.5 h-3.5 text-purple-700" />
-                    <span>{downloadingId === exam.id ? 'Generating...' : 'DOCX Paper'}</span>
+                    <Download className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{downloadingId === exam.id ? 'Exporting...' : 'DOCX Paper'}</span>
                   </button>
 
                   <button

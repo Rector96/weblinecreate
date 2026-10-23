@@ -33,7 +33,7 @@ export const ScientificSymbolPicker: React.FC<ScientificSymbolPickerProps> = ({ 
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="p-1.5 rounded-lg text-slate-500 hover:text-purple-700 hover:bg-purple-50 transition-colors border border-slate-200/80 bg-white"
+        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors border border-slate-200/80 bg-white"
         title="Insert scientific symbol or equation mark"
       >
         <Pi className="w-4 h-4" />
@@ -61,7 +61,7 @@ export const ScientificSymbolPicker: React.FC<ScientificSymbolPickerProps> = ({ 
                 onClick={() => setActiveTab(idx)}
                 className={`px-2 py-1 text-[11px] font-medium rounded-lg whitespace-nowrap transition-colors ${
                   activeTab === idx
-                    ? 'bg-purple-700 text-white shadow-xs'
+                    ? 'bg-blue-600 text-white shadow-xs'
                     : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
@@ -79,7 +79,7 @@ export const ScientificSymbolPicker: React.FC<ScientificSymbolPickerProps> = ({ 
                 onClick={() => {
                   onInsert(sym);
                 }}
-                className="h-8 flex items-center justify-center font-mono text-sm bg-slate-50 hover:bg-purple-100 hover:text-purple-900 rounded-lg border border-slate-100 transition-colors active:scale-95"
+                className="h-8 flex items-center justify-center font-mono text-sm bg-slate-50 hover:bg-blue-100 hover:text-blue-900 rounded-lg border border-slate-100 transition-colors active:scale-95"
               >
                 {sym}
               </button>

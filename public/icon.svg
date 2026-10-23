@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#7c3aed" />
-      <stop offset="100%" stop-color="#581c87" />
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1e3a8a" />
     </linearGradient>
     <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#60a5fa" />
     </linearGradient>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#3b0764" flood-opacity="0.35"/>
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#172554" flood-opacity="0.35"/>
     </filter>
   </defs>
 
@@ -17,7 +17,7 @@
   <rect width="512" height="512" rx="128" fill="url(#primaryGrad)" />
 
   <!-- Inner Subtle Ring -->
-  <rect x="16" y="16" width="480" height="480" rx="112" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2" />
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
 
   <!-- Exam Document & Pen Emblem -->
   <g filter="url(#shadow)">
@@ -25,7 +25,7 @@
     <rect x="140" y="110" width="232" height="292" rx="24" fill="#ffffff" />
     
     <!-- Header bar on sheet -->
-    <rect x="170" y="150" width="100" height="14" rx="7" fill="#8b5cf6" />
+    <rect x="170" y="150" width="100" height="14" rx="7" fill="#2563eb" />
     <circle cx="340" cy="157" r="8" fill="#10b981" />
 
     <!-- Exam lines -->
@@ -37,7 +37,7 @@
     <line x1="170" y1="262" x2="342" y2="262" stroke="#f1f5f9" stroke-width="2" stroke-linecap="round" />
 
     <!-- MCQ bullets / marks -->
-    <circle cx="180" cy="288" r="6" fill="#a78bfa" />
+    <circle cx="180" cy="288" r="6" fill="#60a5fa" />
     <rect x="198" y="284" width="90" height="8" rx="4" fill="#cbd5e1" />
 
     <circle cx="180" cy="312" r="6" fill="#cbd5e1" />
@@ -46,9 +46,9 @@
     <circle cx="180" cy="336" r="6" fill="#cbd5e1" />
     <rect x="198" y="332" width="80" height="8" rx="4" fill="#cbd5e1" />
 
-    <!-- WAEC Grade Stamp / Badge -->
-    <rect x="254" y="356" width="90" height="26" rx="13" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5" />
-    <text x="299" y="373" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" fill="#047857" text-anchor="middle">A1 / WAEC</text>
+    <!-- WAEC Grade Stamp -->
+    <rect x="254" y="356" width="90" height="26" rx="13" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5" />
+    <text x="299" y="373" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">ROCKCRAF</text>
 
     <!-- Floating Craft Pen Quill -->
     <g transform="translate(315, 230) rotate(-35)">

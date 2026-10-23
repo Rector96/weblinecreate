@@ -63,7 +63,7 @@ export const ExamSuccessPage: React.FC<ExamSuccessPageProps> = ({
           Exam Published & Synced to School Dashboard
         </h2>
         <p className="text-xs text-slate-500 max-w-md mx-auto">
-          Your examination paper has been filed for <strong className="text-purple-700">{school?.name}</strong> under{' '}
+          Your examination paper has been filed for <strong className="text-blue-600">{school?.name}</strong> under{' '}
           <strong className="text-slate-800">{exam.class_name}</strong>. The principal and subject teachers can view it on the school dashboard.
         </p>
       </div>
@@ -77,7 +77,7 @@ export const ExamSuccessPage: React.FC<ExamSuccessPageProps> = ({
           </div>
           <div className="text-right">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Session & Term</span>
-            <div className="text-xs font-bold text-purple-700">{exam.term} · {exam.session}</div>
+            <div className="text-xs font-bold text-blue-600">{exam.term} · {exam.session}</div>
           </div>
         </div>
 
@@ -101,7 +101,7 @@ export const ExamSuccessPage: React.FC<ExamSuccessPageProps> = ({
       <div className="space-y-2.5">
         <button
           onClick={() => navigate('create-exam')}
-          className="w-full py-3.5 px-4 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-700/25 active:scale-[0.99] transition-all"
+          className="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/25 active:scale-[0.99] transition-all"
         >
           <PlusCircle className="w-4 h-4" />
           <span>Generate Another Exam for this School</span>
@@ -130,7 +130,7 @@ export const ExamSuccessPage: React.FC<ExamSuccessPageProps> = ({
         <div className="pt-2">
           <button
             onClick={() => onPreview(exam)}
-            className="text-xs font-semibold text-purple-700 hover:underline inline-flex items-center gap-1"
+            className="text-xs font-semibold text-blue-600 hover:underline inline-flex items-center gap-1"
           >
             <Eye className="w-3.5 h-3.5" />
             <span>View Live Paper Preview</span>
