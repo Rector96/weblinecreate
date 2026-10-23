@@ -16,7 +16,7 @@ const ai: any = groqApiKey
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
+              model: 'openai/gpt-oss-120b',
               messages: [
                 { role: 'system', content: 'You generate high-quality Nigerian secondary school examination questions. Follow the user instructions exactly. When JSON is requested, return valid JSON only, without markdown fences.' },
                 { role: 'user', content: contents },
@@ -39,7 +39,7 @@ const ai: any = groqApiKey
 
 // Groq uses one configured model; Gemini retains its model fallback list.
 const MODELS = groqApiKey
-  ? ['llama-3.3-70b-versatile']
+  ? ['openai/gpt-oss-120b']
   : ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim().replace(/\/$/, '');
@@ -569,7 +569,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
         } catch (modelErr: any) {
           lastModelError = modelErr;
           // Log the SDK error, but never request data or credentials.
-          console.error(`Gemini model request failed (${model})`, modelErr?.status || modelErr?.code || 'unknown status', modelErr?.message || 'No error message');
+          console.error(`AI provider model request failed (${model})`, modelErr?.status || modelErr?.code || 'unknown status', modelErr?.message || 'No error message');
         }
       }
 
@@ -578,10 +578,10 @@ You MUST respond strictly with a valid JSON object matching this schema:
       const likelyKeyProblem = /api.?key|unauthenticated|permission denied|forbidden|leaked|invalid argument/i.test(modelErrorText) || statusCode === 400 || statusCode === 401 || statusCode === 403;
       const likelyQuotaProblem = statusCode === 429 || /quota|resource_exhausted|rate.?limit|billing/i.test(modelErrorText);
       const error = likelyKeyProblem
-        ? 'Gemini rejected the configured API key or its permissions. Check that the key is valid in Google AI Studio and allowed to use the Gemini API; see Netlify Function logs for details.'
+        ? 'The configured AI provider rejected the API key or its permissions. Check the provider dashboard and Netlify Function logs for details.'
         : likelyQuotaProblem
-          ? 'Gemini API quota or billing limit reached. Check quota and billing for the Google AI project; see Netlify Function logs for details.'
-          : 'Gemini generation failed for all configured models. Check Netlify Function logs for the Gemini error details and verify the API key, model access, and quota.';
+          ? 'The configured AI provider's quota or billing limit may have been reached. Check the provider dashboard and Netlify Function logs for details.'
+          : 'AI generation failed for all configured models. Check the Netlify Function logs for the provider error details and verify the API key, model access, and quota.';
       return new Response(
         JSON.stringify({ success: false, error: error + ' Placeholder questions are never returned as real exam content.' }),
         { status: 503, headers: corsHeaders }
