@@ -29,9 +29,9 @@ function AppContent() {
   const { isAuthenticated, school, role, isLoading } = useAuth();
   const isTeacher = role === 'teacher';
   const teacherAllowedRoutes = ['create-exam', 'exam-success', 'teacher-finished'];
-  const visibleRoute = isTeacher && !teacherAllowedRoutes.includes(currentRoute) ? 'create-exam' : currentRoute;
   const [currentRoute, setCurrentRoute] = useState<string>('dashboard');
   const [routeParam, setRouteParam] = useState<string | null>(null);
+  const visibleRoute = isTeacher && !teacherAllowedRoutes.includes(currentRoute) ? 'create-exam' : currentRoute;
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
