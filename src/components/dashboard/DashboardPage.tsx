@@ -126,7 +126,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
-  const totalQuestions = exams.reduce((acc, ex) => acc + (ex.questions?.length || 0), 0);
   const remainingAi = school ? Math.max(0, school.max_trial_ai_exams - school.ai_exams_used) : 0;
 
   return (
