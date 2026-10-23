@@ -1,0 +1,36 @@
+name: Build and deploy Netlify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Build application
+        run: npm run build
+      - name: Deploy production site to Netlify
+        if: github.event_name != 'pull_request' && secrets.NETLIFY_AUTH_TOKEN != '' && secrets.NETLIFY_SITE_ID != ''
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx --yes netlify-cli deploy --prod --no-build --dir=dist --functions=netlify/functions --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID"
+      - name: Explain skipped Netlify deployment
+        if: github.event_name != 'pull_request' && (secrets.NETLIFY_AUTH_TOKEN == '' || secrets.NETLIFY_SITE_ID == '')
+        run: echo "Build passed, but production deploy was skipped. Add NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID in GitHub Actions repository secrets to enable deployment."
