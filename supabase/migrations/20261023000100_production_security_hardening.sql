@@ -40,8 +40,7 @@ stable
 set search_path = public, auth
 as $$
   select
-    lower(coalesce(auth.jwt() ->> 'email', '')) = 'peteroche32@gmail.com'
-    or exists (
+    exists (
       select 1 from public.user_roles r
       where r.user_id = auth.uid() and r.role = 'platform_admin'
     );
@@ -253,12 +252,8 @@ declare
 begin
   user_full_name := coalesce(new.raw_user_meta_data->>'full_name', split_part(coalesce(new.email, ''), '@', 1));
 
-  if lower(coalesce(new.email, '')) = 'peteroche32@gmail.com' then
-    target_role := 'platform_admin';
-  else
-    -- Never trust client-supplied role metadata for elevated roles.
-    target_role := 'school_admin';
-  end if;
+  -- Never grant elevated privileges based on an email address or client metadata.
+  target_role := 'school_admin';
 
   insert into public.profiles (user_id, full_name, email, is_profile_completed)
   values (new.id, user_full_name, coalesce(new.email, ''), false)
