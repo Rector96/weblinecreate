@@ -153,17 +153,6 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
 
   docChildren.push(metaTable);
 
-  // Candidate Name line
-  docChildren.push(
-    new Paragraph({
-      spacing: { before: 140, after: 120 },
-      children: [
-        new TextRun({ text: 'CANDIDATE NAME: _________________________________________  ', font: FONT_NAME, size: 22, bold: true }),
-        new TextRun({ text: 'CLASS/ARM: ____________', font: FONT_NAME, size: 22, bold: true }),
-      ],
-    })
-  );
-
   // General Instructions
   docChildren.push(
     new Paragraph({
