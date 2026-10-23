@@ -260,6 +260,22 @@ export default async (req: Request) => {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  // Public invite preview: reveal only the school name for a valid, active share link.
+  if (pathname.endsWith('/school-invite') && req.method === 'GET') {
+    try {
+      const token = (url.searchParams.get('token') || '').trim().toUpperCase();
+      if (!/^[A-Z2-9]{6}$/.test(token)) return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 404, { 'Cache-Control': 'no-store' });
+      const invitations = await supabaseAdminRequest(`school_invitations?token=eq.${encodeURIComponent(token)}&is_active=eq.true&select=school_id&limit=1`) as Array<{ school_id: string }>;
+      if (!invitations[0]?.school_id) return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 404, { 'Cache-Control': 'no-store' });
+      const schools = await supabaseAdminRequest(`schools?id=eq.${encodeURIComponent(invitations[0].school_id)}&select=name&limit=1`) as Array<{ name: string }>;
+      if (!schools[0]?.name) return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 404, { 'Cache-Control': 'no-store' });
+      return jsonResponse({ success: true, school_name: schools[0].name }, 200, { 'Cache-Control': 'no-store' });
+    } catch (error) {
+      console.error('School invite preview failed', error);
+      return jsonResponse({ success: false, error: 'Unable to verify this school link right now.' }, 503, { 'Cache-Control': 'no-store' });
+    }
+  }
+
   if (pathname.endsWith('/initialize-payment') && req.method === 'POST') {
     try {
       return await initializePaystackPayment(req);
@@ -549,5 +565,5 @@ Respond strictly with a JSON object:
 };
 
 export const config = {
-  path: ['/api/generate-questions', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment'],
+  path: ['/api/generate-questions', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite'],
 };
