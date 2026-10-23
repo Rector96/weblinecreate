@@ -10,18 +10,16 @@ import {
   Phone,
   MapPin,
   Building,
-  KeyRound,
   ArrowRight,
   AlertCircle,
   Loader2
 } from 'lucide-react';
 
 interface AuthPageProps {
-  initialInviteToken?: string;
   onSuccess: () => void;
 }
 
-export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSuccess }) => {
+export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
   const { login, resetPassword, registerSchoolAndAdmin } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -373,8 +371,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
             </button>
           </form>
         )}
-
-        {/* 3. JOIN SCHOOL AS TEACHER VIA TOKEN */}
 
       </div>
     </div>
