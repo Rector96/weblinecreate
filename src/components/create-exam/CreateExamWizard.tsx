@@ -147,15 +147,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const handleGenerateAI = async () => {
     if (!school) return;
 
-    // Enforce 4 free trial limit: 5th attempt triggers Paystack payment popup immediately
-    if (school.subscription_status !== 'active' && school.ai_exams_used >= 4) {
-      setAiError(
-        'Trial limit reached (4 of 4 free exams used). Please pay ₦11,000 for full term access to generate your 5th exam.'
-      );
-      setIsGeneratingAI(false);
-      onOpenPaystack();
-      return;
-    }
+    // Do not trust cached browser subscription counters here. The secure database
+    // checks the current subscription and quota when the exam is published.
 
     setIsGeneratingAI(true);
     setAiError(null);
