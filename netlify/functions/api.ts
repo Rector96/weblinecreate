@@ -580,7 +580,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
       const error = likelyKeyProblem
         ? 'The configured AI provider rejected the API key or its permissions. Check the provider dashboard and Netlify Function logs for details.'
         : likelyQuotaProblem
-          ? 'The configured AI provider's quota or billing limit may have been reached. Check the provider dashboard and Netlify Function logs for details.'
+          ? "The configured AI provider's quota or billing limit may have been reached. Check the provider dashboard and Netlify Function logs for details."
           : 'AI generation failed for all configured models. Check the Netlify Function logs for the provider error details and verify the API key, model access, and quota.';
       return new Response(
         JSON.stringify({ success: false, error: error + ' Placeholder questions are never returned as real exam content.' }),
