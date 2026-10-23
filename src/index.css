@@ -162,3 +162,18 @@ button:active:not(:disabled) {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* A4 examination paper preview and print layout */
+@page { size: A4 portrait; margin: 12mm; }
+@media print {
+  html, body, #root { width:100%!important; min-height:0!important; height:auto!important; margin:0!important; padding:0!important; overflow:visible!important; background:#fff!important; }
+  body * { visibility:hidden!important; }
+  .exam-preview-overlay, .exam-preview-overlay * { visibility:visible!important; }
+  .exam-preview-overlay { position:static!important; display:block!important; inset:auto!important; padding:0!important; margin:0!important; background:#fff!important; overflow:visible!important; }
+  .exam-preview-toolbar, .exam-preview-scroll { display:contents!important; }
+  .exam-paper-print { position:static!important; display:block!important; width:100%!important; max-width:none!important; margin:0!important; padding:0!important; border:0!important; border-radius:0!important; box-shadow:none!important; overflow:visible!important; font-size:10pt!important; line-height:1.35!important; }
+  .exam-question { break-inside:avoid; page-break-inside:avoid; }
+  .exam-objective-list, .exam-theory-section { break-inside:auto; page-break-inside:auto; }
+  h1,h2,h3 { break-after:avoid; page-break-after:avoid; }
+  * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+}
