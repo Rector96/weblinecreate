@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../lib/auth';
-import { School, User, Sparkles, LogOut, ShieldCheck, CreditCard, Check } from 'lucide-react';
+import { LogOut, CreditCard, Check } from 'lucide-react';
 
 interface HeaderProps {
   currentRoute: string;
@@ -12,7 +12,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
   const { user, school, role, logout, isPlatformAdmin } = useAuth();
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-8">
+    <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-slate-200/70 px-3 sm:px-6 py-3 flex items-center justify-between gap-3">
       {/* Zone 1: Single Brand Wordmark ROCKCRAF */}
       <div className="flex items-center gap-3 shrink-0">
         <button
@@ -35,52 +35,6 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
         </button>
       </div>
 
-      {/* Zone 2: Concise Nav Links (Desktop) */}
-      <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-600">
-        <button
-          onClick={() => navigate('dashboard')}
-          className={`whitespace-nowrap shrink-0 transition-colors ${
-            currentRoute === 'dashboard' ? 'text-blue-600 font-semibold' : 'hover:text-slate-900'
-          }`}
-        >
-          Dashboard
-        </button>
-        <button
-          onClick={() => navigate('exams')}
-          className={`whitespace-nowrap shrink-0 transition-colors ${
-            currentRoute === 'exams' ? 'text-blue-600 font-semibold' : 'hover:text-slate-900'
-          }`}
-        >
-          Exams
-        </button>
-        <button
-          onClick={() => navigate('create-exam')}
-          className={`whitespace-nowrap shrink-0 transition-colors ${
-            currentRoute === 'create-exam' ? 'text-blue-600 font-semibold' : 'hover:text-slate-900'
-          }`}
-        >
-          Create Exam
-        </button>
-        <button
-          onClick={() => navigate('classes')}
-          className={`whitespace-nowrap shrink-0 transition-colors ${
-            currentRoute === 'classes' ? 'text-blue-600 font-semibold' : 'hover:text-slate-900'
-          }`}
-        >
-          Classes
-        </button>
-        {isPlatformAdmin && (
-          <button
-            onClick={() => navigate('admin')}
-            className={`whitespace-nowrap shrink-0 transition-colors ${
-              currentRoute === 'admin' ? 'text-blue-600 font-semibold' : 'hover:text-slate-900'
-            }`}
-          >
-            Platform Admin
-          </button>
-        )}
-      </nav>
-
       {/* Zone 3: Primary Action & Profile Info */}
       <div className="flex items-center gap-2.5 shrink-0">
         {school && (
@@ -98,15 +52,15 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPa
             {school.subscription_status === 'active' ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span>PAID · FULL TERM ACTIVE</span>
+                <span>Active</span>
               </>
             ) : (
               <>
                 <CreditCard className="w-3.5 h-3.5" />
                 <span>
                   {school.ai_exams_used >= 4
-                    ? '4/4 Used · Pay ₦11,000'
-                    : `Trial: ${Math.max(0, 4 - school.ai_exams_used)} AI left`}
+                    ? 'Upgrade · ₦11,000'
+                    : `${Math.max(0, 4 - school.ai_exams_used)} trials left`}
                 </span>
               </>
             )}
