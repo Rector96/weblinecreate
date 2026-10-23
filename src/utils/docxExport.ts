@@ -49,7 +49,7 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
   if (schoolLogoRun) docChildren.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [schoolLogoRun] }));
 
   // ==========================================
-  // 1. OFFICIAL WAEC / JAMB SCHOOL HEADER
+  // 1. OFFICIAL SCHOOL HEADER
   // ==========================================
   docChildren.push(
     new Paragraph({
