@@ -306,6 +306,37 @@ export default async (req: Request) => {
     }
   }
 
+  // Check a class/subject slot before the teacher starts generating an exam.
+  if (pathname.endsWith('/check-exam-conflict') && req.method === 'GET') {
+    try {
+      const token = (url.searchParams.get('token') || '').trim().toUpperCase();
+      const className = (url.searchParams.get('class_name') || '').trim();
+      const subject = (url.searchParams.get('subject') || '').trim();
+      const term = (url.searchParams.get('term') || '').trim();
+      const session = (url.searchParams.get('session') || '').trim();
+      if (!/^[A-Z2-9]{6}$/.test(token) || !className || !subject || !term || !session || [className, subject, term, session].some((value) => value.length > 120)) {
+        return jsonResponse({ success: false, error: 'Please choose a valid class, subject, term and session.' }, 400, { 'Cache-Control': 'no-store' });
+      }
+      const invites = await supabaseAdminRequest('school_invitations?token=eq.' + encodeURIComponent(token) + '&role=eq.teacher&is_active=eq.true&select=school_id,expires_at&limit=1') as Array<{ school_id: string; expires_at: string | null }>;
+      const invite = invites[0];
+      if (!invite?.school_id || (invite.expires_at && new Date(invite.expires_at).getTime() <= Date.now())) {
+        return jsonResponse({ success: false, error: 'This school link is invalid or expired.' }, 403, { 'Cache-Control': 'no-store' });
+      }
+      const matches = await supabaseAdminRequest(
+        'exams?school_id=eq.' + encodeURIComponent(invite.school_id) + '&status=eq.published' +
+        '&class_name=ilike.' + encodeURIComponent(className) + '&subject=ilike.' + encodeURIComponent(subject) +
+        '&term=eq.' + encodeURIComponent(term) + '&session=eq.' + encodeURIComponent(session) + '&select=id&limit=1'
+      ) as Array<{ id: string }>;
+      if (matches.length) {
+        return jsonResponse({ success: false, conflict: true, error: className + ' already has a ' + subject + ' exam for ' + term + ', ' + session + '. Choose another subject, term or session.' }, 409, { 'Cache-Control': 'no-store' });
+      }
+      return jsonResponse({ success: true, conflict: false }, 200, { 'Cache-Control': 'no-store' });
+    } catch (error) {
+      console.error('Exam class/subject conflict check failed', error);
+      return jsonResponse({ success: false, error: 'Could not check the class subject schedule. Please try again.' }, 503, { 'Cache-Control': 'no-store' });
+    }
+  }
+
   // Passwordless teachers publish only through a valid school invitation capability.
   if (pathname.endsWith('/publish-exam') && req.method === 'POST') {
     try {
@@ -341,6 +372,10 @@ export default async (req: Request) => {
       };
       return jsonResponse({ success: true, exam, quota: publishResult.quota });
     } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      if (detail.toLowerCase().includes('already has an exam for this subject')) {
+        return jsonResponse({ success: false, code: 'duplicate_class_subject', error: detail }, 409);
+      }
       console.error('Passwordless exam publication failed', error);
       return jsonResponse({ success: false, error: 'Unable to publish this exam securely. Please try again.' }, 500);
     }
@@ -635,5 +670,5 @@ Respond strictly with a JSON object:
 };
 
 export const config = {
-  path: ['/api/generate-questions', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite', '/api/publish-exam'],
+  path: ['/api/generate-questions', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite', '/api/check-exam-conflict', '/api/publish-exam'],
 };
