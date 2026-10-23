@@ -96,3 +96,52 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+
+-- Prevent authenticated users from moving their profile into another school.
+-- Profile updates are allowed for names/phone/avatar, but school membership is
+-- assigned only by trusted signup provisioning or a platform administrator.
+CREATE OR REPLACE FUNCTION public.guard_profile_membership_changes()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+  IF auth.uid() IS NOT NULL AND NOT public.is_platform_admin() THEN
+    NEW.user_id := OLD.user_id;
+    NEW.school_id := OLD.school_id;
+    NEW.email := OLD.email;
+    NEW.id := OLD.id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS guard_profile_membership_changes ON public.profiles;
+CREATE TRIGGER guard_profile_membership_changes
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW EXECUTE FUNCTION public.guard_profile_membership_changes();
+
+-- A school administrator may manage school roles, but cannot grant platform
+-- administrator privileges. Only the trusted signup trigger/platform admin can.
+CREATE OR REPLACE FUNCTION public.guard_platform_role_assignment()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+  IF auth.uid() IS NOT NULL
+     AND NOT public.is_platform_admin()
+     AND NEW.role = 'platform_admin' THEN
+    RAISE EXCEPTION 'Only an existing platform administrator can assign platform administrator access';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS guard_platform_role_assignment ON public.user_roles;
+CREATE TRIGGER guard_platform_role_assignment
+BEFORE INSERT OR UPDATE ON public.user_roles
+FOR EACH ROW EXECUTE FUNCTION public.guard_platform_role_assignment();
