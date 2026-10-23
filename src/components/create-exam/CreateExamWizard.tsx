@@ -1604,7 +1604,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                           <button type="button" onClick={() => beginPreviewEdit(`question:${q.id}`, q.question_text)} className="shrink-0 rounded-lg p-1.5 text-blue-700 hover:bg-blue-50" aria-label={`Edit question ${idx + 1}`} title="Edit question"><Edit3 className="h-4 w-4" /></button>
                         </div>
                         {/* Regenerate Question Action */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-100 transition-opacity">
                           <button
                             type="button"
                             onClick={() => handleRegenerateQuestion(q)}
@@ -1701,7 +1701,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                             type="button"
                             onClick={() => handleRegenerateQuestion(q)}
                             disabled={regeneratingId === q.id}
-                            className="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-sans font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-sans font-semibold flex items-center gap-1 opacity-100 transition-opacity"
                             title="Regenerate with AI"
                           >
                             <RefreshCw className={`w-2.5 h-2.5 ${regeneratingId === q.id ? 'animate-spin' : ''}`} />
