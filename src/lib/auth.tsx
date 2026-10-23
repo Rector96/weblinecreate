@@ -22,7 +22,6 @@ export interface AuthContextType {
     institutionType: InstitutionType;
     password?: string;
   }) => Promise<{ success: boolean; error?: string }>;
-  joinSchoolAsTeacher: (token: string, fullName: string, email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateUserProfile: (updates: Partial<UserProfile>) => void;
   refreshSchool: () => void;
@@ -207,28 +206,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (result.session?.user) await loadUserContext(result.session.user);
     if (!result.session) {
       return { success: false, error: 'Account created. Check your email to confirm it, then sign in. Your school profile is created by the database signup trigger.' };
-    }
-    return { success: true };
-  };
-
-  const joinSchoolAsTeacher = async (token: string, fullName: string, email: string, password?: string) => {
-    if (!isSupabaseConfigured()) return { success: false, error: 'Supabase authentication is not configured.' };
-    if (!password || password.length < 8) return { success: false, error: 'Use a password with at least 8 characters.' };
-    const { data: result, error } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
-      password,
-      options: {
-        data: {
-          registration_type: 'teacher_invite',
-          invitation_token: token.trim().toUpperCase(),
-          full_name: fullName.trim(),
-        },
-      },
-    });
-    if (error) return { success: false, error: error.message };
-    if (result.session?.user) await loadUserContext(result.session.user);
-    if (!result.session) {
-      return { success: false, error: 'Account created. Confirm your email, then sign in. Your invitation token will be validated by the database signup trigger.' };
     }
     return { success: true };
   };
