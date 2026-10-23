@@ -1,0 +1,355 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../lib/auth';
+import { db } from '../../lib/db';
+import { NIGERIAN_STATES, NIGERIAN_STATES_LGAS } from '../../data/nigeriaStatesLgas';
+import { InstitutionType } from '../../types';
+import {
+  School,
+  Building,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Save,
+  CheckCircle2,
+  Camera,
+  CreditCard,
+  KeyRound,
+  ShieldCheck,
+  AlertCircle
+} from 'lucide-react';
+
+interface ProfilePageProps {
+  onOpenPaystack: () => void;
+}
+
+export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
+  const { school, user, refreshSchool, role } = useAuth();
+
+  const [name, setName] = useState(school?.name || '');
+  const [adminName, setAdminName] = useState(school?.admin_name || '');
+  const [email, setEmail] = useState(school?.email || '');
+  const [phone, setPhone] = useState(school?.phone || '');
+  const [state, setState] = useState(school?.state || 'Lagos');
+  const [lga, setLga] = useState(school?.lga || 'Lagos Island');
+  const [institutionType, setInstitutionType] = useState<InstitutionType>(
+    school?.institution_type || 'Secondary'
+  );
+  const [motto, setMotto] = useState(school?.motto || '');
+  const [address, setAddress] = useState(school?.address || '');
+  const [logoUrl, setLogoUrl] = useState(school?.logo_url || '');
+
+  const [message, setMessage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (school) {
+      setName(school.name);
+      setAdminName(school.admin_name);
+      setEmail(school.email);
+      setPhone(school.phone);
+      setState(school.state);
+      setLga(school.lga);
+      setInstitutionType(school.institution_type);
+      setMotto(school.motto || '');
+      setAddress(school.address || '');
+      setLogoUrl(school.logo_url || '');
+    }
+  }, [school]);
+
+  // LGA cascading dropdown
+  useEffect(() => {
+    const lgas = NIGERIAN_STATES_LGAS[state] || [];
+    if (lgas.length > 0 && !lgas.includes(lga)) {
+      setLga(lgas[0]);
+    }
+  }, [state]);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setLogoUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!school) return;
+    setIsSaving(true);
+
+    db.updateSchool(school.id, {
+      name,
+      admin_name: adminName,
+      email,
+      phone,
+      state,
+      lga,
+      institution_type: institutionType,
+      motto,
+      address,
+      logo_url: logoUrl,
+    });
+
+    refreshSchool();
+    setIsSaving(false);
+    setMessage('School details updated successfully.');
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6 text-left">
+      <div>
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+          School Profile & Identity
+        </h2>
+        <p className="text-xs text-slate-500 mt-0.5">
+          These details are automatically printed on the official WAEC/JAMB exam header.
+        </p>
+      </div>
+
+      {message && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+          <span>{message}</span>
+        </div>
+      )}
+
+      {/* Subscription Status Card */}
+      {school && (
+        <div className="p-5 rounded-3xl bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-800 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-200">
+              Subscription Plan
+            </span>
+            <div className="text-lg font-extrabold capitalize mt-0.5">
+              {school.subscription_status === 'active' ? 'Full Term Active' : 'Free Trial Mode'}
+            </div>
+            <p className="text-xs text-purple-200 mt-1">
+              {school.subscription_status === 'active' ? (
+                'Unlimited exam generation active for this academic term.'
+              ) : (
+                <>
+                  {school.max_trial_ai_exams - school.ai_exams_used} AI exams and{' '}
+                  {school.max_trial_manual_exams - school.manual_exams_used} manual exams remaining.
+                </>
+              )}
+            </p>
+          </div>
+
+          <button
+            onClick={onOpenPaystack}
+            className="px-4 py-2.5 rounded-xl bg-white text-purple-900 hover:bg-purple-50 text-xs font-bold transition-all shadow-sm shrink-0"
+          >
+            {school.subscription_status === 'active' ? 'Manage Term' : 'Upgrade for ₦11,000'}
+          </button>
+        </div>
+      )}
+
+      {/* Main Profile Form */}
+      <form
+        onSubmit={handleSave}
+        className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-xs space-y-5"
+      >
+        {/* School Logo Section */}
+        <div className="flex items-center gap-4 pb-5 border-b border-slate-100">
+          <div className="relative w-20 h-20 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="School Logo"
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <Building className="w-8 h-8 text-slate-400" />
+            )}
+            <label className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+              <Camera className="w-5 h-5 text-white" />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-bold text-slate-900">Official School Crest / Logo</h4>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Appears at the top of your exported DOCX exam papers. PNG, JPG or SVG.
+            </p>
+            <label className="inline-block mt-2 text-xs font-semibold text-purple-700 hover:text-purple-800 cursor-pointer">
+              <span>Change Logo</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                className="hidden"
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Inputs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Official School Name *
+            </label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={role !== 'school_admin'}
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Principal / Head Admin *
+            </label>
+            <input
+              type="text"
+              required
+              value={adminName}
+              onChange={(e) => setAdminName(e.target.value)}
+              disabled={role !== 'school_admin'}
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Official Email Address *
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={role !== 'school_admin'}
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Phone Number *
+            </label>
+            <input
+              type="tel"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              disabled={role !== 'school_admin'}
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">State *</label>
+            <select
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+              disabled={role !== 'school_admin'}
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
+            >
+              {NIGERIAN_STATES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">L.G.A *</label>
+            <select
+              value={lga}
+              onChange={(e) => setLga(e.target.value)}
+              disabled={role !== 'school_admin'}
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
+            >
+              {(NIGERIAN_STATES_LGAS[state] || []).map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Institution Type *
+            </label>
+            <select
+              value={institutionType}
+              onChange={(e) => setInstitutionType(e.target.value as any)}
+              disabled={role !== 'school_admin'}
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
+            >
+              <option value="Secondary">Secondary School</option>
+              <option value="College">College</option>
+              <option value="Comprehensive">Comprehensive</option>
+              <option value="International">International</option>
+              <option value="Technical">Technical College</option>
+              <option value="Primary & Secondary">Primary & Secondary</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            School Motto (Optional)
+          </label>
+          <input
+            type="text"
+            placeholder="e.g. Floreat Collegium (Let the College Flourish)"
+            value={motto}
+            onChange={(e) => setMotto(e.target.value)}
+            disabled={role !== 'school_admin'}
+            className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            School Physical Address *
+          </label>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="e.g. 3 Catholic Mission Street, Lagos Island, Lagos"
+            disabled={role !== 'school_admin'}
+            className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
+          />
+        </div>
+
+        {role === 'school_admin' && (
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="py-2.5 px-5 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-75 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSaving ? 'Saving...' : 'Save School Profile'}</span>
+            </button>
+          </div>
+        )}
+      </form>
+    </div>
+  );
+};

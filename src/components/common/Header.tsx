@@ -1,0 +1,128 @@
+import React from 'react';
+import { useAuth } from '../../lib/auth';
+import { School, User, Sparkles, LogOut, ShieldCheck, CreditCard } from 'lucide-react';
+
+interface HeaderProps {
+  currentRoute: string;
+  navigate: (route: string) => void;
+  onOpenPaystack?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPaystack }) => {
+  const { user, school, role, logout, isPlatformAdmin } = useAuth();
+
+  return (
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-8">
+      {/* Zone 1: Single Brand Wordmark */}
+      <div className="flex items-center gap-3 shrink-0">
+        <button
+          onClick={() => navigate('dashboard')}
+          className="flex items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 rounded-lg group"
+        >
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-700 to-violet-500 flex items-center justify-center text-white shadow-sm shadow-purple-600/20 group-hover:scale-105 transition-transform duration-150">
+            <span className="font-extrabold text-base tracking-tighter">EC</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-purple-700 transition-colors">
+              ExamCraft
+            </span>
+            {school?.name && (
+              <span className="text-[11px] font-medium text-slate-500 truncate max-w-[150px] sm:max-w-[220px]">
+                {school.name}
+              </span>
+            )}
+          </div>
+        </button>
+      </div>
+
+      {/* Zone 2: Concise Nav Links (Desktop) */}
+      <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-600">
+        <button
+          onClick={() => navigate('dashboard')}
+          className={`whitespace-nowrap shrink-0 transition-colors ${
+            currentRoute === 'dashboard' ? 'text-purple-700 font-semibold' : 'hover:text-slate-900'
+          }`}
+        >
+          Dashboard
+        </button>
+        <button
+          onClick={() => navigate('exams')}
+          className={`whitespace-nowrap shrink-0 transition-colors ${
+            currentRoute === 'exams' ? 'text-purple-700 font-semibold' : 'hover:text-slate-900'
+          }`}
+        >
+          Exams
+        </button>
+        <button
+          onClick={() => navigate('create-exam')}
+          className={`whitespace-nowrap shrink-0 transition-colors ${
+            currentRoute === 'create-exam' ? 'text-purple-700 font-semibold' : 'hover:text-slate-900'
+          }`}
+        >
+          Create Exam
+        </button>
+        <button
+          onClick={() => navigate('classes')}
+          className={`whitespace-nowrap shrink-0 transition-colors ${
+            currentRoute === 'classes' ? 'text-purple-700 font-semibold' : 'hover:text-slate-900'
+          }`}
+        >
+          Classes
+        </button>
+        {isPlatformAdmin && (
+          <button
+            onClick={() => navigate('admin')}
+            className={`whitespace-nowrap shrink-0 transition-colors ${
+              currentRoute === 'admin' ? 'text-purple-700 font-semibold' : 'hover:text-slate-900'
+            }`}
+          >
+            Platform Admin
+          </button>
+        )}
+      </nav>
+
+      {/* Zone 3: Primary Action & Profile Info */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        {school && (
+          <button
+            onClick={onOpenPaystack}
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              school.subscription_status === 'active'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100'
+            }`}
+            title="Manage School Subscription"
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            <span>
+              {school.subscription_status === 'active'
+                ? 'Term Active'
+                : `Trial: ${school.max_trial_ai_exams - school.ai_exams_used} AI left`}
+            </span>
+          </button>
+        )}
+
+        <button
+          onClick={() => navigate('profile')}
+          className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 transition-colors text-slate-700"
+          title="School & User Profile"
+        >
+          <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-xs ring-1 ring-purple-300">
+            {user?.full_name?.charAt(0) || 'U'}
+          </div>
+          <span className="hidden lg:inline text-xs font-medium text-slate-700 max-w-[120px] truncate">
+            {user?.full_name?.split(' ')[0] || 'User'}
+          </span>
+        </button>
+
+        <button
+          onClick={logout}
+          className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+          title="Sign out"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
+      </div>
+    </header>
+  );
+};
