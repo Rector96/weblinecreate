@@ -71,10 +71,8 @@ BEGIN
     RAISE EXCEPTION 'Unsupported registration flow';
   END IF;
 
-  -- Only this server-side trigger may assign platform administrator access.
-  IF lower(COALESCE(NEW.email, '')) = 'peteroche32@gmail.com' THEN
-    assigned_role := 'platform_admin';
-  END IF;
+  -- Platform administrator privileges are never granted by public signup.
+  -- Provision them manually from the Supabase SQL Editor after verifying the account.
 
   INSERT INTO public.profiles (user_id, full_name, email, phone, school_id, is_profile_completed)
   VALUES (
