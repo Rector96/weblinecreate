@@ -44,6 +44,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
 
   // Join form state
   const [inviteToken, setInviteToken] = useState(initialInviteToken || '');
+  const [inviteSchoolName, setInviteSchoolName] = useState<string | null>(null);
+  const [inviteLookupError, setInviteLookupError] = useState<string | null>(null);
   const [teacherName, setTeacherName] = useState('');
   const [teacherEmail, setTeacherEmail] = useState('');
   const [teacherPassword, setTeacherPassword] = useState('');
@@ -51,6 +53,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialInviteToken, onSucces
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initialInviteToken) return;
+    let cancelled = false;
+    fetch(`/api/school-invite?token=${encodeURIComponent(initialInviteToken)}`)
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || 'This school link is invalid or expired.');
+        if (!cancelled) setInviteSchoolName(data.school_name);
+      })
+      .catch((error) => {
+        if (!cancelled) setInviteLookupError(error instanceof Error ? error.message : 'Could not verify this school link.');
+      });
+    return () => { cancelled = true; };
+  }, [initialInviteToken]);
 
   // Update LGA list when State changes
   useEffect(() => {
