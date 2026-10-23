@@ -23,7 +23,7 @@ import { ProfilePage } from './components/profile/ProfilePage';
 import { PlatformAdminPage } from './components/admin/PlatformAdminPage';
 import { ExamPreviewModal } from './components/exams/ExamPreviewModal';
 import { PageLoader } from './components/common/PageLoader';
-import { Exam } from './types';
+import { Exam, School } from './types';
 
 function AppContent() {
   const { isAuthenticated, school, role, isLoading } = useAuth();
@@ -56,12 +56,43 @@ function AppContent() {
     return params.get('token')?.toUpperCase() || undefined;
   });
 
+  // A school invitation is a limited, passwordless capability for exam creation only.
+  const [guestInviteSchool, setGuestInviteSchool] = useState<School | null>(null);
+  const [guestInviteLoading, setGuestInviteLoading] = useState(Boolean(initialJoinToken));
+  const [guestInviteError, setGuestInviteError] = useState<string | null>(null);
+  const [guestRoute, setGuestRoute] = useState<'welcome' | 'create-exam' | 'exam-success' | 'teacher-finished'>('welcome');
+  const [guestLastCreatedExam, setGuestLastCreatedExam] = useState<Exam | null>(null);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsInitialLoading(false);
     }, 700);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!initialJoinToken || isAuthenticated) {
+      setGuestInviteLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setGuestInviteLoading(true);
+    fetch(`/api/school-invite?token=${encodeURIComponent(initialJoinToken)}`)
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success || !data.school?.id) {
+          throw new Error(data.error || 'This school link is invalid or expired.');
+        }
+        if (!cancelled) setGuestInviteSchool(data.school as School);
+      })
+      .catch((error) => {
+        if (!cancelled) setGuestInviteError(error instanceof Error ? error.message : 'Could not verify this school link.');
+      })
+      .finally(() => {
+        if (!cancelled) setGuestInviteLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [initialJoinToken, isAuthenticated]);
 
   useEffect(() => {
     const paymentStatus = new URLSearchParams(window.location.search).get('payment');
@@ -85,6 +116,83 @@ function AppContent() {
         minDurationMs={650}
         onFinish={() => setIsInitialLoading(false)}
       />
+    );
+  }
+
+  // Passwordless teacher links never show the account creation or sign-in forms.
+  if (!isAuthenticated && initialJoinToken) {
+    if (guestInviteLoading || isInitialLoading) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#f4f7fc]" aria-label="Loading ROCKCRAFT">
+          <div className="flex flex-col items-center gap-5">
+            <div className="h-10 w-10 rounded-full border-4 border-blue-100 border-t-blue-700 animate-spin" />
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950">ROCKCRAFT</h1>
+          </div>
+        </div>
+      );
+    }
+    if (!guestInviteSchool) {
+      return (
+        <div className="min-h-[100dvh] bg-[#f4f7fc] flex items-center justify-center px-5">
+          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 p-7 text-center shadow-xl">
+            <h1 className="text-3xl font-black tracking-tight text-slate-950">ROCKCRAFT</h1>
+            <h2 className="mt-5 text-lg font-bold text-slate-900">School link unavailable</h2>
+            <p className="mt-2 text-sm text-slate-600">{guestInviteError || 'This school link is invalid or expired. Please ask your school admin for a new link.'}</p>
+          </div>
+        </div>
+      );
+    }
+    const guestNavigate = (route: string) => {
+      if (route === 'create-exam' || route === 'exam-success' || route === 'teacher-finished') setGuestRoute(route);
+      else setGuestRoute('welcome');
+    };
+    if (guestRoute === 'create-exam') {
+      return (
+        <div className="h-[100dvh] max-h-[100dvh] overflow-y-auto bg-[#f5f7fb]">
+          <div className="mx-auto max-w-5xl px-3 py-3 sm:px-5 sm:py-4">
+            <div className="mb-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">ROCKCRAFT</p><h1 className="truncate text-sm font-bold text-slate-900">{guestInviteSchool.name}</h1></div>
+              <button onClick={() => setGuestRoute('welcome')} className="shrink-0 text-xs font-semibold text-slate-500 hover:text-slate-900">Exit</button>
+            </div>
+            <CreateExamWizard
+              navigate={guestNavigate}
+              onOpenPaystack={() => {}}
+              guestInviteToken={initialJoinToken}
+              guestSchool={guestInviteSchool}
+              onSuccessExam={(exam) => { setGuestLastCreatedExam(exam); setGuestRoute('exam-success'); }}
+            />
+          </div>
+        </div>
+      );
+    }
+    if (guestRoute === 'exam-success' && guestLastCreatedExam) {
+      return <ExamSuccessPage exam={guestLastCreatedExam} navigate={guestNavigate} onPreview={(exam) => setPreviewExam(exam)} />;
+    }
+    if (guestRoute === 'teacher-finished') {
+      return (
+        <div className="min-h-[100dvh] bg-[#f4f7fc] flex items-center justify-center px-5">
+          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 p-7 text-center shadow-xl">
+            <h1 className="text-3xl font-black tracking-tight text-slate-950">ROCKCRAFT</h1>
+            <div className="mx-auto mt-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-2xl text-emerald-700">✓</div>
+            <h2 className="mt-4 text-lg font-bold text-slate-900">Thank you for creating your exam.</h2>
+            <p className="mt-2 text-sm text-slate-600">Your marking scheme should have downloaded automatically. Please contact your school admin if you need another copy.</p>
+            <button onClick={() => setGuestRoute('create-exam')} className="mt-5 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white">Create another exam</button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-[100dvh] bg-gradient-to-b from-[#eaf2ff] via-[#f5f8fd] to-white flex items-center justify-center px-5 py-8">
+        <div className="w-full max-w-md rounded-[2rem] border border-white bg-white/95 p-7 sm:p-9 text-center shadow-2xl shadow-blue-950/10">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950">ROCKCRAFT</h1>
+          <div className="mx-auto mt-5 h-1 w-14 rounded-full bg-blue-600" />
+          <p className="mt-5 text-xs font-semibold uppercase tracking-widest text-blue-700">Teacher exam workspace</p>
+          <h2 className="mt-2 text-xl font-extrabold text-slate-900">Welcome to {guestInviteSchool.name}</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600">Create your school examination paper and marking scheme in a few guided steps. No teacher account or password is needed.</p>
+          <button onClick={() => setGuestRoute('create-exam')} className="mt-7 w-full rounded-2xl bg-blue-700 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800">Start Creating Exam <span aria-hidden="true">→</span></button>
+          <p className="mt-4 text-[11px] text-slate-500">This link only grants access to exam creation for this school.</p>
+        </div>
+      </div>
     );
   }
 
