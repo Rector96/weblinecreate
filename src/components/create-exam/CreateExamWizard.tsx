@@ -138,6 +138,14 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     { quote: 'Every question you prepare is another opportunity for a learner to grow.', author: 'ROCKCRAFT' },
   ];
 
+  // Keep the review step visible after AI generation, especially on mobile
+  // where the browser may retain the scroll position of the generator form.
+  useEffect(() => {
+    if (currentStep === 4 && questions.length > 0) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+  }, [currentStep, questions.length]);
+
   useEffect(() => {
     if (!isGeneratingAI || generationStage !== 'working') return;
     const timer = window.setInterval(() => setMotivationIndex((index) => (index + 1) % motivationQuotes.length), 3200);
@@ -295,36 +303,50 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
         const parsedQuestions: Question[] = [];
 
+        // Normalize provider output before rendering. AI responses can contain
+        // nulls or non-string values; passing those directly to controlled form
+        // fields can crash or blank the review screen on mobile browsers.
+        const asText = (value: unknown, fallback: string) =>
+          typeof value === 'string' && value.trim() ? value : fallback;
+        const asMarks = (value: unknown, fallback: number) => {
+          const parsed = Number(value);
+          return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+        };
+        const generatedAt = Date.now();
+
         // Objectives
-        rawA.forEach((item: any, idx: number) => {
+        (Array.isArray(rawA) ? rawA : []).forEach((item: any, idx: number) => {
+          if (!item || typeof item !== 'object') return;
+          const correct = String(item.correct_option || 'A').toUpperCase();
           parsedQuestions.push({
-            id: `q_ai_obj_${Date.now()}_${idx}`,
+            id: `q_ai_obj_${generatedAt}_${idx}`,
             section: 'A',
             question_number: idx + 1,
-            question_text: item.question_text || `Question ${idx + 1}`,
-            marks: item.marks || 1,
+            question_text: asText(item.question_text, `Question ${idx + 1}`),
+            marks: asMarks(item.marks, 1),
             objective_data: {
-              option_a: item.option_a || 'Option A',
-              option_b: item.option_b || 'Option B',
-              option_c: item.option_c || 'Option C',
-              option_d: item.option_d || 'Option D',
-              correct_option: (item.correct_option as any) || 'A',
+              option_a: asText(item.option_a, 'Option A'),
+              option_b: asText(item.option_b, 'Option B'),
+              option_c: asText(item.option_c, 'Option C'),
+              option_d: asText(item.option_d, 'Option D'),
+              correct_option: (['A', 'B', 'C', 'D'].includes(correct) ? correct : 'A') as any,
             },
           });
         });
 
         // Theories
-        rawB.forEach((item: any, idx: number) => {
+        (Array.isArray(rawB) ? rawB : []).forEach((item: any, idx: number) => {
+          if (!item || typeof item !== 'object') return;
           parsedQuestions.push({
-            id: `q_ai_theo_${Date.now()}_${idx}`,
+            id: `q_ai_theo_${generatedAt}_${idx}`,
             section: 'B',
             question_number: idx + 1,
-            question_text: item.question_text || `Theory Question ${idx + 1}`,
-            marks: item.marks || 15,
+            question_text: asText(item.question_text, `Theory Question ${idx + 1}`),
+            marks: asMarks(item.marks, 15),
             theory_data: {
-              model_answer: item.model_answer || 'Complete step-by-step solution.',
-              score_breakdown: item.score_breakdown || 'Part (a): 5 mks, Part (b): 10 mks.',
-              max_score: item.max_score || 15,
+              model_answer: asText(item.model_answer, 'Complete step-by-step solution.'),
+              score_breakdown: asText(item.score_breakdown, 'Part (a): 5 mks, Part (b): 10 mks.'),
+              max_score: asMarks(item.max_score, 15),
             },
           });
         });
