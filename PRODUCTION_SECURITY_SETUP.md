@@ -9,7 +9,7 @@
 5. Confirm the query completes successfully.
 6. Repeat with the [secure signup provisioning migration](https://github.com/Rector96/weblinecreate/blob/fix/production-readiness/supabase/migrations/20261023000200_secure_signup_provisioning.sql).
 
-The first migration tightens row-level security and prevents client-side payment inserts. The second provisions school and teacher profiles through a trusted database trigger and blocks users from changing their own school membership or granting platform-admin access.
+The first migration tightens row-level security and prevents client-side payment inserts. The second provisions school and teacher profiles through a trusted database trigger and blocks users from changing their own school membership or granting platform-admin access. Platform-admin access is never assigned automatically from an email address; use the manual bootstrap instructions below.
 
 **Important:** your existing database already has the required tables. Do not rerun `supabase_schema.sql` on it: that original setup file contains older permissive policies. Apply migrations in order, and confirm each succeeds.
 
@@ -42,3 +42,27 @@ However, `src/lib/db.ts` still stores exam, question, and class data in browser 
 - Added secure school/teacher signup provisioning and role-escalation guards.
 - Added server-side Paystack initialization and transaction verification; subscriptions activate only after verified successful payment.
 - Removed placeholder/fake questions returned as successful AI output.
+
+
+## 5. Bootstrap the first platform administrator
+
+Do not grant platform-admin access based only on an email address in application code or signup metadata. First create and verify the intended administrator's Supabase Auth account using the normal signup flow. Then, from the Supabase SQL Editor (trusted project owner access), inspect the exact account and grant the role explicitly:
+
+```sql
+-- Verify the target account first; this query should return exactly one intended user.
+select id, email, email_confirmed_at
+from auth.users
+where lower(email) = lower('YOUR_ADMIN_EMAIL');
+
+-- Replace the UUID below with the verified auth.users.id returned above.
+insert into public.user_roles (user_id, role, school_id)
+values ('REPLACE_WITH_VERIFIED_AUTH_USER_UUID'::uuid, 'platform_admin', null)
+on conflict do nothing;
+
+-- Confirm the role assignment.
+select user_id, role, school_id
+from public.user_roles
+where user_id = 'REPLACE_WITH_VERIFIED_AUTH_USER_UUID'::uuid;
+```
+
+Run the insert only after verifying the account belongs to the intended administrator. Keep SQL Editor/project-owner access restricted. The user's public signup flow must never be able to insert this role.
