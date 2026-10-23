@@ -82,7 +82,7 @@ export const STANDARD_NIGERIAN_CLASSES = [
   { name: 'JSS 3', level: 'Junior' as const, label: 'Junior Secondary 3 (JSS 3 / BECE)' },
   { name: 'SSS 1', level: 'Senior' as const, label: 'Senior Secondary 1 (SSS 1 / Grade 10)' },
   { name: 'SSS 2', level: 'Senior' as const, label: 'Senior Secondary 2 (SSS 2 / Grade 11)' },
-  { name: 'SSS 3', level: 'Senior' as const, label: 'Senior Secondary 3 (SSS 3 / WAEC/NECO Prep)' },
+  { name: 'SSS 3', level: 'Senior' as const, label: 'Senior Secondary 3 (SSS 3)' },
 ];
 
 export function normalizeClassName(raw: string): string {
@@ -104,6 +104,6 @@ export const ACADEMIC_SESSIONS = [
   '2024/2025'
 ];
 
-export const DEFAULT_WAEC_INSTRUCTIONS = 
+export const DEFAULT_EXAM_INSTRUCTIONS = 
   'SECTION A: Answer all questions in this section by selecting the correct option (A - D).\n' +
   'SECTION B: Answer any FOUR (4) questions in this section. All questions carry equal marks. Write legibly and show all working clearly.';
