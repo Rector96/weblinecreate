@@ -22,7 +22,7 @@ if (apiKey) {
 }
 
 // ==============================================================================
-// 1. AI QUESTION GENERATION ENDPOINT (WAEC/JAMB SYLLABUS MULTI-PROVIDER)
+// 1. AI QUESTION GENERATION ENDPOINT (MULTI-PROVIDER)
 // ==============================================================================
 app.post('/api/generate-questions', async (req, res) => {
   try {
@@ -33,7 +33,7 @@ app.post('/api/generate-questions', async (req, res) => {
       topics,
       num_objectives = 10,
       num_theories = 3,
-      difficulty = 'Standard WAEC/JAMB',
+      difficulty = 'Standard',
       instructions = '',
     } = req.body;
 
@@ -46,7 +46,7 @@ app.post('/api/generate-questions', async (req, res) => {
     const safeTheoryCount = Math.min(Math.max(Number(num_theories) || 2, 1), 10);
 
     const promptText = `
-You are a senior West African Examinations Council (WAEC) and NECO Chief Examiner for Nigerian Secondary Schools.
+You are an experienced Nigerian secondary-school examination setter.
 Generate an authentic, highly standard examination question paper and confidential marking scheme.
 
 TARGET DETAILS:
@@ -55,7 +55,7 @@ TARGET DETAILS:
 - Term: ${term || 'First Term'}
 - Specific Topics to focus on: ${topics || 'All syllabus topics for this term'}
 - Difficulty standard: ${difficulty}
-- Special instructions: ${instructions || 'Follow official WAEC standard'}
+- Special instructions: ${instructions || 'Follow the school's curriculum and instructions'}
 
 REQUIREMENTS:
 1. Generate EXACTLY ${safeObjCount} Section A Objective (Multiple Choice) questions.
@@ -63,7 +63,7 @@ REQUIREMENTS:
    - Provide the correct_option which MUST be one of 'A', 'B', 'C', or 'D'.
    - Marks for each objective question must be 1.
 2. Generate EXACTLY ${safeTheoryCount} Section B Essay/Theory questions.
-   - Each theory question should reflect authentic WAEC style (with sub-parts like (a), (b) if applicable).
+   - Each theory question should reflect clear, curriculum-aligned examination style (with sub-parts like (a), (b) if applicable).
    - Allocate marks (e.g. 10 to 15 marks per question).
    - Provide a thorough model_answer showing step-by-step solutions or detailed essay points.
    - Provide an exact score_breakdown (e.g. "Step 1 formula: 2 mks, Substitution: 3 mks, Correct unit: 1 mk").
@@ -143,7 +143,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
       success: true,
       provider: 'nigerian-curriculum-engine-fallback',
       data: fallbackExam,
-      note: 'Generated via Nigerian WAEC Curriculum Standard Engine.',
+      note: 'Generated via Nigerian Curriculum Standard Engine.',
     });
   } catch (error: any) {
     console.error('Generate questions error:', error);
@@ -163,7 +163,7 @@ app.post('/api/regenerate-single-question', async (req, res) => {
 
     const isObjective = section === 'A';
     const promptText = `
-You are a senior WAEC Chief Examiner. Generate a SINGLE FRESH ${isObjective ? 'Objective (Multiple Choice)' : 'Theory/Essay'} question for:
+You are an experienced Nigerian secondary-school examination setter. Generate a SINGLE FRESH ${isObjective ? 'Objective (Multiple Choice)' : 'Theory/Essay'} question for:
 - Subject: ${subject}
 - Class: ${class_name}
 - Topics: ${topics || 'Standard Nigerian curriculum'}
@@ -216,7 +216,7 @@ Return STRICT JSON ONLY.`;
         success: true,
         data: {
           question_number,
-          question_text: `[${subject}] According to WAEC standard curriculum in ${class_name}, which of the following is correct regarding ${topics || 'the syllabus'}?`,
+          question_text: `[${subject}] According to the Nigerian secondary-school curriculum in ${class_name}, which of the following is correct regarding ${topics || 'the syllabus'}?`,
           option_a: 'Primary theorem statement with standard units',
           option_b: 'Alternative reciprocal property',
           option_c: 'Inverse proportionality under standard laboratory conditions',
@@ -253,7 +253,7 @@ app.post('/api/generate-more-questions', async (req, res) => {
     const isObjective = section === 'A';
 
     const promptText = `
-You are a senior WAEC Chief Examiner. Generate EXACTLY ${safeCount} NEW ${isObjective ? 'Objective Multiple Choice' : 'Theory'} questions for:
+You are an experienced Nigerian secondary-school examination setter. Generate EXACTLY ${safeCount} NEW ${isObjective ? 'Objective Multiple Choice' : 'Theory'} questions for:
 - Subject: ${subject}
 - Class: ${class_name}
 - Section: ${section}
@@ -374,7 +374,7 @@ function generateRealisticNigerianFallback(
   for (let i = 1; i <= numObj; i++) {
     objQuestions.push({
       question_number: i,
-      question_text: `[${subject} - ${topic || 'Core Curriculum'}] Which of the following statements best illustrates standard WAEC principle ${i} in ${subject} for ${className}?`,
+      question_text: `[${subject} - ${topic || 'Core Curriculum'}] Which of the following statements best illustrates standard curriculum principle ${i} in ${subject} for ${className}?`,
       option_a: `Standard core axiom A with verified empirical baseline`,
       option_b: `Alternative theorem B describing reciprocal conditions`,
       option_c: `Common secondary misconception C under standard temperature`,
