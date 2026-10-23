@@ -69,9 +69,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
               >
                 <Icon className="w-5 h-5 shrink-0" />
                 <span className="truncate">{item.label}</span>
-                <span className="ml-auto text-[10px] bg-white/20 text-current px-1.5 py-0.5 rounded-md font-bold">
-                  AI + Manual
-                </span>
               </button>
             );
           }
@@ -99,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
           {school.subscription_status === 'active' ? (
             <div className="p-3.5 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-left">
               <div className="flex items-center justify-between text-xs font-bold text-emerald-950 mb-1">
-                <span>School Subscription</span>
+                <span>Plan</span>
                 <span className="flex items-center gap-1 uppercase px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900 text-[10px] font-black">
                   <Check className="w-3 h-3" />
                   PAID
@@ -140,7 +137,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
                 className="mt-3 w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5"
               >
                 <CreditCard className="w-3.5 h-3.5" />
-                <span>{school.ai_exams_used >= 4 ? 'Pay ₦11,000 via Paystack' : 'Upgrade (₦11,000/Term)'}</span>
+                <span>{school.ai_exams_used >= 4 ? 'Upgrade · ₦11,000' : 'Upgrade · ₦11,000'}</span>
               </button>
             </div>
           )}
