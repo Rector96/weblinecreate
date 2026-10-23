@@ -275,7 +275,7 @@ export default async (req: Request) => {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  // Public invite preview: reveal only the school name for a valid, active share link.
+  // Public invite preview: reveal school branding and curriculum options for a valid, active share link.
   if (pathname.endsWith('/school-invite') && req.method === 'GET') {
     try {
       const token = (url.searchParams.get('token') || '').trim().toUpperCase();
