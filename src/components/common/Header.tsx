@@ -8,8 +8,8 @@ interface HeaderProps {
   onOpenPaystack?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentRoute, navigate, onOpenPaystack }) => {
-  const { user, school, role, logout, isPlatformAdmin } = useAuth();
+export const Header: React.FC<HeaderProps> = ({ navigate, onOpenPaystack }) => {
+  const { user, school, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-slate-200/70 px-3 sm:px-6 py-3 flex items-center justify-between gap-3">
