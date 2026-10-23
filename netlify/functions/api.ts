@@ -49,7 +49,7 @@ async function supabaseAdminRequest(path: string, init: RequestInit = {}) {
 async function getAuthenticatedUser(req: Request) {
   const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!token || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
-  const response = await fetch(`${SUPABASE_URL.replace(/\\/$/, '')}/auth/v1/user`, {
+  const response = await fetch(`${SUPABASE_URL.replace(/\/$/, '')}/auth/v1/user`, {
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
       Authorization: `Bearer ${token}`,
@@ -108,7 +108,7 @@ async function initializePaystackPayment(req: Request) {
   const schoolId = body.school_id?.trim();
   const term = body.term?.trim();
   const session = body.session?.trim();
-  if (!schoolId || !term || !ALLOWED_TERMS.has(term) || !session || !/^\\d{4}\\/\\d{4}$/.test(session)) {
+  if (!schoolId || !term || !ALLOWED_TERMS.has(term) || !session || !/^[0-9]{4}\/[0-9]{4}$/.test(session)) {
     return jsonResponse({ error: 'Invalid school, term, or academic session.' }, 400);
   }
 
