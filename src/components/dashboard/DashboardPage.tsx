@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth';
-import { db, dbEvents } from '../../lib/db';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase';
+import { listSchoolExams } from '../../lib/examRepository';
 import { Exam } from '../../types';
 import { exportExamToDocx, exportMarkingSchemeToDocx } from '../../utils/docxExport';
 import {
@@ -29,33 +30,73 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 }) => {
   const { user, school, role } = useAuth();
   const [exams, setExams] = useState<Exam[]>([]);
-  const [inviteToken, setInviteToken] = useState<string>('KC2026');
+  const [inviteToken, setInviteToken] = useState<string>('');
+  const [classesCount, setClassesCount] = useState(0);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const loadData = () => {
-    if (!school) return;
-    const allExams = db.getExams(school.id);
-    setExams(allExams);
-
-    const invites = db.getInvites(school.id);
-    if (invites.length > 0) {
-      setInviteToken(invites[0].token);
-    } else {
-      const newInv = db.createInvite(school.id, user?.id || 'admin');
-      setInviteToken(newInv.token);
-    }
-  };
-
   useEffect(() => {
-    loadData();
-    const unsubExams = dbEvents.subscribe('exams', loadData);
-    const unsubInvites = dbEvents.subscribe('invites', loadData);
-    return () => {
-      unsubExams();
-      unsubInvites();
+    let cancelled = false;
+
+    const loadData = async () => {
+      if (!school) {
+        setExams([]);
+        setClassesCount(0);
+        setInviteToken('');
+        return;
+      }
+      if (!isSupabaseConfigured()) {
+        setDataError('Supabase is not configured. Dashboard records cannot be loaded.');
+        setExams([]);
+        setClassesCount(0);
+        setInviteToken('');
+        return;
+      }
+
+      setDataError(null);
+      try {
+        const [schoolExams, classesResult, inviteResult] = await Promise.all([
+          listSchoolExams(school.id),
+          supabase.from('school_classes').select('id', { count: 'exact', head: true }).eq('school_id', school.id),
+          supabase.from('school_invitations').select('id, token, is_active, created_at')
+            .eq('school_id', school.id).eq('is_active', true)
+            .order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        if (classesResult.error) throw classesResult.error;
+        if (inviteResult.error) throw inviteResult.error;
+        if (cancelled) return;
+
+        setExams(schoolExams);
+        setClassesCount(classesResult.count || 0);
+        let token = inviteResult.data?.token || '';
+
+        // Only school admins may issue invitation tokens. Tokens are persisted in Supabase.
+        if (!token && role === 'school_admin' && user?.id) {
+          const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+          for (let attempt = 0; attempt < 3 && !token; attempt += 1) {
+            const bytes = new Uint8Array(6);
+            window.crypto.getRandomValues(bytes);
+            const candidate = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
+            const { data, error } = await supabase.from('school_invitations')
+              .insert({ school_id: school.id, token: candidate, role: 'teacher', created_by: user.id, is_active: true })
+              .select('token').single();
+            if (!error && data) token = data.token;
+            else if (attempt === 2) throw error || new Error('Could not create a teacher invitation.');
+          }
+        }
+        if (!cancelled) setInviteToken(token);
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Dashboard data load failed', error);
+          setDataError('Could not load the latest school data. Please refresh and try again.');
+        }
+      }
     };
-  }, [school?.id]);
+
+    void loadData();
+    return () => { cancelled = true; };
+  }, [school?.id, role, user?.id]);
 
   const copyInvite = () => {
     const inviteUrl = `${window.location.origin}/join/${inviteToken}`;
@@ -89,6 +130,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   return (
     <div className="space-y-6 text-left">
+      {dataError && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">{dataError}</div>}
       {/* 1. Welcome Greeting Header (Smooth Blue) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white rounded-3xl p-6 sm:p-8 shadow-lg shadow-blue-950/10">
         <div className="space-y-1">
@@ -187,7 +229,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <BookOpen className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-2xl font-black text-slate-900 tabular-nums">
-            {school ? db.getClasses(school.id).length : 6}
+            {classesCount}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">JSS 1 – SSS 3 Levels</div>
         </div>
