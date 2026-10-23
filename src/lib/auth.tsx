@@ -244,7 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{
       user, school, role, isAuthenticated: !!user, isLoading, isPlatformAdmin,
-      login, resetPassword, registerSchoolAndAdmin, joinSchoolAsTeacher,
+      login, resetPassword, registerSchoolAndAdmin,
       logout, updateUserProfile, refreshSchool,
     }}>
       {children}
