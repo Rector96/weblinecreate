@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth';
-import { db } from '../../lib/db';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { NIGERIAN_STATES, NIGERIAN_STATES_LGAS } from '../../data/nigeriaStatesLgas';
 import { InstitutionType } from '../../types';
 import {
@@ -77,12 +77,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!school) return;
+    if (!school || isSaving) return;
+    if (!isSupabaseConfigured()) {
+      setMessage('Supabase is not configured. School details were not saved.');
+      return;
+    }
     setIsSaving(true);
 
-    db.updateSchool(school.id, {
+    const { error } = await supabase.from('schools').update({
       name,
       admin_name: adminName,
       email,
@@ -93,10 +97,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
       motto,
       address,
       logo_url: logoUrl,
-    });
+    }).eq('id', school.id);
 
-    refreshSchool();
     setIsSaving(false);
+    if (error) {
+      console.error('School profile update failed', error);
+      setMessage('Could not save school details. Please check your connection and try again.');
+      return;
+    }
+    refreshSchool();
     setMessage('School details updated successfully.');
     setTimeout(() => setMessage(null), 3000);
   };
@@ -153,32 +162,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               )}
             </p>
 
-            {/* Quick test control for user / testing */}
-            <div className="mt-3 flex items-center gap-2 text-[11px]">
-              <span className="text-blue-200 font-medium">Trial Simulator:</span>
-              <button
-                type="button"
-                onClick={() => {
-                  db.setSchoolTrialUsage(school.id, 4);
-                  refreshSchool();
-                }}
-                className="px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white font-medium transition-colors"
-                title="Fast-forward to 4/4 used so the 5th generation triggers Paystack"
-              >
-                Set to 4/4 Used (Test 5th Attempt)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  db.setSchoolTrialUsage(school.id, 0);
-                  refreshSchool();
-                }}
-                className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-blue-200 font-medium transition-colors"
-                title="Reset usage counter back to 0"
-              >
-                Reset to 0/4
-              </button>
-            </div>
           </div>
 
           <button
