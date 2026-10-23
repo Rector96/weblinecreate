@@ -9,10 +9,13 @@
 5. Confirm the query completes successfully.
 6. Repeat with the [secure signup provisioning migration](https://github.com/Rector96/weblinecreate/blob/fix/production-readiness/supabase/migrations/20261023000200_secure_signup_provisioning.sql).
 7. Then run the [email-based admin authorization removal migration](https://github.com/Rector96/weblinecreate/blob/fix/production-readiness/supabase/migrations/20261023000400_remove_email_based_platform_admin.sql), especially if the earlier hardening migrations have already been applied.
+8. Run the [secure exam quota migration](https://github.com/Rector96/weblinecreate/blob/fix/production-readiness/supabase/migrations/20261023000500_secure_exam_quota.sql).
+9. Run the [atomic exam publication migration](https://github.com/Rector96/weblinecreate/blob/fix/production-readiness/supabase/migrations/20261023000600_atomic_exam_publication.sql).
+10. Run the [AI generation rate-limit migration](https://github.com/Rector96/weblinecreate/blob/fix/production-readiness/supabase/migrations/20261023000700_secure_ai_generation.sql).
 
 The first migration tightens row-level security and prevents client-side payment inserts. The second provisions school and teacher profiles through a trusted database trigger and blocks users from changing their own school membership or granting platform-admin access. Platform-admin access is never assigned automatically from an email address; use the manual bootstrap instructions below.
 
-**Important:** your existing database already has the required tables. Do not rerun `supabase_schema.sql` on it: that original setup file contains older permissive policies. Apply migrations 001, 002, and 004 in order, and confirm each succeeds. Migration 004 is a follow-up patch for databases where migration 001 or 002 was already applied before the email-based administrator shortcut was removed.
+**Important:** your existing database already has the required tables. Do not rerun `supabase_schema.sql` on it: that original setup file contains older permissive policies. Apply the migrations in numeric order, including 005, 006, and 007, and confirm each succeeds. Migrations 005 and 006 enforce trial quotas at the database and publish an exam with its questions and quota usage in one transaction. Migration 007 creates a private event table and a server-only database function for per-user and per-school AI rate limits. Migration 004 is a follow-up patch for databases where migration 001 or 002 was already applied before the email-based administrator shortcut was removed.
 
 ## 2. Configure server environment variables
 
@@ -43,6 +46,9 @@ However, `src/lib/db.ts` still stores exam, question, and class data in browser 
 - Added secure school/teacher signup provisioning and role-escalation guards.
 - Added server-side Paystack initialization and transaction verification; subscriptions activate only after verified successful payment.
 - Removed placeholder/fake questions returned as successful AI output.
+- Required a valid Supabase session and school membership for all AI generation endpoints.
+- Added database-backed rate limits (up to 5 AI requests per user per minute and 20 per school per minute); expired rate-limit events are cleaned up as new requests arrive.
+- Added request field/count validation and stopped the UI from inventing fallback questions when AI requests fail.
 
 
 ## 5. Bootstrap the first platform administrator
