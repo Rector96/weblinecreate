@@ -32,10 +32,10 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in">
+    <div className="exam-preview-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in">
       <div className="w-full max-w-4xl max-h-[95vh] bg-slate-100 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-left border border-slate-300">
         {/* Top Control Toolbar */}
-        <div className="bg-white px-5 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div className="exam-preview-toolbar bg-white px-5 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('paper')}
@@ -91,8 +91,8 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
         </div>
 
         {/* Paper Container (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8">
-          <div className="bg-white max-w-3xl mx-auto p-8 sm:p-12 rounded-2xl shadow-sm border border-slate-200 font-serif text-slate-900 leading-relaxed text-left">
+        <div className="exam-preview-scroll flex-1 overflow-y-auto p-4 sm:p-8">
+          <div className="exam-paper-print bg-white max-w-3xl mx-auto p-6 sm:p-10 rounded-2xl shadow-sm border border-slate-200 font-serif text-slate-900 leading-relaxed text-left">
             {activeTab === 'paper' ? (
               <div className="space-y-6">
                 {/* Official Header */}
@@ -110,10 +110,10 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                     {exam.term.toUpperCase()} EXAMINATION — {exam.session} ACADEMIC SESSION
                   </h2>
 
-                  <div className="grid grid-cols-2 text-xs font-bold pt-4 text-left">
+                  <div className="grid grid-cols-2 text-xs font-bold pt-3 text-left">
                     <div>
-                      <p>SUBJECT: <span className="font-normal uppercase">{exam.subject}</span></p>
                       <p>CLASS: <span className="font-normal">{exam.class_name}</span></p>
+                      <p>SUBJECT: <span className="font-normal uppercase">{exam.subject}</span></p>
                     </div>
                     <div className="text-right">
                       <p>TIME ALLOWED: <span className="font-normal">{exam.duration_minutes} MINUTES</span></p>
@@ -122,7 +122,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                   </div>
 
                   <div className="text-xs font-bold text-left pt-3">
-                    CANDIDATE NAME: _________________________________________  CLASS/ARM: ___________
+                    CANDIDATE NAME: <span className="font-normal">____________________________</span>
                   </div>
 
                   <div className="text-xs italic text-left pt-2 text-slate-700">
@@ -142,14 +142,14 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                       </p>
                     </div>
 
-                    <div className="space-y-4 text-xs">
+                    <div className="exam-objective-list space-y-2 text-xs">
                       {sectionAQuestions.map((q, idx) => (
                         <div key={q.id} className="space-y-1">
                           <p className="font-medium">
                             <strong className="font-bold">{idx + 1}.</strong> {q.question_text}
                           </p>
                           {q.objective_data && (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pl-4 text-slate-800">
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 pl-4 text-slate-800">
                               <span>[A] {q.objective_data.option_a}</span>
                               <span>[B] {q.objective_data.option_b}</span>
                               <span>[C] {q.objective_data.option_c}</span>
@@ -164,7 +164,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
 
                 {/* Section B: Theory */}
                 {sectionBQuestions.length > 0 && (
-                  <div className="space-y-4 pt-4 border-t border-slate-300">
+                  <div className="exam-theory-section space-y-3 pt-3 border-t border-slate-300">
                     <div className="text-center">
                       <h3 className="text-sm font-bold uppercase underline">
                         SECTION B: ESSAY / THEORY
@@ -174,7 +174,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                       </p>
                     </div>
 
-                    <div className="space-y-4 text-xs">
+                    <div className="space-y-2 text-xs">
                       {sectionBQuestions.map((q, idx) => (
                         <div key={q.id} className="space-y-1">
                           <div className="flex items-start justify-between gap-2">
