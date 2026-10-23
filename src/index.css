@@ -177,3 +177,17 @@ button:active:not(:disabled) {
   h1,h2,h3 { break-after:avoid; page-break-after:avoid; }
   * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 }
+
+
+/* Single animated ROCKCRAFT brand-only startup loader */
+.rockcraft-page-loader { isolation:isolate; background:radial-gradient(ellipse at 50% 45%,#10244a 0%,#071327 48%,#030712 100%); color:#f8fafc; }
+.rockcraft-page-loader::before { content:""; position:absolute; inset:-35%; z-index:-1; background:conic-gradient(from 0deg at 50% 50%,transparent 0deg,rgba(37,99,235,.13) 70deg,transparent 145deg,rgba(99,102,241,.12) 230deg,transparent 310deg); animation:rockcraft-loader-rotate 18s linear infinite; }
+.rockcraft-loader-glow { position:absolute; width:min(70vw,34rem); aspect-ratio:1; border-radius:9999px; filter:blur(70px); pointer-events:none; will-change:transform,opacity; }
+.rockcraft-loader-glow-one { background:rgba(37,99,235,.24); left:-18%; top:-28%; animation:rockcraft-loader-drift 7s ease-in-out infinite alternate; }
+.rockcraft-loader-glow-two { background:rgba(99,102,241,.2); right:-20%; bottom:-32%; animation:rockcraft-loader-drift 9s ease-in-out infinite alternate-reverse; }
+.rockcraft-loader-wordmark { position:relative; margin:0; padding:0 .12em .12em; font-size:clamp(2rem,8vw,4.6rem); line-height:1; font-weight:950; letter-spacing:.12em; text-indent:.12em; color:transparent; background:linear-gradient(100deg,#fff 5%,#bfdbfe 35%,#fff 50%,#a5b4fc 68%,#fff 95%); background-size:220% 100%; background-clip:text; -webkit-background-clip:text; filter:drop-shadow(0 0 24px rgba(96,165,250,.22)); animation:rockcraft-wordmark-shine 2.8s ease-in-out infinite,rockcraft-wordmark-float 3.2s ease-in-out infinite; }
+@keyframes rockcraft-loader-rotate { to { transform:rotate(360deg); } }
+@keyframes rockcraft-loader-drift { from { transform:translate3d(-4%,-2%,0) scale(.92); opacity:.65; } to { transform:translate3d(5%,4%,0) scale(1.08); opacity:1; } }
+@keyframes rockcraft-wordmark-shine { 0%,100% { background-position:100% 50%; } 50% { background-position:0% 50%; } }
+@keyframes rockcraft-wordmark-float { 0%,100% { transform:translateY(0) scale(1); } 50% { transform:translateY(-5px) scale(1.015); } }
+@media (prefers-reduced-motion:reduce) { .rockcraft-page-loader::before,.rockcraft-loader-glow,.rockcraft-loader-wordmark { animation:none!important; } }
