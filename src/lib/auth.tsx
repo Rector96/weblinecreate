@@ -29,7 +29,6 @@ export interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const PLATFORM_ADMIN_EMAIL = 'peteroche32@gmail.com';
 
 function mapSchool(row: any): School {
   return {
