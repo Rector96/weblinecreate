@@ -104,7 +104,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center font-black text-2xl mx-auto shadow-lg shadow-blue-600/25 mb-3">
           RC
         </div>
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight">ROCKCRAF</h1>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">ROCKCRAFT</h1>
       </div>
 
       {/* Main Auth Card */}
