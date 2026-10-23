@@ -286,7 +286,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       try {
         json = JSON.parse(text);
       } catch {
-        throw new Error('Received invalid response from server. Check that your GEMINI_API_KEY is configured in Netlify environment variables.');
+        throw new Error(`The server returned an unreadable response (HTTP ${response.status}). This may mean the latest AI API code has not been deployed, or the Netlify Function failed. Check Netlify → Logs → Functions. You do not need to delete your Gemini key.`);
       }
 
       if (json && json.success && json.data) {
