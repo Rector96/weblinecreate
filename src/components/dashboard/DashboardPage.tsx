@@ -55,11 +55,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       setDataError(null);
       try {
+        const nowIso = new Date().toISOString();
         const [schoolExams, classesResult, inviteResult] = await Promise.all([
           listSchoolExams(school.id),
           supabase.from('school_classes').select('id', { count: 'exact', head: true }).eq('school_id', school.id),
-          supabase.from('school_invitations').select('id, token, is_active, created_at')
-            .eq('school_id', school.id).eq('is_active', true)
+          // Only reuse a current teacher invitation. Older links can remain active in
+          // the table after their expiry time, and admin-role invites must never be
+          // handed to teachers.
+          supabase.from('school_invitations').select('id, token, role, is_active, expires_at, created_at')
+            .eq('school_id', school.id)
+            .eq('role', 'teacher')
+            .eq('is_active', true)
+            .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
             .order('created_at', { ascending: false }).limit(1).maybeSingle(),
         ]);
         if (classesResult.error) throw classesResult.error;
@@ -78,7 +85,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             window.crypto.getRandomValues(bytes);
             const candidate = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
             const { data, error } = await supabase.from('school_invitations')
-              .insert({ school_id: school.id, token: candidate, role: 'teacher', created_by: user.user_id, is_active: true })
+              .insert({
+                school_id: school.id,
+                token: candidate,
+                role: 'teacher',
+                created_by: user.user_id,
+                is_active: true,
+                expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              })
               .select('token').single();
             if (!error && data) token = data.token;
             else if (attempt === 2) throw error || new Error('Could not create a teacher invitation.');
