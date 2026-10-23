@@ -8,6 +8,9 @@ const MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lit
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Supabase Auth's apikey header should use the project publishable/anon key;
+// the user's access token remains the Authorization bearer token.
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const SUBSCRIPTION_AMOUNT_KOBO = 1100000;
 const ALLOWED_TERMS = new Set(['First Term', 'Second Term', 'Third Term']);
@@ -50,20 +53,33 @@ async function supabaseAdminRequest(path: string, init: RequestInit = {}) {
 }
 
 async function getAuthenticatedUser(req: Request) {
-  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-  if (!token || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
-  const response = await fetch(`${SUPABASE_URL.replace(/\/$/, '')}/auth/v1/user`, {
-    headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!response.ok) return null;
-  return await response.json() as { id: string; email?: string };
+  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim();
+  const authApiKey = SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY;
+  if (!token || !SUPABASE_URL || !authApiKey) return null;
+  try {
+    const response = await fetch(`${SUPABASE_URL.replace(/\/$/, '')}/auth/v1/user`, {
+      headers: {
+        apikey: authApiKey,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      console.warn('Supabase access-token validation failed with status', response.status);
+      return null;
+    }
+    const user = await response.json() as { id?: string; email?: string };
+    return typeof user.id === 'string' ? { id: user.id, email: user.email } : null;
+  } catch (error) {
+    console.error('Could not validate Supabase access token', error);
+    return null;
+  }
 }
 
 
 async function authorizeAiRequest(req: Request, schoolId: unknown) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return { ok: false as const, response: jsonResponse({ success: false, error: 'AI authorization is not configured on the server. Ask the site administrator to check Supabase server environment variables.' }, 503) };
+  }
   if (typeof schoolId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId)) {
     return { ok: false as const, response: jsonResponse({ success: false, error: 'A valid school account is required.' }, 400) };
   }
