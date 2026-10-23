@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth';
-import { db, dbEvents } from '../../lib/db';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { SchoolClass } from '../../types';
 import { normalizeClassName } from '../../data/nigerianCurriculum';
 import {
@@ -20,41 +20,109 @@ export const ClassesPage: React.FC = () => {
   const [newLevel, setNewLevel] = useState<'Junior' | 'Senior'>('Junior');
   const [armsInput, setArmsInput] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const loadClasses = () => {
-    if (!school) return;
-    setClasses(db.getClasses(school.id));
+  const loadClasses = async () => {
+    if (!school) {
+      setClasses([]);
+      return;
+    }
+    if (!isSupabaseConfigured()) {
+      setError('Class management requires Supabase configuration. Local demo data is not shown.');
+      setClasses([]);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    const { data, error: queryError } = await supabase
+      .from('school_classes')
+      .select('*')
+      .eq('school_id', school.id)
+      .order('display_order', { ascending: true });
+    setIsLoading(false);
+    if (queryError) {
+      setError(`Could not load classes: ${queryError.message}`);
+      setClasses([]);
+      return;
+    }
+    setClasses((data || []).map((row) => ({
+      id: row.id,
+      school_id: row.school_id,
+      name: row.name,
+      level: row.level,
+      arms: row.arms || [],
+      display_order: row.display_order,
+      created_at: row.created_at,
+    })) as SchoolClass[]);
   };
 
   useEffect(() => {
-    loadClasses();
-    const unsub = dbEvents.subscribe('classes', loadClasses);
-    return () => unsub();
+    void loadClasses();
   }, [school?.id]);
 
-  const handleAddClass = (e: React.FormEvent) => {
+  const handleAddClass = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!school || !newClassName.trim()) return;
+    if (!school || !newClassName.trim() || isSaving) return;
+    if (!isSupabaseConfigured()) {
+      setError('Supabase is not configured. The class was not saved.');
+      return;
+    }
 
     const normalized = normalizeClassName(newClassName);
     const armsList = armsInput
-      ? armsInput
-          .split(',')
-          .map((a) => a.trim())
-          .filter(Boolean)
+      ? armsInput.split(',').map((a) => a.trim()).filter(Boolean)
       : ['A', 'B'];
 
-    db.addClass(school.id, normalized, newLevel, armsList);
+    setIsSaving(true);
+    setError(null);
+    const { data, error: insertError } = await supabase
+      .from('school_classes')
+      .insert({
+        school_id: school.id,
+        name: normalized,
+        level: newLevel,
+        arms: armsList,
+        display_order: classes.length + 1,
+      })
+      .select('*')
+      .single();
+    setIsSaving(false);
+    if (insertError || !data) {
+      setError(`Could not save class: ${insertError?.message || 'No record returned.'}`);
+      return;
+    }
+
+    setClasses((current) => [...current, {
+      id: data.id,
+      school_id: data.school_id,
+      name: data.name,
+      level: data.level,
+      arms: data.arms || [],
+      display_order: data.display_order,
+      created_at: data.created_at,
+    } as SchoolClass].sort((a, b) => a.display_order - b.display_order));
     setNewClassName('');
     setArmsInput('');
-    setMessage(`Class "${normalized}" added successfully with automatic normalization.`);
+    setMessage(`Class "${normalized}" added successfully.`);
     setTimeout(() => setMessage(null), 3000);
   };
 
-  const handleDeleteClass = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to remove ${name}?`)) {
-      db.deleteClass(id);
+  const handleDeleteClass = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to remove ${name}?`)) return;
+    if (!isSupabaseConfigured()) {
+      setError('Supabase is not configured. The class was not deleted.');
+      return;
     }
+    setError(null);
+    const { error: deleteError } = await supabase.from('school_classes').delete().eq('id', id).eq('school_id', school?.id || '');
+    if (deleteError) {
+      setError(`Could not delete class: ${deleteError.message}`);
+      return;
+    }
+    setClasses((current) => current.filter((item) => item.id !== id));
   };
 
   return (
@@ -67,6 +135,14 @@ export const ClassesPage: React.FC = () => {
           Configure junior and senior secondary classes with automatic standard naming (JSS 1 – SSS 3).
         </p>
       </div>
+
+      {error && (
+        <div role="alert" className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-2xl flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+          <button type="button" onClick={() => void loadClasses()} className="ml-auto underline font-semibold">Retry</button>
+        </div>
+      )}
 
       {message && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl flex items-center gap-2">
@@ -134,12 +210,17 @@ export const ClassesPage: React.FC = () => {
             className="py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-800 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs transition-colors"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Class</span>
+            <span>{isSaving ? 'Saving...' : 'Add Class'}</span>
           </button>
         </form>
       )}
 
       {/* Classes List */}
+      {isLoading ? (
+        <div className="p-8 text-center text-sm text-slate-500">Loading classes from Supabase...</div>
+      ) : classes.length === 0 ? (
+        <div className="p-8 text-center text-sm text-slate-500 bg-white rounded-2xl border border-slate-200">No classes have been saved for this school yet.</div>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {classes.map((cls) => (
           <div
@@ -177,6 +258,7 @@ export const ClassesPage: React.FC = () => {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 };
