@@ -178,7 +178,7 @@ function AppContent() {
       );
     }
     if (guestRoute === 'exam-success' && guestLastCreatedExam) {
-      return <ExamSuccessPage exam={guestLastCreatedExam} navigate={guestNavigate} onPreview={(exam) => setPreviewExam(exam)} />;
+      return <ExamSuccessPage exam={guestLastCreatedExam} navigate={guestNavigate} onPreview={(exam) => setPreviewExam(exam)} schoolOverride={guestInviteSchool} />;
     }
     if (guestRoute === 'teacher-finished') {
       return (
