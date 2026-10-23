@@ -132,10 +132,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* 1. Welcome Greeting Header (Smooth Blue) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white rounded-3xl p-5 sm:p-6 shadow-lg shadow-blue-950/10">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-blue-200 text-xs font-semibold">
-            <span>{school?.name || 'School Dashboard'}</span>
-            <span>·</span>
-            <span>{school?.state || 'Nigeria'}</span>
+          <div className="text-blue-200 text-xs font-semibold truncate max-w-full">
+            {school?.name || 'ROCKCRAF'}
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
             Hi, {user?.full_name?.split(' ')[0] || 'there'}
@@ -196,22 +194,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               ? 'Limit reached'
               : `${remainingAi} trials left`}
           </div>
-          <div className="text-[11px] mt-1">
-            {school?.subscription_status === 'active' ? (
-              <span className="text-emerald-700 font-semibold">✓ Unlimited access</span>
-            ) : (
-              <button
-                onClick={onOpenPaystack}
-                className={`font-semibold hover:underline ${
-                  (school?.ai_exams_used || 0) >= 4 ? 'text-amber-800 font-bold' : 'text-blue-600'
-                }`}
-              >
-                {(school?.ai_exams_used || 0) >= 4
-                  ? 'Upgrade · ₦11,000'
-                  : `${remainingAi} trials left · Upgrade`}
-              </button>
-            )}
-          </div>
+          {school?.subscription_status !== 'active' && (
+            <button onClick={onOpenPaystack} className="mt-1 text-[11px] font-semibold text-blue-600 hover:underline">
+              Upgrade · ₦11,000
+            </button>
+          )}
         </div>
 
         {/* Card 3: Classes Managed */}
