@@ -33,9 +33,9 @@ Never place `SUPABASE_SERVICE_ROLE_KEY` or `PAYSTACK_SECRET_KEY` in a `VITE_*` v
 
 ## 3. Important production-readiness limitation
 
-The login flow now uses Supabase Auth and no longer offers instant demo sign-in. School membership and invitation-based teacher signup are provisioned by the new database trigger. Paystack initialization and server-side verification endpoints are implemented and require the server environment variables above.
+The login flow uses Supabase Auth and does not offer instant demo sign-in. School membership and invitation-based teacher signup are provisioned through the database trigger. Paystack initialization and server-side verification endpoints are implemented and require the server environment variables above.
 
-However, `src/lib/db.ts` still stores exam, question, and class data in browser localStorage. Those records are not yet fully migrated to Supabase tables, so this is **not yet production-ready for multi-user school data**. Test registration, email confirmation, role permissions, AI generation, and a Paystack test-mode transaction before taking live payments. Do not bypass RLS or re-enable public SELECT/INSERT policies as a workaround.
+Shared school records must be stored in Supabase. The current `src/lib/db.ts` is limited to optional device-local offline exam drafts; it is not the source of truth for published/shared exams, questions, classes, invitations, subscriptions, or payments. Offline drafts remain on the device until the app provides a supported sync/publish workflow, so do not assume they are backed up or visible to other users. This branch remains **unverified for production** until the migrations and real workflows below have been tested. Test registration, email confirmation, invitation joins, role permissions, AI generation and regeneration, class/exam persistence, and a Paystack test-mode transaction before taking live payments. Do not bypass RLS or re-enable public SELECT/INSERT policies as a workaround.
 
 ## 4. Changes in this branch
 
