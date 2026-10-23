@@ -157,6 +157,12 @@ async function authorizeAiRequest(req: Request, schoolId: unknown) {
     if (result?.reason === 'user_rate' || result?.reason === 'school_rate') {
       return { ok: false as const, response: jsonResponse({ success: false, error: 'AI request limit reached. Please wait one minute and try again.' }, 429) };
     }
+    if (result?.reason === 'school_suspended') {
+      return { ok: false as const, response: jsonResponse({ success: false, error: 'This school account is suspended. Contact ROCKCRAF support.' }, 403) };
+    }
+    if (result?.reason === 'generation_disabled') {
+      return { ok: false as const, response: jsonResponse({ success: false, error: 'Exam generation has been disabled for this school by the platform administrator.' }, 403) };
+    }
     return { ok: false as const, response: jsonResponse({ success: false, error: 'You are not authorized to use AI for this school.' }, 403) };
   }
   return { ok: true as const, userId: user.id };
@@ -450,6 +456,9 @@ export default async (req: Request) => {
       const detail = error instanceof Error ? error.message : String(error);
       if (detail.toLowerCase().includes('already has an exam for this subject')) {
         return jsonResponse({ success: false, code: 'duplicate_class_subject', error: detail }, 409);
+      }
+      if (detail.toLowerCase().includes('school account is suspended') || detail.toLowerCase().includes('exam generation has been disabled')) {
+        return jsonResponse({ success: false, code: 'generation_blocked', error: detail }, 403);
       }
       console.error('Passwordless exam publication failed', error);
       return jsonResponse({ success: false, error: 'Unable to publish this exam securely. Please try again.' }, 500);
