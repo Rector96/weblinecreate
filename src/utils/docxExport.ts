@@ -231,36 +231,54 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
         })
       );
 
-      // Options A, B, C, D
+      // Options A, B, C, D (Strictly inline for compact A4 single-sheet layout)
       if (q.objective_data) {
         const { option_a, option_b, option_c, option_d } = q.objective_data;
+        const totalLen = (option_a?.length || 0) + (option_b?.length || 0) + (option_c?.length || 0) + (option_d?.length || 0);
 
-        // Two rows of options (A & B, C & D) for tight readable WAEC formatting
-        docChildren.push(
-          new Paragraph({
-            spacing: { before: 20, after: 20 },
-            indent: { left: 360 },
-            children: [
-              new TextRun({ text: '[A] ', font: FONT_NAME, size: 22, bold: true }),
-              new TextRun({ text: `${option_a}    `, font: FONT_NAME, size: 22 }),
-              new TextRun({ text: '        [B] ', font: FONT_NAME, size: 22, bold: true }),
-              new TextRun({ text: option_b, font: FONT_NAME, size: 22 }),
-            ],
-          })
-        );
-
-        docChildren.push(
-          new Paragraph({
-            spacing: { before: 20, after: 80 },
-            indent: { left: 360 },
-            children: [
-              new TextRun({ text: '[C] ', font: FONT_NAME, size: 22, bold: true }),
-              new TextRun({ text: `${option_c}    `, font: FONT_NAME, size: 22 }),
-              new TextRun({ text: '        [D] ', font: FONT_NAME, size: 22, bold: true }),
-              new TextRun({ text: option_d, font: FONT_NAME, size: 22 }),
-            ],
-          })
-        );
+        if (totalLen < 85) {
+          // All 4 options strictly on a SINGLE inline row
+          docChildren.push(
+            new Paragraph({
+              spacing: { before: 10, after: 40 },
+              indent: { left: 240 },
+              children: [
+                new TextRun({ text: '[A] ', font: FONT_NAME, size: 21, bold: true }),
+                new TextRun({ text: `${option_a}    `, font: FONT_NAME, size: 21 }),
+                new TextRun({ text: '  [B] ', font: FONT_NAME, size: 21, bold: true }),
+                new TextRun({ text: `${option_b}    `, font: FONT_NAME, size: 21 }),
+                new TextRun({ text: '  [C] ', font: FONT_NAME, size: 21, bold: true }),
+                new TextRun({ text: `${option_c}    `, font: FONT_NAME, size: 21 }),
+                new TextRun({ text: '  [D] ', font: FONT_NAME, size: 21, bold: true }),
+                new TextRun({ text: option_d, font: FONT_NAME, size: 21 }),
+              ],
+            })
+          );
+        } else {
+          // 2 balanced rows of 2 options each
+          docChildren.push(
+            new Paragraph({
+              spacing: { before: 10, after: 10 },
+              indent: { left: 240 },
+              children: [
+                new TextRun({ text: '[A] ', font: FONT_NAME, size: 21, bold: true }),
+                new TextRun({ text: `${option_a}    `, font: FONT_NAME, size: 21 }),
+                new TextRun({ text: '      [B] ', font: FONT_NAME, size: 21, bold: true }),
+                new TextRun({ text: option_b, font: FONT_NAME, size: 21 }),
+              ],
+            }),
+            new Paragraph({
+              spacing: { before: 10, after: 40 },
+              indent: { left: 240 },
+              children: [
+                new TextRun({ text: '[C] ', font: FONT_NAME, size: 21, bold: true }),
+                new TextRun({ text: `${option_c}    `, font: FONT_NAME, size: 21 }),
+                new TextRun({ text: '      [D] ', font: FONT_NAME, size: 21, bold: true }),
+                new TextRun({ text: option_d, font: FONT_NAME, size: 21 }),
+              ],
+            })
+          );
+        }
       }
     });
   }
@@ -356,11 +374,15 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
       {
         properties: {
           page: {
+            size: {
+              width: 11906, // A4 width in twips
+              height: 16838, // A4 height in twips
+            },
             margin: {
-              top: 720, // 0.5 in
-              right: 720,
-              bottom: 720,
-              left: 720,
+              top: 540, // 0.375 in (tight A4 single-sheet optimization)
+              right: 540,
+              bottom: 540,
+              left: 540,
             },
           },
         },

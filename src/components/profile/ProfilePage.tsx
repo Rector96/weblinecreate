@@ -24,7 +24,8 @@ interface ProfilePageProps {
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
-  const { school, user, refreshSchool, role } = useAuth();
+  const { school, user, refreshSchool, role, isPlatformAdmin, switchDemoUser } = useAuth();
+  const canEdit = role === 'school_admin' || isPlatformAdmin;
 
   const [name, setName] = useState(school?.name || '');
   const [adminName, setAdminName] = useState(school?.admin_name || '');
@@ -206,7 +207,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={role !== 'school_admin'}
+              disabled={!canEdit}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -220,7 +221,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={adminName}
               onChange={(e) => setAdminName(e.target.value)}
-              disabled={role !== 'school_admin'}
+              disabled={!canEdit}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -236,7 +237,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={role !== 'school_admin'}
+              disabled={!canEdit}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -250,7 +251,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              disabled={role !== 'school_admin'}
+              disabled={!canEdit}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -262,7 +263,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <select
               value={state}
               onChange={(e) => setState(e.target.value)}
-              disabled={role !== 'school_admin'}
+              disabled={!canEdit}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
             >
               {NIGERIAN_STATES.map((s) => (
@@ -278,7 +279,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <select
               value={lga}
               onChange={(e) => setLga(e.target.value)}
-              disabled={role !== 'school_admin'}
+              disabled={!canEdit}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
             >
               {(NIGERIAN_STATES_LGAS[state] || []).map((l) => (
@@ -296,7 +297,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <select
               value={institutionType}
               onChange={(e) => setInstitutionType(e.target.value as any)}
-              disabled={role !== 'school_admin'}
+              disabled={!canEdit}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
             >
               <option value="Secondary">Secondary School</option>
@@ -318,7 +319,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             placeholder="e.g. Floreat Collegium (Let the College Flourish)"
             value={motto}
             onChange={(e) => setMotto(e.target.value)}
-            disabled={role !== 'school_admin'}
+            disabled={!canEdit}
             className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
           />
         </div>
@@ -332,20 +333,34 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="e.g. 3 Catholic Mission Street, Lagos Island, Lagos"
-            disabled={role !== 'school_admin'}
+            disabled={!canEdit}
             className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:bg-slate-50"
           />
         </div>
 
-        {role === 'school_admin' && (
-          <div className="pt-2">
+        {canEdit ? (
+          <div className="pt-2 flex items-center justify-between">
             <button
               type="submit"
               disabled={isSaving}
-              className="py-2.5 px-5 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-75 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-colors"
+              className="py-2.5 px-6 rounded-2xl bg-purple-700 hover:bg-purple-800 disabled:opacity-75 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-purple-700/20 transition-all"
             >
               <Save className="w-4 h-4" />
-              <span>{isSaving ? 'Saving...' : 'Save School Profile'}</span>
+              <span>{isSaving ? 'Updating...' : 'Save School Profile Changes'}</span>
+            </button>
+            <span className="text-[11px] text-slate-400">
+              Changes reflect instantly on all exported exam documents.
+            </span>
+          </div>
+        ) : (
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-xs text-slate-600">
+            <span>You are currently viewing as a Subject Teacher.</span>
+            <button
+              type="button"
+              onClick={() => switchDemoUser('admin')}
+              className="px-3 py-1.5 rounded-xl bg-purple-700 text-white font-semibold text-xs hover:bg-purple-800"
+            >
+              Switch to School Admin to Edit
             </button>
           </div>
         )}

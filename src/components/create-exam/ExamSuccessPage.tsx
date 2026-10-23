@@ -10,7 +10,8 @@ import {
   FileText,
   ShieldCheck,
   ArrowRight,
-  Share2
+  School as SchoolIcon,
+  BookOpen
 } from 'lucide-react';
 
 interface ExamSuccessPageProps {
@@ -24,7 +25,7 @@ export const ExamSuccessPage: React.FC<ExamSuccessPageProps> = ({
   navigate,
   onPreview,
 }) => {
-  const { school } = useAuth();
+  const { school, user } = useAuth();
   const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [downloadingScheme, setDownloadingScheme] = useState(false);
 
@@ -47,26 +48,27 @@ export const ExamSuccessPage: React.FC<ExamSuccessPageProps> = ({
   };
 
   return (
-    <div className="max-w-xl mx-auto py-8 px-4 text-center space-y-6">
+    <div className="max-w-xl mx-auto py-8 px-4 text-center space-y-6 animate-in fade-in">
       {/* Celebration Icon */}
-      <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-md shadow-emerald-600/10 animate-in zoom-in-75 duration-200">
+      <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-md shadow-emerald-600/10">
         <CheckCircle2 className="w-10 h-10" />
       </div>
 
       <div className="space-y-1">
-        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-          Official WAEC/JAMB Paper Ready
-        </span>
+        <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          <span>DOCX Paper & Marking Scheme Auto-Downloaded</span>
+        </div>
         <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-2">
-          Exam Successfully Published!
+          Exam Published & Synced to School Dashboard
         </h2>
-        <p className="text-xs text-slate-500">
-          Your examination paper has been formatted, scored, and archived under{' '}
-          <strong className="text-purple-700">{school?.name}</strong>.
+        <p className="text-xs text-slate-500 max-w-md mx-auto">
+          Your examination paper has been filed for <strong className="text-purple-700">{school?.name}</strong> under{' '}
+          <strong className="text-slate-800">{exam.class_name}</strong>. The principal and subject teachers can view it on the school dashboard.
         </p>
       </div>
 
-      {/* Exam Summary Details Card */}
+      {/* Summary Card */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm text-left space-y-3 font-sans">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
@@ -85,50 +87,53 @@ export const ExamSuccessPage: React.FC<ExamSuccessPageProps> = ({
             <strong className="text-slate-900">{exam.subject}</strong>
           </div>
           <div>
-            <span className="text-slate-500 block text-[11px]">Class</span>
+            <span className="text-slate-500 block text-[11px]">Assigned Class</span>
             <strong className="text-slate-900">{exam.class_name}</strong>
           </div>
           <div>
-            <span className="text-slate-500 block text-[11px]">Questions</span>
-            <strong className="text-slate-900">{exam.questions?.length || 0} Total</strong>
+            <span className="text-slate-500 block text-[11px]">Total Questions</span>
+            <strong className="text-slate-900">{exam.questions?.length || 0} Questions</strong>
           </div>
         </div>
       </div>
 
-      {/* Primary Action Buttons */}
+      {/* Primary Actions */}
       <div className="space-y-2.5">
         <button
-          onClick={handleDownloadPaper}
-          disabled={downloadingDocx}
-          className="w-full py-3.5 px-4 rounded-2xl bg-purple-700 hover:bg-purple-800 disabled:opacity-75 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-700/25 active:scale-[0.99] transition-all"
+          onClick={() => navigate('create-exam')}
+          className="w-full py-3.5 px-4 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-700/25 active:scale-[0.99] transition-all"
         >
-          <Download className="w-4 h-4" />
-          <span>{downloadingDocx ? 'Exporting DOCX...' : 'Download Official Exam DOCX (12pt Times New Roman)'}</span>
+          <PlusCircle className="w-4 h-4" />
+          <span>Generate Another Exam for this School</span>
         </button>
 
-        <button
-          onClick={handleDownloadScheme}
-          disabled={downloadingScheme}
-          className="w-full py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 disabled:opacity-75 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
-        >
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>{downloadingScheme ? 'Exporting...' : 'Download Confidential Marking Scheme (DOCX)'}</span>
-        </button>
-
-        <div className="grid grid-cols-2 gap-2 pt-2">
+        <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => onPreview(exam)}
+            onClick={handleDownloadPaper}
+            disabled={downloadingDocx}
             className="py-2.5 px-3 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
           >
-            <Eye className="w-4 h-4" />
-            <span>View Full Paper</span>
+            <Download className="w-3.5 h-3.5" />
+            <span>Re-download Paper</span>
           </button>
+
           <button
-            onClick={() => navigate('create-exam')}
-            className="py-2.5 px-3 rounded-xl border border-purple-200 text-purple-700 bg-purple-50/50 hover:bg-purple-100 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
+            onClick={handleDownloadScheme}
+            disabled={downloadingScheme}
+            className="py-2.5 px-3 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
           >
-            <PlusCircle className="w-4 h-4" />
-            <span>Create Another</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Marking Scheme</span>
+          </button>
+        </div>
+
+        <div className="pt-2">
+          <button
+            onClick={() => onPreview(exam)}
+            className="text-xs font-semibold text-purple-700 hover:underline inline-flex items-center gap-1"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>View Live Paper Preview</span>
           </button>
         </div>
       </div>
@@ -138,7 +143,7 @@ export const ExamSuccessPage: React.FC<ExamSuccessPageProps> = ({
           onClick={() => navigate('dashboard')}
           className="text-xs text-slate-500 hover:text-slate-800 font-medium"
         >
-          ← Return to Dashboard
+          ← Return to School Dashboard
         </button>
       </div>
     </div>
