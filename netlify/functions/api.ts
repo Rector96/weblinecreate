@@ -431,6 +431,18 @@ export default async (req: Request) => {
       if (typeof body.exam.school_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.exam.school_id)) {
         return jsonResponse({ success: false, error: 'A valid school account is required.' }, 400);
       }
+      const schoolControlRows = await supabaseAdminRequest(
+        'schools?id=eq.' + encodeURIComponent(body.exam.school_id) + '&select=account_status,generation_enabled&limit=1'
+      ) as Array<{ account_status?: string; generation_enabled?: boolean }>;
+      const schoolControls = schoolControlRows[0];
+      if (!schoolControls) return jsonResponse({ success: false, error: 'School account was not found.' }, 404);
+      if (schoolControls.account_status === 'suspended') {
+        return jsonResponse({ success: false, code: 'school_suspended', error: 'This school account is suspended. Contact ROCKCRAF support.' }, 403);
+      }
+      if (schoolControls.generation_enabled === false) {
+        return jsonResponse({ success: false, code: 'generation_blocked', error: 'Exam generation has been disabled for this school by the platform administrator.' }, 403);
+      }
+
       const publishResult = await supabaseAdminRequest('rpc/publish_exam_with_invite', {
         method: 'POST',
         body: JSON.stringify({
