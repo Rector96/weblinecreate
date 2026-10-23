@@ -21,7 +21,7 @@ function jsonResponse(body: unknown, status = 200, headers: Record<string, strin
 
 function getSiteUrl(req: Request) {
   const configured = process.env.SITE_URL || process.env.URL || process.env.DEPLOY_PRIME_URL;
-  return (configured || new URL(req.url).origin).replace(/\\/$/, '');
+  return (configured || new URL(req.url).origin).replace(/\/$/, '');
 }
 
 async function supabaseAdminRequest(path: string, init: RequestInit = {}) {
