@@ -72,7 +72,7 @@ BEGIN
 
   v_lock_key := concat_ws('|',
     NEW.school_id::text,
-    lower(regexp_replace(btrim(NEW.class_name), '\\s+', ' ', 'g')),
+    lower(regexp_replace(btrim(NEW.class_name), '[[:space:]]+', ' ', 'g')),
     lower(btrim(NEW.subject)),
     lower(btrim(NEW.term)),
     lower(btrim(NEW.session))
@@ -84,7 +84,7 @@ BEGIN
     SELECT 1
     FROM public.exams e
     WHERE e.school_id = NEW.school_id
-      AND lower(btrim(e.class_name)) = lower(btrim(NEW.class_name))
+      AND lower(regexp_replace(btrim(e.class_name), '[[:space:]]+', ' ', 'g')) = lower(regexp_replace(btrim(NEW.class_name), '[[:space:]]+', ' ', 'g'))
       AND lower(btrim(e.subject)) = lower(btrim(NEW.subject))
       AND lower(btrim(e.term)) = lower(btrim(NEW.term))
       AND lower(btrim(e.session)) = lower(btrim(NEW.session))
