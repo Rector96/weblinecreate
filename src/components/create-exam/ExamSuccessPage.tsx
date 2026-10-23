@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/auth';
-import { Exam } from '../../types';
+import { Exam, School } from '../../types';
 import { exportExamToDocx, exportMarkingSchemeToDocx } from '../../utils/docxExport';
 import { CheckCircle2, Download, ShieldCheck } from 'lucide-react';
 
@@ -8,14 +8,17 @@ interface ExamSuccessPageProps {
   exam: Exam;
   navigate: (route: string) => void;
   onPreview: (exam: Exam) => void;
+  schoolOverride?: School;
 }
 
 export const ExamSuccessPage: React.FC<ExamSuccessPageProps> = ({
   exam,
   navigate,
   onPreview,
+  schoolOverride,
 }) => {
-  const { school, role } = useAuth();
+  const { school: authenticatedSchool, role } = useAuth();
+  const school = schoolOverride || authenticatedSchool;
   const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [downloadingScheme, setDownloadingScheme] = useState(false);
 
