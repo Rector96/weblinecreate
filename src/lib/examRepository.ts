@@ -231,3 +231,109 @@ export async function deleteExamFromSupabase(examId: string, schoolId: string): 
     .eq('school_id', schoolId);
   if (error) throw error;
 }
+
+
+export type PublishExamResult =
+  | { success: true; exam: Exam }
+  | { success: false; code?: string; message: string };
+
+export async function publishExamWithQuota(
+  examData: Omit<Exam, 'id' | 'created_at'> & { id?: string },
+  questions: Question[],
+  isAI: boolean,
+): Promise<PublishExamResult> {
+  ensureConfigured();
+
+  const examPayload = {
+    school_id: examData.school_id,
+    created_by_name: examData.created_by_name || null,
+    exam_code: examData.exam_code,
+    title: examData.title,
+    subject: examData.subject,
+    class_id: examData.class_id || null,
+    class_name: examData.class_name,
+    term: examData.term,
+    session: examData.session,
+    duration_minutes: examData.duration_minutes,
+    instructions: examData.instructions,
+    total_marks: examData.total_marks,
+    section_a_marks: examData.section_a_marks,
+    section_b_marks: examData.section_b_marks,
+  };
+  const questionPayload = questions.map((question, index) => ({
+    section: question.section,
+    question_number: question.question_number || index + 1,
+    question_text: question.question_text,
+    marks: question.marks,
+    image_url: question.image_url || null,
+    objective_data: question.objective_data || null,
+    theory_data: question.theory_data || null,
+  }));
+
+  const { data, error } = await supabase.rpc('publish_exam_with_quota', {
+    p_exam: examPayload,
+    p_questions: questionPayload,
+    p_is_ai: isAI,
+  });
+  if (error) {
+    console.error('Atomic exam publication failed', error);
+    throw new Error('Could not publish the exam securely. Please check your connection and try again.');
+  }
+
+  const result = data as {
+    success?: boolean;
+    code?: string;
+    message?: string;
+    exam?: ExamRow;
+    questions?: Question[];
+  } | null;
+
+  if (!result?.success) {
+    return {
+      success: false,
+      code: result?.code,
+      message: result?.message || 'The exam could not be published.',
+    };
+  }
+  if (!result.exam || !Array.isArray(result.questions)) {
+    throw new Error('The database did not return the saved exam details.');
+  }
+
+  const row = result.exam;
+  return {
+    success: true,
+    exam: {
+      id: row.id,
+      school_id: row.school_id,
+      created_by: row.created_by || '',
+      created_by_name: row.created_by_name || 'Staff',
+      exam_code: row.exam_code,
+      title: row.title,
+      subject: row.subject,
+      class_id: row.class_id || undefined,
+      class_name: row.class_name,
+      term: row.term,
+      session: row.session,
+      duration_minutes: row.duration_minutes,
+      instructions: row.instructions,
+      total_marks: row.total_marks,
+      section_a_marks: row.section_a_marks,
+      section_b_marks: row.section_b_marks,
+      status: row.status,
+      created_at: row.created_at,
+      questions: result.questions.map((question) => ({
+        ...question,
+        marks: Number(question.marks),
+        objective_data: question.objective_data ? {
+          ...question.objective_data,
+          question_id: question.id,
+        } : undefined,
+        theory_data: question.theory_data ? {
+          ...question.theory_data,
+          max_score: Number(question.theory_data.max_score),
+          question_id: question.id,
+        } : undefined,
+      })),
+    },
+  };
+}
