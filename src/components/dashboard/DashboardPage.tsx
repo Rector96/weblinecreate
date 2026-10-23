@@ -163,13 +163,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {/* Card 1: Exams */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold text-slate-500">Exams Created</span>
+            <span className="text-xs font-semibold text-slate-500">Exams</span>
             <FileText className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-2xl font-black text-slate-900 tabular-nums">{exams.length}</div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            <span className="font-semibold text-slate-700 tabular-nums">{totalQuestions}</span>
-          </div>
         </div>
 
         {/* Card 2: Plan */}
