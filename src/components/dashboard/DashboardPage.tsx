@@ -142,9 +142,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
             Hi, {user?.full_name?.split(' ')[0] || 'there'}
           </h2>
-          <p className="text-xs text-blue-200/90 max-w-xl">
-            
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
@@ -178,7 +175,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             : 'bg-white border-slate-200/80'
         }`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500">Subscription Status</span>
+            <span className="text-xs font-semibold text-slate-500">Plan</span>
             {school?.subscription_status === 'active' ? (
               <span className="flex items-center gap-1 text-[10px] font-black uppercase bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-md">
                 <Check className="w-3 h-3" />
@@ -199,7 +196,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               ? 'Active'
               : (school?.ai_exams_used || 0) >= 4
               ? 'Limit reached'
-              : `${remainingAi} Trial Left`}
+              : `${remainingAi} trials left`}
           </div>
           <div className="text-[11px] mt-1">
             {school?.subscription_status === 'active' ? (
@@ -212,7 +209,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 }`}
               >
                 {(school?.ai_exams_used || 0) >= 4
-                  ? 'Pay ₦11,000 for 5th exam'
+                  ? 'Upgrade · ₦11,000'
                   : `${remainingAi} trials left · Upgrade`}
               </button>
             )}
@@ -228,7 +225,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="text-2xl font-black text-slate-900 tabular-nums">
             {classesCount}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1"></div>
         </div>
 
         {/* Card 4: Teacher Collaboration Token */}
@@ -243,46 +239,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="text-[11px] text-slate-500 mt-1">
             <button onClick={copyInvite} disabled={!inviteToken} className="hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-medium">
               {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-              <span>{copied ? 'Link Copied' : 'Share staff invite'}</span>
+              <span>{copied ? 'Copied' : 'Copy invite link'}</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* 3. Teacher Invitation Banner Card */}
-      {role === 'school_admin' && (
-        <div className="p-4 sm:p-5 rounded-3xl bg-white border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Invite Subject Teachers</h3>
-              <p className="text-xs text-slate-500 mt-0.5 max-w-xl">
-                Teachers can author exams for their subjects directly inside your school repository.
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="font-mono text-xs font-bold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-blue-900">
-                  {inviteToken}
-                </span>
-                <button
-                  onClick={copyInvite}
-                  className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? 'Link Copied!' : 'Copy Staff Link'}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Recent Examination Papers Section */}
+      {/* Recent exams */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-900 tracking-tight">Recent Exam Papers</h3>
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">Recent exams</h3>
             <p className="text-xs text-slate-500">Official WAEC/JAMB formatted printable exams</p>
           </div>
           <button
