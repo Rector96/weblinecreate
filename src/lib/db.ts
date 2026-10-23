@@ -47,7 +47,6 @@ export const dbEvents = new DbEventEmitter();
 const DEFAULT_SCHOOL_ID = 'sch_kings_college_lagos';
 const DEFAULT_ADMIN_ID = 'usr_admin_lagos';
 const DEFAULT_TEACHER_ID = 'usr_teacher_adebayo';
-const PLATFORM_ADMIN_EMAIL = 'peteroche32@gmail.com';
 
 const INITIAL_SCHOOLS: School[] = [
   {
