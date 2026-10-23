@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../../lib/auth';
+import { supabase } from '../../lib/supabase';
 import {
   X,
   CheckCircle2,
@@ -31,6 +32,27 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
   const [paymentStep, setPaymentStep] = useState<'idle' | 'authorizing' | 'success'>('idle');
   const [successReceipt, setSuccessReceipt] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get('payment');
+    const reference = params.get('reference');
+    if (!paymentStatus) return;
+
+    if (paymentStatus === 'success' && reference) {
+      setSuccessReceipt(reference);
+      setPaymentStep('success');
+      refreshSchool();
+    } else if (paymentStatus === 'failed') {
+      setPaymentError('Payment was not verified. Your subscription has not been activated. If you were charged, contact support with your payment reference.');
+      setPaymentStep('idle');
+    }
+
+    params.delete('payment');
+    params.delete('reference');
+    const query = params.toString();
+    window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+  }, [refreshSchool]);
 
   if (!isOpen || !school) return null;
 
@@ -73,9 +95,17 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
     try {
       // Never activate a subscription based on a timer or a client-generated reference.
       // This app currently has no verified payment endpoint wired to this modal.
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session?.access_token) {
+        throw new Error('Your secure session has expired. Please sign in again before paying.');
+      }
+
       const response = await fetch('/api/initialize-payment', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
         body: JSON.stringify({
           school_id: school.id,
           term,
