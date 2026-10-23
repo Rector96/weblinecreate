@@ -285,22 +285,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         setQuestions(questions.map((q) => (q.id === targetQuestion.id ? updatedQuestion : q)));
         showNotification(`Question ${targetQuestion.question_number} regenerated with AI!`);
       }
-    } catch {
-      // Client-side instant fallback swap
-      if (targetQuestion.section === 'A') {
-        const replacementObj: Question = {
-          ...targetQuestion,
-          question_text: `[${subject}] Evaluate the alternative WAEC condition for ${aiTopics || 'the topic'} in ${className}:`,
-          objective_data: {
-            option_a: 'Standard constant value',
-            option_b: 'Inverse relationship under standard pressure',
-            option_c: 'Empirical equivalent metric',
-            option_d: 'Linear coefficient',
-            correct_option: 'B',
-          },
-        };
-        setQuestions(questions.map((q) => (q.id === targetQuestion.id ? replacementObj : q)));
-      }
+    } catch (error: any) {
+      showNotification(error?.message || 'AI regeneration failed. Please try again.');
     } finally {
       setRegeneratingId(null);
     }
@@ -358,31 +344,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         setQuestions([...questions, ...newQs]);
         showNotification(`Added ${newQs.length} new ${section === 'A' ? 'objective' : 'theory'} questions!`);
       }
-    } catch {
-      // Fallback batch
-      const newQs: Question[] = [];
-      for (let i = 0; i < countToAdd; i++) {
-        const qNum = startNumber + i;
-        newQs.push({
-          id: `q_more_fb_${Date.now()}_${i}`,
-          section,
-          question_number: qNum,
-          question_text: `[${subject} Q${qNum}] Which of the following best represents standard WAEC principle ${qNum}?`,
-          marks: section === 'A' ? 1 : 15,
-          objective_data:
-            section === 'A'
-              ? {
-                  option_a: 'Standard property A',
-                  option_b: 'Derived formula B',
-                  option_c: 'Empirical condition C',
-                  option_d: 'Universal constant D',
-                  correct_option: 'A',
-                }
-              : undefined,
-        });
-      }
-      setQuestions([...questions, ...newQs]);
-      showNotification(`Added ${countToAdd} questions!`);
+    } catch (error: any) {
+      showNotification(error?.message || 'AI generation failed. Please try again.');
     } finally {
       setIsAddingMore(false);
     }
