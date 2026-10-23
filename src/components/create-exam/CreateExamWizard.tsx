@@ -124,7 +124,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     return {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.access_token}`,
-      'X-School-Id': school.id,
     };
   };
 
