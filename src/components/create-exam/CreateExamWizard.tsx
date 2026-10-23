@@ -1454,7 +1454,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {currentStep === 4 && (
         <div className="space-y-4 animate-in fade-in">
           {/* Top Control Bar */}
-          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md uppercase tracking-wider">
@@ -1471,31 +1471,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentStep(3)}
-                className="px-3.5 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleSubmitExam}
-                disabled={isSubmitting}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-800 disabled:opacity-75 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-600/25 active:scale-95 transition-all"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Auto-Downloading & Syncing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4" />
-                    <span>Publish & Auto-Download DOCX</span>
-                  </>
-                )}
-              </button>
-            </div>
+
           </div>
 
           {/* Target counts let teachers fill only the missing questions without discarding accepted work. */}
@@ -1761,6 +1737,28 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 </div>
               </div>
             )}
+          </div>
+          {/* Persistent mobile-first action bar: primary actions stay at the bottom while reviewing. */}
+          <div className="sticky bottom-0 z-30 -mx-3 sm:mx-0 mt-5 border-t border-slate-200 bg-white/95 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur sm:rounded-2xl sm:border sm:px-4">
+            <div className="mx-auto flex w-full max-w-3xl items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(3)}
+                className="flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 active:bg-slate-100"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Edit questions
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitExam}
+                disabled={isSubmitting || questions.length === 0}
+                className="flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 text-sm font-bold text-white shadow-md shadow-blue-700/20 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:px-5"
+              >
+                {isSubmitting ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
+                <span className="truncate">{isSubmitting ? 'Publishing exam…' : 'Publish exam & download files'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
