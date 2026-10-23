@@ -84,9 +84,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const roles = (roleRows || []) as Array<{ role: UserRole; school_id: string | null }>;
-    const chosenRole = (roles.find((item) => item.school_id === profile.school_id)?.role
+    // Platform administrators must take precedence over school-scoped roles.
+    // Otherwise an account that belongs to a school can be resolved as school_admin
+    // and the platform-admin navigation will disappear even when platform_admin is assigned.
+    const chosenRole = (
+      roles.find((item) => item.role === 'platform_admin')?.role
+      || roles.find((item) => item.school_id === profile.school_id)?.role
       || roles[0]?.role
-      || 'teacher') as UserRole;
+      || 'teacher'
+    ) as UserRole;
 
     setRole(chosenRole);
     setUser({
