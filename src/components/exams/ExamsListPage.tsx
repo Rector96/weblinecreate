@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth';
-import { db, dbEvents } from '../../lib/db';
+import { listSchoolExams, deleteExamFromSupabase } from '../../lib/examRepository';
 import { Exam } from '../../types';
 import { exportExamToDocx, exportMarkingSchemeToDocx } from '../../utils/docxExport';
 import { exportAllExamsZip } from '../../utils/zipExport';
@@ -36,16 +36,30 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
   const [selectedTerm, setSelectedTerm] = useState('All');
   const [isExportingZip, setIsExportingZip] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const loadExams = () => {
-    if (!school) return;
-    setExams(db.getExams(school.id));
+  const loadExams = async () => {
+    if (!school) {
+      setExams([]);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      setExams(await listSchoolExams(school.id));
+    } catch (loadError) {
+      console.error('Failed to load exams from Supabase', loadError);
+      setExams([]);
+      setError(loadError instanceof Error ? loadError.message : 'Could not load exams from the database.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    loadExams();
-    const unsub = dbEvents.subscribe('exams', loadExams);
-    return () => unsub();
+    void loadExams();
   }, [school?.id]);
 
   // Unique lists for filters
@@ -94,9 +108,19 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
     }
   };
 
-  const handleDelete = (id: string, title: string) => {
-    if (confirm(`Are you sure you want to permanently delete "${title}"?`)) {
-      db.deleteExam(id);
+  const handleDelete = async (id: string, title: string) => {
+    if (!school || deletingId) return;
+    if (!confirm(`Are you sure you want to permanently delete "${title}"?`)) return;
+    setDeletingId(id);
+    setError(null);
+    try {
+      await deleteExamFromSupabase(id, school.id);
+      setExams((current) => current.filter((exam) => exam.id !== id));
+    } catch (deleteError) {
+      console.error('Failed to delete exam', deleteError);
+      setError(deleteError instanceof Error ? deleteError.message : 'Could not delete the exam. Check your permissions and try again.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -143,6 +167,13 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
           </button>
         </div>
       </div>
+
+      {error && (
+        <div role="alert" className="p-3 rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 text-xs flex items-center gap-2">
+          <span className="flex-1">{error}</span>
+          <button type="button" onClick={() => void loadExams()} className="font-semibold underline">Retry</button>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
@@ -206,12 +237,14 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
       </div>
 
       {/* Exams Grid */}
-      {filteredExams.length === 0 ? (
+      {isLoading ? (
+        <div className="bg-white rounded-3xl p-10 border border-slate-200 text-center text-sm text-slate-500">Loading exams and questions from Supabase...</div>
+      ) : filteredExams.length === 0 ? (
         <div className="bg-white rounded-3xl p-10 border border-slate-200 text-center">
           <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-slate-800">No exams match your filter criteria</h3>
+          <h3 className="text-sm font-bold text-slate-800">{error ? 'Exams could not be loaded' : 'No exams match your filter criteria'}</h3>
           <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            Try adjusting your search terms or generate a new examination paper.
+            {error ? 'Check your database connection and permissions, then retry.' : 'Try adjusting your search terms or generate a new examination paper.'}
           </p>
         </div>
       ) : (
@@ -280,8 +313,9 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
 
                   {(role === 'school_admin' || exam.created_by === user?.id) && (
                     <button
-                      onClick={() => handleDelete(exam.id, exam.title)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
+                      onClick={() => void handleDelete(exam.id, exam.title)}
+                      disabled={deletingId === exam.id}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors disabled:opacity-50"
                       title="Delete Exam"
                     >
                       <Trash2 className="w-4 h-4" />
