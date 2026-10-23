@@ -337,7 +337,11 @@ export default async (req: Request) => {
       }, 200, { 'Cache-Control': 'no-store' });
     } catch (error) {
       console.error('School invite preview failed', error);
-      return jsonResponse({ success: false, error: 'Unable to verify this school link right now.' }, 503, { 'Cache-Control': 'no-store' });
+      const missingConfig = missingSupabaseServerConfig();
+      if (missingConfig.length) {
+        return jsonResponse({ success: false, error: `School link verification is not configured on the server. Missing Netlify Function variable(s): ${missingConfig.join(', ')}. Set them with Functions scope, then redeploy.` }, 503, { 'Cache-Control': 'no-store' });
+      }
+      return jsonResponse({ success: false, error: 'Unable to verify this school link right now. Check the Netlify Function logs for the Supabase request error.' }, 503, { 'Cache-Control': 'no-store' });
     }
   }
 
