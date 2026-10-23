@@ -20,8 +20,8 @@ DECLARE
   v_question_json jsonb;
   v_saved_questions jsonb := '[]'::jsonb;
   v_question_count integer := 0;
-  v_is_platform_admin boolean;
-  v_is_school_member boolean;
+  v_is_platform_admin boolean := false;
+  v_is_school_member boolean := false;
   v_is_paid boolean;
   v_used integer;
   v_max integer;
