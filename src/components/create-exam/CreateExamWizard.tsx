@@ -134,11 +134,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
   // Step 2 Choice
   const handleSelectMethod = (selected: 'ai' | 'manual') => {
-    if (selected === 'ai' && school && school.subscription_status !== 'active' && school.ai_exams_used >= 4) {
-      setAiError('You have used all 4 free trial exams. On your 5th generation, please complete payment for full term access.');
-      onOpenPaystack();
-      return;
-    }
+    // The database is authoritative for quota checks at publication time.
     setMethod(selected);
     setCurrentStep(3);
   };
