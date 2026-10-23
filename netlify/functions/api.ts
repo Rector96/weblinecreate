@@ -28,7 +28,7 @@ async function supabaseAdminRequest(path: string, init: RequestInit = {}) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('Server Supabase credentials are not configured.');
   }
-  const response = await fetch(`${SUPABASE_URL.replace(/\\/$/, '')}/rest/v1/${path}`, {
+  const response = await fetch(`${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${path}`, {
     ...init,
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -47,7 +47,7 @@ async function supabaseAdminRequest(path: string, init: RequestInit = {}) {
 }
 
 async function getAuthenticatedUser(req: Request) {
-  const token = req.headers.get('authorization')?.replace(/^Bearer\\s+/i, '');
+  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!token || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
   const response = await fetch(`${SUPABASE_URL.replace(/\\/$/, '')}/auth/v1/user`, {
     headers: {
@@ -60,32 +60,22 @@ async function getAuthenticatedUser(req: Request) {
 }
 
 
-const aiRequestWindows = new Map<string, number[]>();
-
 async function authorizeAiRequest(req: Request, schoolId: unknown) {
   const user = await getAuthenticatedUser(req);
   if (!user?.id) return { ok: false as const, response: jsonResponse({ success: false, error: 'Please sign in before using AI question generation.' }, 401) };
-  if (typeof schoolId !== 'string' || !/^[0-9a-f-]{36}$/i.test(schoolId)) {
+  if (typeof schoolId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId)) {
     return { ok: false as const, response: jsonResponse({ success: false, error: 'A valid school account is required.' }, 400) };
   }
-  const userId = encodeURIComponent(user.id);
-  const [profiles, roles] = await Promise.all([
-    supabaseAdminRequest(`profiles?user_id=eq.${userId}&select=user_id,school_id`),
-    supabaseAdminRequest(`user_roles?user_id=eq.${userId}&select=role,school_id`),
-  ]) as [Array<{ user_id: string; school_id: string | null }>, Array<{ role: string; school_id: string | null }>];
-  const isPlatformAdmin = roles.some((row) => row.role === 'platform_admin');
-  const isMember = profiles.some((row) => row.school_id === schoolId) ||
-    roles.some((row) => row.school_id === schoolId && ['school_admin', 'teacher'].includes(row.role));
-  if (!isPlatformAdmin && !isMember) {
+  const result = await supabaseAdminRequest('rpc/consume_ai_generation_slot', {
+    method: 'POST',
+    body: JSON.stringify({ p_user_id: user.id, p_school_id: schoolId }),
+  }) as { allowed?: boolean; reason?: string };
+  if (result?.allowed !== true) {
+    if (result?.reason === 'user_rate' || result?.reason === 'school_rate') {
+      return { ok: false as const, response: jsonResponse({ success: false, error: 'AI request limit reached. Please wait one minute and try again.' }, 429) };
+    }
     return { ok: false as const, response: jsonResponse({ success: false, error: 'You are not authorized to use AI for this school.' }, 403) };
   }
-  const now = Date.now();
-  const recent = (aiRequestWindows.get(user.id) || []).filter((stamp) => now - stamp < 60_000);
-  if (recent.length >= 5) {
-    return { ok: false as const, response: jsonResponse({ success: false, error: 'AI request limit reached. Wait one minute and try again.' }, 429) };
-  }
-  recent.push(now);
-  aiRequestWindows.set(user.id, recent);
   return { ok: true as const, userId: user.id };
 }
 
