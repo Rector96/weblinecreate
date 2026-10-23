@@ -16,6 +16,9 @@ import {
 export const ClassesPage: React.FC = () => {
   const { school, role } = useAuth();
   const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [subjects, setSubjects] = useState<Array<{ id: string; name: string }>>([]);
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [isSavingSubject, setIsSavingSubject] = useState(false);
   const [newClassName, setNewClassName] = useState('');
   const [newLevel, setNewLevel] = useState<'Junior' | 'Senior'>('Junior');
   const [armsInput, setArmsInput] = useState('');
@@ -59,8 +62,72 @@ export const ClassesPage: React.FC = () => {
     })) as SchoolClass[]);
   };
 
+  const loadSubjects = async () => {
+    if (!school || !isSupabaseConfigured()) {
+      setSubjects([]);
+      return;
+    }
+    const { data, error: queryError } = await supabase
+      .from('school_subjects')
+      .select('id, name')
+      .eq('school_id', school.id)
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+    if (queryError) {
+      setError('Could not load school subjects. Apply the school-subjects SQL migration and retry.');
+      setSubjects([]);
+      return;
+    }
+    setSubjects(data || []);
+  };
+
+  const handleAddSubject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newSubjectName.trim().replace(/\s+/g, ' ');
+    if (!school || !name || isSavingSubject) return;
+    if (!isSupabaseConfigured()) {
+      setError('Supabase is not configured. The subject was not saved.');
+      return;
+    }
+    if (subjects.some((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+      setError('This subject is already in your school subject list.');
+      return;
+    }
+    setIsSavingSubject(true);
+    setError(null);
+    const { data, error: insertError } = await supabase
+      .from('school_subjects')
+      .insert({ school_id: school.id, name, is_active: true })
+      .select('id, name')
+      .single();
+    setIsSavingSubject(false);
+    if (insertError || !data) {
+      setError(insertError?.code === '23505' ? 'This subject already exists for your school.' : `Could not save subject: ${insertError?.message || 'No record returned.'}`);
+      return;
+    }
+    setSubjects((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name)));
+    setNewSubjectName('');
+    setMessage(`Subject "${name}" added.`);
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleRemoveSubject = async (id: string, name: string) => {
+    if (!school || !confirm(`Remove ${name} from the available subject list? Past exams will be kept.`)) return;
+    const { error: updateError } = await supabase
+      .from('school_subjects')
+      .update({ is_active: false })
+      .eq('id', id)
+      .eq('school_id', school.id);
+    if (updateError) {
+      setError(`Could not remove subject: ${updateError.message}`);
+      return;
+    }
+    setSubjects((current) => current.filter((item) => item.id !== id));
+  };
+
   useEffect(() => {
     void loadClasses();
+    void loadSubjects();
   }, [school?.id]);
 
   const handleAddClass = async (e: React.FormEvent) => {
@@ -259,6 +326,53 @@ export const ClassesPage: React.FC = () => {
         ))}
       </div>
       )}
+
+      {/* School subject catalogue */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
+            <BookOpen className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">School Subjects</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Choose the subjects your school teaches. Teachers will see this list when creating exams.</p>
+          </div>
+        </div>
+
+        {role === 'school_admin' && (
+          <form onSubmit={handleAddSubject} className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              value={newSubjectName}
+              onChange={(e) => setNewSubjectName(e.target.value)}
+              placeholder="Add a subject, e.g. Food and Nutrition"
+              maxLength={100}
+              required
+              className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+            />
+            <button type="submit" disabled={isSavingSubject} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              <Plus className="h-4 w-4" /> {isSavingSubject ? 'Saving…' : 'Add subject'}
+            </button>
+          </form>
+        )}
+
+        {subjects.length === 0 ? (
+          <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">No active subjects found. Add subjects here after applying the school-subjects SQL migration.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {subjects.map((item) => (
+              <span key={item.id} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
+                {item.name}
+                {role === 'school_admin' && (
+                  <button type="button" onClick={() => void handleRemoveSubject(item.id, item.name)} aria-label={`Remove ${item.name}`} title="Remove subject" className="rounded-full p-0.5 text-slate-400 hover:bg-rose-100 hover:text-rose-700">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 };
