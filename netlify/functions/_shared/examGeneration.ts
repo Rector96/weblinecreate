@@ -3,8 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 const groqApiKey = (process.env.GROQ_API_KEY || '').trim();
 const geminiApiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
 const geminiAi: any = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
-
-const ai: any = groqApiKey
+const groqAi: any = groqApiKey
   ? {
       models: {
         generateContent: async ({ contents, config }: { contents: string; config?: { temperature?: number; responseMimeType?: string } }) => {
@@ -31,11 +30,13 @@ const ai: any = groqApiKey
         },
       },
     }
-  : geminiAi;
+  : null;
 
-const MODELS = groqApiKey
-  ? ['openai/gpt-oss-120b']
-  : ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+// Try Groq first when configured, then automatically fall back to Gemini if a key exists.
+const PROVIDERS = [
+  ...(groqAi ? [{ name: 'Groq', client: groqAi, models: ['openai/gpt-oss-120b'] }] : []),
+  ...(geminiAi ? [{ name: 'Gemini', client: geminiAi, models: ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'] }] : []),
+];
 const configuredBatchDelay = Number(process.env.GROQ_BATCH_DELAY_MS);
 const BATCH_DELAY_MS = groqApiKey && process.env.EXAM_QUEUE_ENABLED === 'true'
   ? (Number.isFinite(configuredBatchDelay) && configuredBatchDelay >= 0 ? configuredBatchDelay : 40000)
@@ -54,28 +55,40 @@ type ExamGenerationInput = {
 };
 
 async function generateSection(prompt: string, sectionName: string) {
-  if (!ai) throw new Error('AI generation is not configured on the server.');
+  if (!PROVIDERS.length) throw new Error('AI generation is not configured on the server.');
   let lastError: unknown = null;
-  for (const model of MODELS) {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-          config: { responseMimeType: 'application/json', temperature: 0.3 },
-        });
-        const parsed = JSON.parse(response.text || '');
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          throw new Error('The AI returned an invalid ' + sectionName + ' response.');
+  for (const provider of PROVIDERS) {
+    for (const model of provider.models) {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const response = await provider.client.models.generateContent({
+            model,
+            contents: prompt,
+            config: { responseMimeType: 'application/json', temperature: 0.3 },
+          });
+          const parsed = JSON.parse(response.text || '');
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new Error('The AI returned an invalid ' + sectionName + ' response.');
+          }
+          return { model: provider.name + ': ' + model, data: parsed };
+        } catch (error: any) {
+          lastError = error;
+          const errorText = error instanceof Error ? error.message : String(error || '');
+          const limited = Number(error?.status || error?.code) === 429 || /rate.?limit|too many requests|tokens per minute/i.test(errorText);
+          console.error(provider.name + ' AI ' + sectionName + ' batch failed', error?.status || error?.code || 'unknown status', errorText.slice(0, 200));
+
+          // Keep queued work paced to respect provider limits. In synchronous fallback mode,
+          // use short retries so the function does not spend 40 seconds sleeping on each try.
+          if (limited && attempt < 2) {
+            const delay = process.env.EXAM_QUEUE_ENABLED === 'true'
+              ? (BATCH_DELAY_MS > 0 ? BATCH_DELAY_MS : 40000)
+              : 1200 * (attempt + 1);
+            await wait(delay);
+            continue;
+          }
+          // Exhausted this provider/model; try the next configured provider before failing.
+          break;
         }
-        return { model, data: parsed };
-      } catch (error: any) {
-        lastError = error;
-        const errorText = error instanceof Error ? error.message : String(error || '');
-        const limited = Number(error?.status || error?.code) === 429 || /rate.?limit|too many requests|tokens per minute/i.test(errorText);
-        console.error('AI ' + sectionName + ' batch failed', error?.status || error?.code || 'unknown status', errorText.slice(0, 200));
-        if (!limited || attempt >= 2 || process.env.EXAM_QUEUE_ENABLED !== 'true') break;
-        await wait(BATCH_DELAY_MS > 0 ? BATCH_DELAY_MS : 40000);
       }
     }
   }
