@@ -191,3 +191,5 @@ button:active:not(:disabled) {
 @keyframes rockcraft-wordmark-shine { 0%,100% { background-position:100% 50%; } 50% { background-position:0% 50%; } }
 @keyframes rockcraft-wordmark-float { 0%,100% { transform:translateY(0) scale(1); } 50% { transform:translateY(-5px) scale(1.015); } }
 @media (prefers-reduced-motion:reduce) { .rockcraft-page-loader::before,.rockcraft-loader-glow,.rockcraft-loader-wordmark { animation:none!important; } }
+
+@keyframes rockcraft-loading-sweep { 0% { transform: translateX(-140%); width: 38%; } 50% { transform: translateX(95%); width: 58%; } 100% { transform: translateX(310%); width: 38%; } }
