@@ -831,7 +831,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4 text-left pb-8">
+    <div className="max-w-2xl mx-auto space-y-3 sm:space-y-4 text-left pb-28 sm:pb-10">
       {/* Toast Notification */}
       {notification && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
@@ -841,52 +841,68 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       )}
 
       {/* Wizard Progress Stepper */}
-      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-xs">
-        <div className="flex items-center justify-between max-w-xl mx-auto text-xs">
+      <div className="sticky top-0 z-20 -mx-1 sm:mx-0 rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-xs backdrop-blur-md sm:p-3.5">
+        <div className="mx-auto flex max-w-lg items-center justify-between gap-1">
           {[
-            { step: 1, label: 'Metadata' },
+            { step: 1, label: 'Details' },
             { step: 2, label: 'Method' },
             { step: 3, label: 'Questions' },
-            { step: 4, label: 'Review Paper' },
+            { step: 4, label: 'Review' },
           ].map((item, idx) => (
             <React.Fragment key={item.step}>
-              <div className="flex flex-col items-center">
+              <div className="flex min-w-0 flex-1 flex-col items-center">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${
                     currentStep === item.step
-                      ? 'bg-blue-600 text-white shadow-sm ring-4 ring-blue-100'
+                      ? 'scale-110 bg-blue-600 text-white shadow-md shadow-blue-600/30'
                       : currentStep > item.step
-                      ? 'bg-emerald-600 text-white'
+                      ? 'bg-emerald-500 text-white'
                       : 'bg-slate-100 text-slate-400'
                   }`}
                 >
-                  {currentStep > item.step ? <CheckCircle2 className="w-4 h-4" /> : item.step}
+                  {currentStep > item.step ? <Check className="h-4 w-4" /> : item.step}
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 mt-1 whitespace-nowrap">
+                <span
+                  className={`mt-1 truncate text-[10px] font-semibold tracking-tight ${
+                    currentStep === item.step
+                      ? 'text-blue-700'
+                      : currentStep > item.step
+                      ? 'text-emerald-700'
+                      : 'text-slate-400'
+                  }`}
+                >
                   {item.label}
                 </span>
               </div>
               {idx < 3 && (
                 <div
-                  className={`flex-1 h-0.5 mx-2 rounded-full transition-colors ${
-                    currentStep > item.step ? 'bg-emerald-500' : 'bg-slate-200'
+                  className={`mb-4 h-0.5 w-4 shrink-0 rounded-full transition-colors duration-300 sm:w-8 ${
+                    currentStep > item.step ? 'bg-emerald-400' : 'bg-slate-200'
                   }`}
                 />
               )}
             </React.Fragment>
           ))}
         </div>
+        <p className="mt-2 text-center text-[11px] font-medium text-slate-500">
+          {currentStep === 1 && 'Step 1 of 4 · Exam details'}
+          {currentStep === 2 && 'Step 2 of 4 · How to create questions'}
+          {currentStep === 3 && method === 'ai' && 'Step 3 of 4 · AI generation'}
+          {currentStep === 3 && method === 'manual' && 'Step 3 of 4 · Manual authoring'}
+          {currentStep === 4 && 'Step 4 of 4 · Review & publish'}
+        </p>
       </div>
 
       {/* ============================================================== */}
       {/* STEP 1: EXAM METADATA (MANDATORY FIELDS) */}
       {/* ============================================================== */}
       {currentStep === 1 && (
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-4 animate-in fade-in">
+        <div key="step-1" className="space-y-4 rounded-[1.35rem] border border-slate-200/80 bg-white p-4 shadow-xs animate-in fade-in duration-300 sm:p-5">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">Exam details</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Choose the class, subject and exam details.
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">Exam setup</p>
+            <h3 className="mt-0.5 text-lg font-extrabold tracking-tight text-slate-900">Exam details</h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+              Choose class, subject, term and timing. You can still edit questions later.
             </p>
           </div>
 
@@ -899,11 +915,11 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Subject *</label>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Subject *</label>
               <select
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+                className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               >
                 {schoolSubjects.map((sub) => (
                   <option key={sub} value={sub}>
@@ -914,11 +930,11 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Class Level *</label>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Class Level *</label>
               <select
                 value={className}
                 onChange={(e) => setClassName(e.target.value)}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+                className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               >
                 {schoolClasses.map((cls) => (
                   <option key={cls.name} value={cls.name}>
@@ -931,11 +947,11 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Term *</label>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Term *</label>
               <select
                 value={term}
                 onChange={(e) => setTerm(e.target.value as ExamTerm)}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+                className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               >
                 {EXAM_TERMS.map((t) => (
                   <option key={t} value={t}>
@@ -946,11 +962,11 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Academic Session *</label>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Academic Session *</label>
               <select
                 value={session}
                 onChange={(e) => setSession(e.target.value)}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+                className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               >
                 {ACADEMIC_SESSIONS.map((ses) => (
                   <option key={ses} value={ses}>
@@ -961,43 +977,43 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Duration (Minutes) *</label>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Duration (Minutes) *</label>
               <input
                 type="number"
                 min={30}
                 max={240}
                 value={durationMinutes}
                 onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+                className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Exam Title *</label>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600">Exam Title *</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. First Term Mock Examination"
-              className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+              className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">General Instructions *</label>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600">General Instructions *</label>
             <textarea
               rows={3}
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+              className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 
           <div className="pt-4 flex justify-end">
             <button
               onClick={handleStep1Next}
-              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-800 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-all"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700 active:scale-[0.99]"
             >
               <span>Continue to Question Method</span>
               <ArrowRight className="w-4 h-4" />
@@ -1010,11 +1026,12 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {/* STEP 2: METHOD SELECTION (AI vs MANUAL) */}
       {/* ============================================================== */}
       {currentStep === 2 && (
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-4 animate-in fade-in">
+        <div key="step-2" className="space-y-4 rounded-[1.35rem] border border-slate-200/80 bg-white p-4 shadow-xs animate-in fade-in duration-300 sm:p-5">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">How would you like to create it?</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Choose AI to draft questions or enter them yourself.
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">Creation method</p>
+            <h3 className="mt-0.5 text-lg font-extrabold tracking-tight text-slate-900">How do you want to set this paper?</h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+              AI drafts a full paper for you to review. Manual lets you type every question yourself.
             </p>
           </div>
 
@@ -1131,19 +1148,21 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {/* STEP 3A: AI QUESTION GENERATION CONFIG */}
       {/* ============================================================== */}
       {currentStep === 3 && method === 'ai' && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-5 animate-in fade-in">
-          <div className="flex items-center justify-between">
+        <div key="step-3-ai" className="space-y-4 rounded-[1.35rem] border border-slate-200/80 bg-white p-4 shadow-xs animate-in fade-in duration-300 sm:space-y-5 sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 tracking-tight">Set up your AI questions</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Topics for <strong className="text-blue-600">{subject}</strong> ({className} · {term})
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">AI generation</p>
+              <h3 className="mt-0.5 text-lg font-extrabold tracking-tight text-slate-900">Set up your AI questions</h3>
+              <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                Topics for <strong className="text-blue-600">{subject}</strong> · {className} · {term}
               </p>
             </div>
             <button
+              type="button"
               onClick={() => setMethod('manual')}
-              className="text-xs font-semibold text-blue-600 hover:underline"
+              className="shrink-0 self-start rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
             >
-              Switch to Manual Input
+              Switch to manual
             </button>
           </div>
 
@@ -1155,7 +1174,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600">
               Syllabus Topics to Cover *
             </label>
             <textarea
@@ -1164,7 +1183,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               value={aiTopics}
               onChange={(e) => setAiTopics(e.target.value)}
               placeholder="Paste or type the syllabus topics to cover, including subtopics, learning objectives, and any specific areas teachers want assessed."
-              className="w-full min-h-48 resize-y text-sm leading-6 rounded-xl border border-slate-300 p-3 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+              className="w-full min-h-40 resize-y rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 text-sm leading-6 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 sm:min-h-48"
               aria-describedby="syllabus-topics-help"
             />
             <div id="syllabus-topics-help" className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-slate-500">
@@ -1175,7 +1194,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">
                 Objectives (e.g. 10 to 25)
               </label>
               <input
@@ -1184,12 +1203,12 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 max={50}
                 value={aiNumObj}
                 onChange={(e) => setAiNumObj(Number(e.target.value))}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+                className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">
                 Theory / Essay Questions
               </label>
               <input
@@ -1198,18 +1217,18 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 max={6}
                 value={aiNumTheory}
                 onChange={(e) => setAiNumTheory(Number(e.target.value))}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+                className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">
                 Standard & Rigor
               </label>
               <select
                 value={aiDifficulty}
                 onChange={(e) => setAiDifficulty(e.target.value as any)}
-                className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white"
+                className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               >
                 <option value="Standard">Standard</option>
                 <option value="Foundational / Basic">Foundational / Basic</option>
@@ -1511,7 +1530,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 setStepError(null);
                 setCurrentStep(4);
               }}
-              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-800 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-all"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700 active:scale-[0.99]"
             >
               <span>Live Paper Preview & Verification</span>
               <ArrowRight className="w-4 h-4" />
