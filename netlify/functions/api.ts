@@ -523,51 +523,74 @@ export default async (req: Request) => {
       const safeObjCount = Math.min(Math.max(Number(num_objectives) || 10, 5), 50);
       const safeTheoryCount = Math.min(Math.max(Number(num_theories) || 3, 1), 6);
 
-      const promptText = `
-You are an experienced Nigerian secondary-school examination setter with 20+ years of experience.
+      const sharedContext = `
+You are an experienced Nigerian secondary-school examination setter with strong knowledge of the Nigerian NERDC curriculum and West African examination standards.
 
-GENERATE AN AUTHENTIC NIGERIAN EXAMINATION PAPER FOR:
+CURRICULUM AND LANGUAGE:
+- Match the supplied class level and topics; do not introduce topics above the class level.
+- Use Nigerian and West African contexts where they make sense and use British English spelling.
+- Avoid inventing official curriculum claims. Prioritise the teacher's supplied topics and instructions.
+
+STEM FORMATTING:
+- For Mathematics, Further Mathematics, Physics, and Chemistry, write mathematical expressions and scientific notation with standard LaTeX delimiters: inline \\( ... \\) and display \\[ ... \\].
+- Use LaTeX for fractions, powers, subscripts, variables, units, and chemical formulae, for example \\(\\frac{3}{4}x^2\\), \\(v = u + at\\), and \\(H_2SO_4\\).
+- Keep ordinary prose readable. Do not wrap an entire question in math delimiters unless it is all mathematics.
+
+QUALITY:
+- Produce clear, age-appropriate, unambiguous questions.
+- Objective options must be plausible, mutually distinct, and the correct option must match the actual solution.
+- Theory questions must keep the question text separate from the model answer and marking breakdown.
+- Return valid JSON only, without Markdown fences or introductory text.
+`;
+
+      const objectivePrompt = `
+${sharedContext}
+
+Generate EXACTLY ${safeObjCount} Section A objective multiple-choice questions for:
 - Subject: ${subject}
-- Class Level: ${class_name} (Nigerian Secondary School)
-- Academic Term: ${term}
-- Target Topics: ${topics}
-- Academic Rigor: ${difficulty}
-- General Instructions: ${instructions || 'Answer all questions in Section A and any three questions in Section B.'}
+- Class level: ${class_name}
+- Academic term: ${term}
+- Topics covered: ${topics}
+- Difficulty: ${difficulty}
+- Teacher instructions: ${instructions || 'Follow the school curriculum and the supplied topics.'}
 
-REQUIREMENTS:
-1. Generate EXACTLY ${safeObjCount} Section A Objective (Multiple Choice) questions.
-   - Each objective question MUST have 4 realistic options: option_a, option_b, option_c, option_d.
-   - Provide the correct_option which MUST be one of 'A', 'B', 'C', or 'D'.
-   - Marks for each objective question must be 1.
-2. Generate EXACTLY ${safeTheoryCount} Section B Essay/Theory questions.
-   - Each theory question should reflect clear, curriculum-aligned examination style (with sub-parts like (a), (b) if applicable).
-   - Allocate marks (e.g. 10 to 15 marks per question).
-   - Keep question_text limited to the question prompt only. Put answers exclusively in the separate marking-scheme fields.
-   - Provide a thorough model_answer showing step-by-step solutions or detailed essay points.
-   - Provide an exact score_breakdown (e.g. "Step 1 formula: 2 mks, Substitution: 3 mks, Correct unit: 1 mk").
-   - max_score: total marks for this question.
-
-You MUST respond strictly with a valid JSON object matching this schema:
+Each question must have four options, one correct option, and 1 mark. Return only this JSON shape:
 {
   "section_a": [
     {
       "question_number": 1,
-      "question_text": "...",
-      "option_a": "...",
-      "option_b": "...",
-      "option_c": "...",
-      "option_d": "...",
+      "question_text": "Question text only",
+      "option_a": "Option A",
+      "option_b": "Option B",
+      "option_c": "Option C",
+      "option_d": "Option D",
       "correct_option": "A",
       "marks": 1
     }
-  ],
+  ]
+}
+`;
+
+      const theoryPrompt = `
+${sharedContext}
+
+Generate EXACTLY ${safeTheoryCount} Section B theory/essay questions for:
+- Subject: ${subject}
+- Class level: ${class_name}
+- Academic term: ${term}
+- Topics covered: ${topics}
+- Difficulty: ${difficulty}
+- Teacher instructions: ${instructions || 'Follow the school curriculum and the supplied topics.'}
+
+Give each question clear marks, a thorough model answer, and a useful step-by-step marking breakdown. Keep answers out of question_text. Return only this JSON shape:
+{
   "section_b": [
     {
       "question_number": 1,
-      "question_text": "...",
+      "question_text": "Question prompt only",
       "marks": 15,
-      "model_answer": "...",
-      "score_breakdown": "...",
+      "model_answer": "Complete worked answer or structured marking guide",
+      "score_breakdown": "Marks allocated to each required step or point",
       "max_score": 15
     }
   ]
@@ -582,43 +605,46 @@ You MUST respond strictly with a valid JSON object matching this schema:
         );
       }
 
-      let lastModelError: unknown = null;
-      for (const model of MODELS) {
-        try {
-          const response = await ai.models.generateContent({
-            model,
-            contents: promptText,
-            config: {
-              responseMimeType: 'application/json',
-              temperature: 0.3,
-            },
-          });
-          const rawJson = response.text || '';
-          const parsed = JSON.parse(rawJson);
-          return new Response(JSON.stringify({ success: true, provider: model, data: parsed }), {
-            status: 200,
-            headers: corsHeaders,
-          });
-        } catch (modelErr: any) {
-          lastModelError = modelErr;
-          // Log the SDK error, but never request data or credentials.
-          console.error(`AI provider model request failed (${model})`, modelErr?.status || modelErr?.code || 'unknown status', modelErr?.message || 'No error message');
+      const generateSection = async (prompt: string, sectionName: 'objectives' | 'theory') => {
+        let lastModelError: unknown = null;
+        for (const model of MODELS) {
+          try {
+            const response = await ai.models.generateContent({
+              model,
+              contents: prompt,
+              config: { responseMimeType: 'application/json', temperature: 0.3 },
+            });
+            const rawJson = response.text || '';
+            const parsed = JSON.parse(rawJson);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+              throw new Error(`The AI returned an invalid ${sectionName} response.`);
+            }
+            return { model, data: parsed };
+          } catch (modelErr: any) {
+            lastModelError = modelErr;
+            console.error(`AI ${sectionName} generation failed (${model})`, modelErr?.status || modelErr?.code || 'unknown status', modelErr?.message || 'No error message');
+          }
         }
-      }
+        throw lastModelError instanceof Error ? lastModelError : new Error(`AI ${sectionName} generation failed.`);
+      };
 
-      const modelErrorText = lastModelError instanceof Error ? lastModelError.message : String(lastModelError || '');
-      const statusCode = (lastModelError as any)?.status || (lastModelError as any)?.code;
-      const likelyKeyProblem = /api.?key|unauthenticated|permission denied|forbidden|leaked|invalid argument/i.test(modelErrorText) || statusCode === 400 || statusCode === 401 || statusCode === 403;
-      const likelyQuotaProblem = statusCode === 429 || /quota|resource_exhausted|rate.?limit|billing/i.test(modelErrorText);
-      const error = likelyKeyProblem
-        ? 'The configured AI provider rejected the API key or its permissions. Check the provider dashboard and Netlify Function logs for details.'
-        : likelyQuotaProblem
-          ? "The configured AI provider's quota or billing limit may have been reached. Check the provider dashboard and Netlify Function logs for details."
-          : 'AI generation failed for all configured models. Check the Netlify Function logs for the provider error details and verify the API key, model access, and quota.';
-      return new Response(
-        JSON.stringify({ success: false, error: error + ' Placeholder questions are never returned as real exam content.' }),
-        { status: 503, headers: corsHeaders }
-      );
+      // Keep each response small enough to reduce JSON truncation on long papers.
+      // The calls are deliberately sequential to avoid doubling the instantaneous request rate.
+      const objectiveResult = await generateSection(objectivePrompt, 'objectives');
+      const theoryResult = await generateSection(theoryPrompt, 'theory');
+      const sectionA = Array.isArray(objectiveResult.data.section_a) ? objectiveResult.data.section_a : [];
+      const sectionB = Array.isArray(theoryResult.data.section_b) ? theoryResult.data.section_b : [];
+      if (sectionA.length !== safeObjCount || sectionB.length !== safeTheoryCount) {
+        return jsonResponse({
+          success: false,
+          error: `The AI returned an incomplete draft (${sectionA.length}/${safeObjCount} objectives and ${sectionB.length}/${safeTheoryCount} theory questions). Please try again; no incomplete exam was loaded.`,
+        }, 502, corsHeaders);
+      }
+      return jsonResponse({
+        success: true,
+        provider: objectiveResult.model,
+        data: { section_a: sectionA, section_b: sectionB },
+      }, 200, corsHeaders);
     } catch (e: any) {
       return new Response(JSON.stringify({ success: false, error: e?.message }), {
         status: 500,
