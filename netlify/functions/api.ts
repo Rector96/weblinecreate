@@ -628,21 +628,45 @@ Give each question clear marks, a thorough model answer, and a useful step-by-st
         throw lastModelError instanceof Error ? lastModelError : new Error(`AI ${sectionName} generation failed.`);
       };
 
-      // Keep each response small enough to reduce JSON truncation on long papers.
-      // The calls are deliberately sequential to avoid doubling the instantaneous request rate.
-      const objectiveResult = await generateSection(objectivePrompt, 'objectives');
-      const theoryResult = await generateSection(theoryPrompt, 'theory');
-      const sectionA = Array.isArray(objectiveResult.data.section_a) ? objectiveResult.data.section_a : [];
-      const sectionB = Array.isArray(theoryResult.data.section_b) ? theoryResult.data.section_b : [];
-      if (sectionA.length !== safeObjCount || sectionB.length !== safeTheoryCount) {
-        return jsonResponse({
-          success: false,
-          error: `The AI returned an incomplete draft (${sectionA.length}/${safeObjCount} objectives and ${sectionB.length}/${safeTheoryCount} theory questions). Please try again; no incomplete exam was loaded.`,
-        }, 502, corsHeaders);
+      // Batch long sections so large papers do not exceed the model response-token ceiling.
+      // Every batch runs sequentially; never launch parallel bursts against a free-tier API.
+      const sectionA: any[] = [];
+      const sectionB: any[] = [];
+      let selectedProvider = MODELS[0];
+
+      for (let offset = 0; offset < safeObjCount; offset += 10) {
+        const batchCount = Math.min(10, safeObjCount - offset);
+        const batchPrompt = objectivePrompt.replace(
+          'Generate EXACTLY ' + safeObjCount + ' Section A objective multiple-choice questions',
+          'Generate EXACTLY ' + batchCount + ' Section A objective multiple-choice questions',
+        );
+        const result = await generateSection(batchPrompt, 'objectives');
+        selectedProvider = result.model;
+        const batch = Array.isArray(result.data.section_a) ? result.data.section_a : [];
+        if (batch.length !== batchCount) {
+          return jsonResponse({ success: false, error: 'The AI returned ' + batch.length + ' of ' + batchCount + ' objective questions in one batch. Please try again; no incomplete exam was loaded.' }, 502, corsHeaders);
+        }
+        sectionA.push(...batch.map((item: any, index: number) => ({ ...item, question_number: offset + index + 1 })));
       }
+
+      for (let offset = 0; offset < safeTheoryCount; offset += 2) {
+        const batchCount = Math.min(2, safeTheoryCount - offset);
+        const batchPrompt = theoryPrompt.replace(
+          'Generate EXACTLY ' + safeTheoryCount + ' Section B theory/essay questions',
+          'Generate EXACTLY ' + batchCount + ' Section B theory/essay questions',
+        );
+        const result = await generateSection(batchPrompt, 'theory');
+        selectedProvider = result.model;
+        const batch = Array.isArray(result.data.section_b) ? result.data.section_b : [];
+        if (batch.length !== batchCount) {
+          return jsonResponse({ success: false, error: 'The AI returned ' + batch.length + ' of ' + batchCount + ' theory questions in one batch. Please try again; no incomplete exam was loaded.' }, 502, corsHeaders);
+        }
+        sectionB.push(...batch.map((item: any, index: number) => ({ ...item, question_number: offset + index + 1 })));
+      }
+
       return jsonResponse({
         success: true,
-        provider: objectiveResult.model,
+        provider: selectedProvider,
         data: { section_a: sectionA, section_b: sectionB },
       }, 200, corsHeaders);
     } catch (e: any) {
