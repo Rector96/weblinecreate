@@ -147,7 +147,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
 
   const heroTitle =
     mode === 'login'
-      ? 'Sign in to stay on top of your exam papers'
+      ? 'Create Nigerian exam papers with AI'
       : regStep === 1
       ? 'Create your school workspace'
       : regStep === 2
@@ -156,7 +156,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
 
   const heroSubtitle =
     mode === 'login'
-      ? 'Generate WAEC-style papers, export DOCX, and invite teachers — all in one place.'
+      ? 'Sign in to generate objective and theory questions, create marking schemes, and export DOCX exam papers.'
       : regStep === 1
       ? 'Tell us about your school to get started.'
       : regStep === 2

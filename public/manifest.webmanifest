@@ -1,7 +1,7 @@
 {
   "name": "ROCKCRAFT - Nigerian School Exam Paper Builder",
   "short_name": "ROCKCRAFT",
-  "description": "Exam paper creation for Nigerian secondary schools with AI assistance and DOCX exports.",
+  "description": "Create Nigerian school exam papers, objective and theory questions, marking schemes, and DOCX downloads with AI.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f0f4f9",

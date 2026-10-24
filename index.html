@@ -2,16 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>ROCKCRAFT - Nigerian School Exam Paper Builder</title>
-    <meta name="description" content="RockCraft — exam paper creation for Nigerian secondary schools with AI assistance and DOCX exports." />
-    <meta property="og:title" content="ROCKCRAFT" />
-    <meta property="og:description" content="RockCraft — exam paper creation for Nigerian secondary schools with AI assistance and DOCX exports." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>ROCKCRAFT | Create Nigerian School Exam Papers with AI</title>
+    <meta name="description" content="Create Nigerian secondary school exam papers and marking schemes with AI. Sign in to ROCKCRAFT, prepare objectives and theory questions, and export exam papers as DOCX files." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="author" content="ROCKCRAFT" />
+    <meta name="theme-color" content="#1d4ed8" />
+    <meta property="og:title" content="ROCKCRAFT | AI Exam Paper Generator for Nigerian Schools" />
+    <meta property="og:description" content="Create objective and theory exam papers, marking schemes, and DOCX downloads for Nigerian secondary schools." />
     <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="og:locale" content="en_NG" />
+    <meta property="og:site_name" content="ROCKCRAFT" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="ROCKCRAFT | AI Exam Paper Generator" />
+    <meta name="twitter:description" content="Sign in and generate Nigerian school exam papers with questions and marking schemes." />
     
     <!-- PWA & Mobile Web App Meta -->
-    <meta name="theme-color" content="#1d4ed8" />
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -22,12 +28,43 @@
     <link rel="manifest" href="/manifest.webmanifest" />
 
     <!-- Google Fonts: Plus Jakarta Sans -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "ROCKCRAFT",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Web",
+        "description": "AI-powered exam paper and marking scheme generator for Nigerian secondary schools.",
+        "featureList": "AI exam question generation, objective questions, theory questions, marking schemes, DOCX exam exports",
+        "browserRequirements": "Requires JavaScript and a modern web browser",
+        "offers": {
+          "@type": "Offer",
+          "availability": "https://schema.org/InStock"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "ROCKCRAFT",
+        "description": "Nigerian school exam paper generator with AI-assisted question and marking scheme creation."
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   </head>
   <body class="bg-[#f0f4f9] text-slate-900 font-sans antialiased selection:bg-blue-100 selection:text-blue-900 min-h-screen">
     <div id="root"></div>
+    <noscript>
+      <main style="max-width: 720px; margin: 0 auto; padding: 48px 20px; font-family: system-ui, sans-serif; color: #0f172a">
+        <h1>ROCKCRAFT AI Exam Paper Generator</h1>
+        <p>Create Nigerian secondary school exam papers, objective and theory questions, marking schemes, and DOCX downloads. Sign in to your ROCKCRAFT school account to generate examination papers.</p>
+        <p>JavaScript is required to sign in and use the exam creator.</p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
