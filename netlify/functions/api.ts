@@ -501,189 +501,99 @@ export default async (req: Request) => {
     return await verifyPaystackPayment(req);
   }
 
-  // 1. GENERATE FULL EXAM QUESTIONS
+  // 1. ENQUEUE EXAM GENERATION; a background worker performs the slower AI work.
   if (pathname.endsWith('/generate-questions') && req.method === 'POST') {
     try {
-      if (Number(req.headers.get('content-length') || 0) > 16000) return jsonResponse({ success: false, error: 'AI request is too large.' }, 413);
+      if (Number(req.headers.get('content-length') || 0) > 16000) return jsonResponse({ success: false, error: 'AI request is too large.' }, 413, corsHeaders);
       const body = await req.json() as any;
-      if (!validAiInputs(body)) return jsonResponse({ success: false, error: 'Invalid or oversized AI request fields.' }, 400);
-      const authorization = await authorizeAiRequest(req, body.school_id || req.headers.get('x-school-id'));
+      if (!validAiInputs(body)) return jsonResponse({ success: false, error: 'Invalid or oversized AI request fields.' }, 400, corsHeaders);
+      const schoolId = body.school_id || req.headers.get('x-school-id');
+      const authorization = await authorizeAiRequest(req, schoolId);
       if (!authorization.ok) return authorization.response;
-      const {
-        subject = 'General Mathematics',
-        class_name = 'SSS 3',
-        term = 'First Term',
-        topics = 'Standard Nigerian secondary curriculum',
-        num_objectives = 10,
-        num_theories = 3,
-        difficulty = 'Standard',
-        instructions = '',
-      } = body;
+      if (!ai) return jsonResponse({ success: false, error: 'AI generation is not configured on the server. Please contact the school administrator.' }, 503, corsHeaders);
 
-      const safeObjCount = Math.min(Math.max(Number(num_objectives) || 10, 5), 50);
-      const safeTheoryCount = Math.min(Math.max(Number(num_theories) || 3, 1), 6);
-
-      const sharedContext = `
-You are an experienced Nigerian secondary-school examination setter with strong knowledge of the Nigerian NERDC curriculum and West African examination standards.
-
-CURRICULUM AND LANGUAGE:
-- Match the supplied class level and topics; do not introduce topics above the class level.
-- Use Nigerian and West African contexts where they make sense and use British English spelling.
-- Avoid inventing official curriculum claims. Prioritise the teacher's supplied topics and instructions.
-
-STEM FORMATTING:
-- For Mathematics, Further Mathematics, Physics, and Chemistry, write mathematical expressions and scientific notation with standard LaTeX delimiters: inline \\( ... \\) and display \\[ ... \\].
-- Use LaTeX for fractions, powers, subscripts, variables, units, and chemical formulae, for example \\(\\frac{3}{4}x^2\\), \\(v = u + at\\), and \\(H_2SO_4\\).
-- Keep ordinary prose readable. Do not wrap an entire question in math delimiters unless it is all mathematics.
-
-QUALITY:
-- Produce clear, age-appropriate, unambiguous questions.
-- Objective options must be plausible, mutually distinct, and the correct option must match the actual solution.
-- Theory questions must keep the question text separate from the model answer and marking breakdown.
-- Return valid JSON only, without Markdown fences or introductory text.
-`;
-
-      const objectivePrompt = `
-${sharedContext}
-
-Generate EXACTLY ${safeObjCount} Section A objective multiple-choice questions for:
-- Subject: ${subject}
-- Class level: ${class_name}
-- Academic term: ${term}
-- Topics covered: ${topics}
-- Difficulty: ${difficulty}
-- Teacher instructions: ${instructions || 'Follow the school curriculum and the supplied topics.'}
-
-Each question must have four options, one correct option, and 1 mark. Return only this JSON shape:
-{
-  "section_a": [
-    {
-      "question_number": 1,
-      "question_text": "Question text only",
-      "option_a": "Option A",
-      "option_b": "Option B",
-      "option_c": "Option C",
-      "option_d": "Option D",
-      "correct_option": "A",
-      "marks": 1
-    }
-  ]
-}
-`;
-
-      const theoryPrompt = `
-${sharedContext}
-
-Generate EXACTLY ${safeTheoryCount} Section B theory/essay questions for:
-- Subject: ${subject}
-- Class level: ${class_name}
-- Academic term: ${term}
-- Topics covered: ${topics}
-- Difficulty: ${difficulty}
-- Teacher instructions: ${instructions || 'Follow the school curriculum and the supplied topics.'}
-
-Give each question clear marks, a thorough model answer, and a useful step-by-step marking breakdown. Keep answers out of question_text. Return only this JSON shape:
-{
-  "section_b": [
-    {
-      "question_number": 1,
-      "question_text": "Question prompt only",
-      "marks": 15,
-      "model_answer": "Complete worked answer or structured marking guide",
-      "score_breakdown": "Marks allocated to each required step or point",
-      "max_score": 15
-    }
-  ]
-}
-`;
-
-      if (!ai) {
-        console.error('AI generation unavailable: configure GROQ_API_KEY or GEMINI_API_KEY/GOOGLE_API_KEY in the Netlify Function runtime.');
-        return new Response(
-          JSON.stringify({ success: false, error: 'AI generation is not configured on the server. Add GROQ_API_KEY (recommended) or GEMINI_API_KEY/GOOGLE_API_KEY in Netlify Environment variables with Functions scope, then redeploy.' }),
-          { status: 503, headers: corsHeaders }
-        );
+      const inviteToken = (req.headers.get('x-school-invite-token') || '').trim().toUpperCase();
+      let requesterTokenHash: string | null = null;
+      if (inviteToken) {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(inviteToken));
+        requesterTokenHash = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
       }
-
-      const generateSection = async (prompt: string, sectionName: 'objectives' | 'theory') => {
-        let lastModelError: unknown = null;
-        for (const model of MODELS) {
-          try {
-            const response = await ai.models.generateContent({
-              model,
-              contents: prompt,
-              config: { responseMimeType: 'application/json', temperature: 0.3 },
-            });
-            const rawJson = response.text || '';
-            const parsed = JSON.parse(rawJson);
-            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-              throw new Error(`The AI returned an invalid ${sectionName} response.`);
-            }
-            return { model, data: parsed };
-          } catch (modelErr: any) {
-            lastModelError = modelErr;
-            console.error(`AI ${sectionName} generation failed (${model})`, modelErr?.status || modelErr?.code || 'unknown status', modelErr?.message || 'No error message');
-          }
-        }
-        throw lastModelError instanceof Error ? lastModelError : new Error(`AI ${sectionName} generation failed.`);
+      const payload = {
+        school_id: schoolId,
+        subject: body.subject || 'Mathematics',
+        class_name: body.class_name || 'SSS 3',
+        term: body.term || 'First Term',
+        topics: body.topics || 'Topics supplied by the teacher',
+        num_objectives: Number(body.num_objectives) || 10,
+        num_theories: Number(body.num_theories) || 3,
+        difficulty: body.difficulty || 'Standard',
+        instructions: body.instructions || '',
       };
+      const inserted = await supabaseAdminRequest('exam_requests', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({
+          school_id: schoolId,
+          teacher_id: authorization.userId,
+          requester_token_hash: requesterTokenHash,
+          request_payload: payload,
+          status: 'pending',
+        }),
+      }) as any[];
+      const requestId = inserted?.[0]?.id;
+      if (!requestId) throw new Error('The exam request could not be added to the queue.');
 
-      // Batch long sections so large papers do not exceed the model response-token ceiling.
-      // Every batch runs sequentially; never launch parallel bursts against a free-tier API.
-      const sectionA: any[] = [];
-      const sectionB: any[] = [];
-      let selectedProvider = MODELS[0];
-
-      for (let offset = 0; offset < safeObjCount; offset += 10) {
-        const batchCount = Math.min(10, safeObjCount - offset);
-        const batchPrompt = objectivePrompt.replace(
-          'Generate EXACTLY ' + safeObjCount + ' Section A objective multiple-choice questions',
-          'Generate EXACTLY ' + batchCount + ' Section A objective multiple-choice questions',
-        );
-        const result = await generateSection(batchPrompt, 'objectives');
-        selectedProvider = result.model;
-        const batch = Array.isArray(result.data.section_a) ? result.data.section_a : [];
-        if (batch.length !== batchCount) {
-          return jsonResponse({ success: false, error: 'The AI returned ' + batch.length + ' of ' + batchCount + ' objective questions in one batch. Please try again; no incomplete exam was loaded.' }, 502, corsHeaders);
-        }
-        sectionA.push(...batch.map((item: any, index: number) => ({ ...item, question_number: offset + index + 1 })));
+      try {
+        const wakeResponse = await fetch(getSiteUrl(req) + '/.netlify/functions/exam-queue-worker-background', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wake: true }),
+        });
+        if (!wakeResponse.ok) throw new Error('Background worker returned status ' + wakeResponse.status);
+      } catch (wakeError) {
+        await supabaseAdminRequest('exam_requests?id=eq.' + requestId, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'failed', error_message: 'The background worker could not be started. Please try again.', updated_at: new Date().toISOString(), completed_at: new Date().toISOString() }),
+        });
+        console.error('Could not start exam queue worker', wakeError);
+        return jsonResponse({ success: false, error: 'Your exam could not be started right now. Please try again in a moment.' }, 503, corsHeaders);
       }
-
-      for (let offset = 0; offset < safeTheoryCount; offset += 2) {
-        const batchCount = Math.min(2, safeTheoryCount - offset);
-        const batchPrompt = theoryPrompt.replace(
-          'Generate EXACTLY ' + safeTheoryCount + ' Section B theory/essay questions',
-          'Generate EXACTLY ' + batchCount + ' Section B theory/essay questions',
-        );
-        const result = await generateSection(batchPrompt, 'theory');
-        selectedProvider = result.model;
-        const batch = Array.isArray(result.data.section_b) ? result.data.section_b : [];
-        if (batch.length !== batchCount) {
-          return jsonResponse({ success: false, error: 'The AI returned ' + batch.length + ' of ' + batchCount + ' theory questions in one batch. Please try again; no incomplete exam was loaded.' }, 502, corsHeaders);
-        }
-        sectionB.push(...batch.map((item: any, index: number) => ({ ...item, question_number: offset + index + 1 })));
-      }
-
-      return jsonResponse({
-        success: true,
-        provider: selectedProvider,
-        data: { section_a: sectionA, section_b: sectionB },
-      }, 200, corsHeaders);
-    } catch (e: any) {
-      const statusCode = Number(e?.status || e?.code || 0);
-      const errorText = e instanceof Error ? e.message : String(e || '');
-      const rateLimited = statusCode === 429 || /rate.?limit|too many requests|tokens per minute/i.test(errorText);
-      const incomplete = /json|unexpected end|unterminated|incomplete/i.test(errorText);
-      const message = rateLimited
-        ? 'The AI question-setting desk is busy right now. Please wait a little and try again.'
-        : incomplete
-          ? 'The AI returned an incomplete response. No incomplete exam was loaded; please try again.'
-          : 'We could not finish generating this exam. Please try again in a moment. If it continues, contact your school administrator.';
-      console.error('Exam generation failed safely', statusCode || 'unknown status', errorText.slice(0, 240));
-      return jsonResponse({ success: false, error: message }, rateLimited ? 429 : 503, corsHeaders);
+      return jsonResponse({ success: true, queued: true, request_id: requestId, status: 'pending' }, 202, corsHeaders);
+    } catch (error: any) {
+      console.error('Could not enqueue exam generation', error?.message || error);
+      return jsonResponse({ success: false, error: 'We could not add your exam to the queue. Please try again.' }, 503, corsHeaders);
     }
   }
 
+  // Polling endpoint: only the requesting teacher or the matching school invite can read a job.
+  if (pathname.endsWith('/exam-request-status') && req.method === 'GET') {
+    try {
+      const requestId = new URL(req.url).searchParams.get('id') || '';
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+        return jsonResponse({ success: false, error: 'A valid exam request ID is required.' }, 400, corsHeaders);
+      }
+      const rows = await supabaseAdminRequest('exam_requests?id=eq.' + requestId + '&select=id,school_id,teacher_id,requester_token_hash,status,generated_data,error_message&limit=1') as any[];
+      const job = rows?.[0];
+      if (!job) return jsonResponse({ success: false, error: 'Exam request not found.' }, 404, corsHeaders);
+      const schoolId = (req.headers.get('x-school-id') || '').trim();
+      if (!schoolId || schoolId !== job.school_id) return jsonResponse({ success: false, error: 'You are not allowed to view this exam request.' }, 403, corsHeaders);
+      let permitted = false;
+      const inviteToken = (req.headers.get('x-school-invite-token') || '').trim().toUpperCase();
+      if (inviteToken && job.requester_token_hash) {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(inviteToken));
+        const tokenHash = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        permitted = tokenHash === job.requester_token_hash;
+      } else {
+        const user = await getAuthenticatedUser(req);
+        permitted = Boolean(user?.id && job.teacher_id && user.id === job.teacher_id);
+      }
+      if (!permitted) return jsonResponse({ success: false, error: 'You are not allowed to view this exam request.' }, 403, corsHeaders);
+      return jsonResponse({ success: true, request_id: job.id, status: job.status, data: job.status === 'completed' ? job.generated_data : null, error: job.status === 'failed' ? job.error_message : null }, 200, corsHeaders);
+    } catch (error) {
+      console.error('Could not read exam queue status', error);
+      return jsonResponse({ success: false, error: 'Could not check the exam progress. Please try again.' }, 503, corsHeaders);
+    }
+  }
   // 2. REGENERATE SINGLE QUESTION
   if (pathname.endsWith('/regenerate-single-question') && req.method === 'POST') {
     try {
@@ -856,5 +766,5 @@ Respond strictly with a JSON object:
 };
 
 export const config = {
-  path: ['/api/generate-questions', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite', '/api/check-exam-conflict', '/api/publish-exam'],
+  path: ['/api/generate-questions', '/api/exam-request-status', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite', '/api/check-exam-conflict', '/api/publish-exam'],
 };
