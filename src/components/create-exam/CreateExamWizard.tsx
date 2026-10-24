@@ -21,6 +21,7 @@ import {
 } from '../../data/nigerianCurriculum';
 import { ScientificSymbolPicker } from '../common/ScientificSymbolPicker';
 import { FormattedExamText } from '../common/FormattedExamText';
+import { PageLoader } from '../common/PageLoader';
 import { VoiceInputButton } from '../common/VoiceInputButton';
 import { exportExamToDocx, exportMarkingSchemeToDocx } from '../../utils/docxExport';
 import {
@@ -34,7 +35,6 @@ import {
   Trash2,
   FileText,
   Clock,
-  BookOpen,
   Loader2,
   Save,
   HelpCircle,
@@ -85,9 +85,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [aiNumTheory, setAiNumTheory] = useState(3);
   const [aiDifficulty, setAiDifficulty] = useState<'Standard' | 'Foundational / Basic' | 'Advanced / Rigorous'>('Standard');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [generationStage, setGenerationStage] = useState<'queued' | 'working' | 'finishing' | null>(null);
-  const [motivationIndex, setMotivationIndex] = useState(0);
-  const [generationElapsedSeconds, setGenerationElapsedSeconds] = useState(0);
   const [schoolClasses, setSchoolClasses] = useState<Array<{ id?: string; name: string; level?: string }>>([]);
   const [schoolSubjects, setSchoolSubjects] = useState<string[]>([]);
   const [curriculumLoaded, setCurriculumLoaded] = useState(false);
@@ -136,15 +133,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
 
-  const motivationQuotes = [
-    { quote: 'Great things are done by a series of small things brought together.', author: 'Vincent van Gogh' },
-    { quote: 'Education is the most powerful weapon which you can use to change the world.', author: 'Nelson Mandela' },
-    { quote: 'A good teacher can inspire hope, ignite the imagination, and instil a love of learning.', author: 'Brad Henry' },
-    { quote: 'The beautiful thing about learning is that nobody can take it away from you.', author: 'B. B. King' },
-    { quote: 'Success is the sum of small efforts, repeated day in and day out.', author: 'Robert Collier' },
-    { quote: 'Every question you prepare is another opportunity for a learner to grow.', author: 'ROCKCRAFT' },
-  ];
-
   // Keep the review step visible after AI generation, especially on mobile
   // where the browser may retain the scroll position of the generator form.
   useEffect(() => {
@@ -152,18 +140,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     }
   }, [currentStep, questions.length]);
-
-  useEffect(() => {
-    if (!isGeneratingAI || generationStage === 'finishing') return;
-    const timer = window.setInterval(() => setMotivationIndex((index) => (index + 1) % motivationQuotes.length), 4200);
-    return () => window.clearInterval(timer);
-  }, [isGeneratingAI, generationStage]);
-
-  useEffect(() => {
-    if (!isGeneratingAI) return;
-    const timer = window.setInterval(() => setGenerationElapsedSeconds((seconds) => seconds + 1), 1000);
-    return () => window.clearInterval(timer);
-  }, [isGeneratingAI]);
 
   useEffect(() => {
     if (guestSchool) {
@@ -281,9 +257,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     // checks the current subscription and quota when the exam is published.
 
     setIsGeneratingAI(true);
-    setGenerationStage('working');
-    setMotivationIndex(0);
-    setGenerationElapsedSeconds(0);
     setAiError(null);
 
     try {
@@ -314,7 +287,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       }
 
       if (json?.success && json?.queued && json?.request_id) {
-        setGenerationStage('queued');
         let finishedPolling = false;
         // Poll the durable queue every three seconds. The same waiting screen stays visible
         // throughout; transient delays never look like a blank page or a failed request.
@@ -333,7 +305,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             finishedPolling = true;
             break;
           }
-          setGenerationStage(statusJson.status === 'processing' ? 'working' : 'queued');
         }
         if (!finishedPolling) throw new Error('Your exam is taking longer than expected. The request may still be processing; please wait a little before submitting another one.');
       }
@@ -395,7 +366,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         if (parsedQuestions.length === 0) {
           throw new Error('The AI returned no usable questions. Please try again or use manual entry.');
         }
-        setGenerationStage('finishing');
+
         await new Promise((resolve) => window.setTimeout(resolve, 1400));
         setQuestions(parsedQuestions);
         setCurrentStep(4);
@@ -407,7 +378,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       setAiError(e?.message || 'Network error while contacting AI engine. Try again or switch to manual.');
     } finally {
       setIsGeneratingAI(false);
-      setGenerationStage(null);
     }
   };
 
@@ -785,49 +755,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const sectionBQuestions = questions.filter((q) => q.section === 'B');
 
   if (isGeneratingAI) {
-    const quote = motivationQuotes[motivationIndex];
-    const finishing = generationStage === 'finishing';
-    const elapsedLabel = `${Math.floor(generationElapsedSeconds / 60)}:${String(generationElapsedSeconds % 60).padStart(2, '0')}`;
-    const activityMessage = finishing
-      ? 'Your colleague has finished the first draft. Opening the review desk…'
-      : generationStage === 'queued'
-        ? 'Your request is safely in line. A colleague is finishing another paper and will start yours next.'
-        : generationElapsedSeconds < 12
-        ? 'Sending your exam brief to the question-setting desk…'
-        : generationElapsedSeconds < 35
-          ? 'Your colleague is drafting the questions and checking the answer choices.'
-          : generationElapsedSeconds < 70
-            ? 'Your colleague is working through the questions and marking guide. A complete paper can take a little while.'
-            : 'This is taking a little longer than usual. The page is still working on your exam; please keep it open.';
-    return (
-      <div className="fixed inset-0 z-[100] flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#07152f] px-5 py-8 text-center text-white" role="status" aria-live="polite" aria-label="ROCKCRAFT is generating your examination">
-        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
-        <div className="absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-indigo-400/20 blur-3xl" />
-        <div className="relative mx-auto flex w-full max-w-xl flex-col items-center">
-          <div className="mb-7 flex items-center gap-3 sm:mb-9">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15"><BookOpen className="h-5 w-5 text-blue-200" /></div>
-            <span className="text-2xl font-black tracking-tight sm:text-3xl">ROCKCRAFT</span>
-          </div>
-          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-white/15 bg-white/5 shadow-[0_0_55px_rgba(96,165,250,0.12)]">
-            {finishing ? <CheckCircle2 className="h-10 w-10 text-emerald-300" /> : <Loader2 className="h-10 w-10 animate-spin text-blue-200" />}
-          </div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-blue-200">{finishing ? 'Final classroom checks' : 'Your exam is being prepared'}</p>
-          <h1 className="mt-3 text-2xl font-black leading-tight tracking-tight sm:text-4xl">{finishing ? 'Your paper is nearly ready' : generationStage === 'queued' ? 'Your exam is safely in the queue' : 'Your colleague is preparing your exam'}</h1>
-          <p className="mt-3 max-w-md text-sm leading-6 text-blue-100/90 sm:text-base">{activityMessage}</p>
-          <div className="mt-5 flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs text-slate-200">
-            <span className={'h-2 w-2 rounded-full ' + (finishing ? 'bg-emerald-300' : 'bg-sky-300 animate-pulse')} />
-            <span>{finishing ? 'Preparing your review screen' : generationStage === 'queued' ? 'Waiting in the school queue' : 'Your exam is being drafted'}</span>
-            <span className="text-slate-400">·</span><span className="font-mono tabular-nums">{elapsedLabel}</span>
-          </div>
-          <div className="mt-7 min-h-24 max-w-lg rounded-2xl border border-white/10 bg-white/[0.045] px-5 py-4 sm:mt-8 sm:px-7">
-            <p key={finishing ? 'finish' : motivationIndex} className="text-base leading-7 text-slate-100 animate-in fade-in sm:text-lg">{finishing ? 'Your questions and marking scheme are ready. Let’s review them together.' : '“' + quote.quote + '”'}</p>
-            {!finishing && <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200">{quote.author}</p>}
-          </div>
-          <div className="mt-7 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-white/10"><div className={'h-full rounded-full bg-gradient-to-r from-sky-300 via-blue-400 to-indigo-300 ' + (finishing ? 'w-full' : 'w-1/3 animate-[rockcraft-loading-sweep_1.8s_ease-in-out_infinite]')} /></div>
-          <p className="mt-3 max-w-sm text-xs leading-5 text-slate-300">Please keep this page open. Your exam will appear here when the draft is ready; it has not failed just because it takes a little time.</p>
-        </div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
