@@ -21,6 +21,7 @@ create index if not exists exam_requests_school_created_idx
 
 alter table public.exam_requests enable row level security;
 revoke all on public.exam_requests from anon, authenticated, public;
+grant select, insert, update, delete on public.exam_requests to service_role;
 
 create or replace function public.claim_next_exam_request()
 returns jsonb
