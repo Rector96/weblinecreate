@@ -19,6 +19,123 @@ import { Exam, School } from '../types';
 
 const FONT_NAME = 'Times New Roman';
 
+/**
+ * Convert AI / KaTeX-style markup into plain printable text for Word.
+ * Keeps meaning readable on paper (no raw backslashes).
+ */
+export function cleanMathForPrint(input: string | null | undefined): string {
+  if (!input) return '';
+  let s = String(input);
+
+  // Normalize newlines
+  s = s.replace(/\r\n/g, '\n');
+
+  // Display / inline math delimiters → keep inner content only
+  s = s.replace(/\\\[([\s\S]*?)\\\]/g, '$1');
+  s = s.replace(/\\\(([\s\S]*?)\\\)/g, '$1');
+  s = s.replace(/\$\$([\s\S]*?)\$\$/g, '$1');
+  s = s.replace(/\$([^$\n]+)\$/g, '$1');
+
+  // \frac{a}{b} → a/b  (nested-ish: apply repeatedly)
+  for (let i = 0; i < 6; i++) {
+    const next = s.replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '$1/$2');
+    if (next === s) break;
+    s = next;
+  }
+
+  // Roots
+  s = s.replace(/\\sqrt\s*\{([^{}]*)\}/g, '√($1)');
+  s = s.replace(/\\sqrt\s*/g, '√');
+
+  // Common operators & symbols
+  const ops: Array<[RegExp, string]> = [
+    [/\\times\b/g, '×'],
+    [/\\cdot\b/g, '·'],
+    [/\\div\b/g, '÷'],
+    [/\\pm\b/g, '±'],
+    [/\\mp\b/g, '∓'],
+    [/\\leq\b/g, '≤'],
+    [/\\geq\b/g, '≥'],
+    [/\\neq\b/g, '≠'],
+    [/\\approx\b/g, '≈'],
+    [/\\infty\b/g, '∞'],
+    [/\\degree\b/g, '°'],
+    [/\\circ\b/g, '°'],
+    [/\\pi\b/g, 'π'],
+    [/\\theta\b/g, 'θ'],
+    [/\\alpha\b/g, 'α'],
+    [/\\beta\b/g, 'β'],
+    [/\\gamma\b/g, 'γ'],
+    [/\\delta\b/g, 'δ'],
+    [/\\sigma\b/g, 'σ'],
+    [/\\omega\b/g, 'ω'],
+    [/\\mu\b/g, 'μ'],
+    [/\\lambda\b/g, 'λ'],
+    [/\\phi\b/g, 'φ'],
+    [/\\angle\b/g, '∠'],
+    [/\\triangle\b/g, '△'],
+    [/\\perp\b/g, '⊥'],
+    [/\\parallel\b/g, '∥'],
+    [/\\rightarrow\b/g, '→'],
+    [/\\leftarrow\b/g, '←'],
+    [/\\Rightarrow\b/g, '⇒'],
+    [/\\Leftrightarrow\b/g, '⇔'],
+    [/\\ldots\b/g, '…'],
+    [/\\cdots\b/g, '⋯'],
+    [/\\%/g, '%'],
+    [/\\&/g, '&'],
+    [/\\_/g, '_'],
+  ];
+  for (const [re, rep] of ops) s = s.replace(re, rep);
+
+  // \text{...} / \mathrm{...} / \mathbf{...}
+  s = s.replace(/\\(?:text|mathrm|mathbf|textit|textbf)\s*\{([^{}]*)\}/g, '$1');
+
+  // Simple superscripts: x^{2} or x^2
+  s = s.replace(/\^{(\d+)}/g, (_m, d) => {
+    const map: Record<string, string> = {
+      '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+      '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+    };
+    return d.split('').map((c: string) => map[c] || c).join('');
+  });
+  s = s.replace(/\^(\d)/g, (_m, d) => {
+    const map: Record<string, string> = {
+      '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+      '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+    };
+    return map[d] || `^${d}`;
+  });
+
+  // Currency / Naira glitches from AI: \N, N\, \(N\), etc.
+  s = s.replace(/\\N\s*\\?\$?\s*/g, '₦');
+  s = s.replace(/\bN\\?\$\s*/g, '₦');
+  s = s.replace(/\(N\\?\$\s*/g, '(₦');
+  s = s.replace(/₦\s*\$/g, '₦');
+
+  // Strip remaining simple braces from commands like \left( \right)
+  s = s.replace(/\\left\s*/g, '');
+  s = s.replace(/\\right\s*/g, '');
+  s = s.replace(/\\,/g, ' ');
+  s = s.replace(/\\;/g, ' ');
+  s = s.replace(/\\!/g, '');
+  s = s.replace(/\\quad\b/g, '  ');
+  s = s.replace(/\\qquad\b/g, '   ');
+
+  // Drop leftover backslash-commands of the form \word
+  s = s.replace(/\\[a-zA-Z]+/g, '');
+
+  // Clean excess braces that are no longer needed
+  s = s.replace(/\{\s*\}/g, '');
+
+  // Collapse multiple spaces but keep newlines
+  s = s.replace(/[ \t]{2,}/g, ' ');
+  s = s.replace(/ *\n */g, '\n');
+  s = s.trim();
+
+  return s;
+}
+
 async function getSchoolLogoRun(school?: School | null): Promise<ImageRun | null> {
   if (!school?.logo_url) return null;
   try {
@@ -226,18 +343,18 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
       // Question text
       docChildren.push(
         new Paragraph({
-          spacing: { before: 100, after: 40 },
+          spacing: { before: 70, after: 20 },
           children: [
             new TextRun({
               text: `${idx + 1}. `,
               font: FONT_NAME,
-              size: 24, // 12pt
+              size: 22, // 11pt denser
               bold: true,
             }),
             new TextRun({
-              text: q.question_text,
+              text: cleanMathForPrint(q.question_text),
               font: FONT_NAME,
-              size: 24,
+              size: 22,
             }),
           ],
         })
@@ -245,24 +362,27 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
 
       // Options A, B, C, D (Strictly inline for compact A4 single-sheet layout)
       if (q.objective_data) {
-        const { option_a, option_b, option_c, option_d } = q.objective_data;
+        const option_a = cleanMathForPrint(q.objective_data.option_a);
+        const option_b = cleanMathForPrint(q.objective_data.option_b);
+        const option_c = cleanMathForPrint(q.objective_data.option_c);
+        const option_d = cleanMathForPrint(q.objective_data.option_d);
         const totalLen = (option_a?.length || 0) + (option_b?.length || 0) + (option_c?.length || 0) + (option_d?.length || 0);
 
         if (totalLen < 85) {
           // All 4 options strictly on a SINGLE inline row
           docChildren.push(
             new Paragraph({
-              spacing: { before: 10, after: 40 },
-              indent: { left: 240 },
+              spacing: { before: 4, after: 28 },
+              indent: { left: 200 },
               children: [
-                new TextRun({ text: '[A] ', font: FONT_NAME, size: 21, bold: true }),
-                new TextRun({ text: `${option_a}    `, font: FONT_NAME, size: 21 }),
-                new TextRun({ text: '  [B] ', font: FONT_NAME, size: 21, bold: true }),
-                new TextRun({ text: `${option_b}    `, font: FONT_NAME, size: 21 }),
-                new TextRun({ text: '  [C] ', font: FONT_NAME, size: 21, bold: true }),
-                new TextRun({ text: `${option_c}    `, font: FONT_NAME, size: 21 }),
-                new TextRun({ text: '  [D] ', font: FONT_NAME, size: 21, bold: true }),
-                new TextRun({ text: option_d, font: FONT_NAME, size: 21 }),
+                new TextRun({ text: 'A. ', font: FONT_NAME, size: 20, bold: true }),
+                new TextRun({ text: `${option_a}    `, font: FONT_NAME, size: 20 }),
+                new TextRun({ text: '  B. ', font: FONT_NAME, size: 20, bold: true }),
+                new TextRun({ text: `${option_b}    `, font: FONT_NAME, size: 20 }),
+                new TextRun({ text: '  C. ', font: FONT_NAME, size: 20, bold: true }),
+                new TextRun({ text: `${option_c}    `, font: FONT_NAME, size: 20 }),
+                new TextRun({ text: '  D. ', font: FONT_NAME, size: 20, bold: true }),
+                new TextRun({ text: option_d, font: FONT_NAME, size: 20 }),
               ],
             })
           );
@@ -273,20 +393,20 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
               spacing: { before: 10, after: 10 },
               indent: { left: 240 },
               children: [
-                new TextRun({ text: '[A] ', font: FONT_NAME, size: 21, bold: true }),
-                new TextRun({ text: `${option_a}    `, font: FONT_NAME, size: 21 }),
-                new TextRun({ text: '      [B] ', font: FONT_NAME, size: 21, bold: true }),
-                new TextRun({ text: option_b, font: FONT_NAME, size: 21 }),
+                new TextRun({ text: 'A. ', font: FONT_NAME, size: 20, bold: true }),
+                new TextRun({ text: `${option_a}    `, font: FONT_NAME, size: 20 }),
+                new TextRun({ text: '      B. ', font: FONT_NAME, size: 20, bold: true }),
+                new TextRun({ text: option_b, font: FONT_NAME, size: 20 }),
               ],
             }),
             new Paragraph({
               spacing: { before: 10, after: 40 },
               indent: { left: 240 },
               children: [
-                new TextRun({ text: '[C] ', font: FONT_NAME, size: 21, bold: true }),
-                new TextRun({ text: `${option_c}    `, font: FONT_NAME, size: 21 }),
-                new TextRun({ text: '      [D] ', font: FONT_NAME, size: 21, bold: true }),
-                new TextRun({ text: option_d, font: FONT_NAME, size: 21 }),
+                new TextRun({ text: 'C. ', font: FONT_NAME, size: 20, bold: true }),
+                new TextRun({ text: `${option_c}    `, font: FONT_NAME, size: 20 }),
+                new TextRun({ text: '      D. ', font: FONT_NAME, size: 20, bold: true }),
+                new TextRun({ text: option_d, font: FONT_NAME, size: 20 }),
               ],
             })
           );
@@ -309,6 +429,7 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
             font: FONT_NAME,
             size: 24,
             bold: true,
+            underline: {},
             }),
         ],
       })
@@ -331,29 +452,29 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
 
     sectionBQuestions.forEach((q, idx) => {
       // Split sub-lines if available
-      const lines = q.question_text.split('\n');
+      const lines = cleanMathForPrint(q.question_text).split('\n');
 
       lines.forEach((line, lIdx) => {
         if (lIdx === 0) {
           docChildren.push(
             new Paragraph({
-              spacing: { before: 140, after: 40 },
+              spacing: { before: 100, after: 30 },
               children: [
                 new TextRun({
                   text: `${idx + 1}. `,
                   font: FONT_NAME,
-                  size: 24,
+                  size: 22,
                   bold: true,
                 }),
                 new TextRun({
                   text: line,
                   font: FONT_NAME,
-                  size: 24,
+                  size: 22,
                 }),
                 new TextRun({
                   text: `   [${q.marks} Marks]`,
                   font: FONT_NAME,
-                  size: 22,
+                  size: 20,
                   bold: true,
                   italics: true,
                 }),
@@ -363,13 +484,13 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
         } else {
           docChildren.push(
             new Paragraph({
-              spacing: { before: 20, after: 40 },
-              indent: { left: 360 },
+              spacing: { before: 12, after: 24 },
+              indent: { left: 320 },
               children: [
                 new TextRun({
                   text: line,
                   font: FONT_NAME,
-                  size: 24,
+                  size: 22,
                 }),
               ],
             })
@@ -623,7 +744,7 @@ export async function exportMarkingSchemeToDocx(exam: Exam, school?: School | nu
           spacing: { before: 20, after: 60 },
           children: [
             new TextRun({ text: 'Question: ', font: FONT_NAME, size: 22, bold: true }),
-            new TextRun({ text: q.question_text, font: FONT_NAME, size: 22 }),
+            new TextRun({ text: cleanMathForPrint(q.question_text), font: FONT_NAME, size: 22 }),
           ],
         })
       );
@@ -633,8 +754,8 @@ export async function exportMarkingSchemeToDocx(exam: Exam, school?: School | nu
           new Paragraph({
             spacing: { before: 40, after: 40 },
             children: [
-              new TextRun({ text: 'Model Answer: ', font: FONT_NAME, size: 22, bold: true, color: '1E3A8A' }),
-              new TextRun({ text: q.theory_data.model_answer, font: FONT_NAME, size: 22 }),
+              new TextRun({ text: 'Model Answer: ', font: FONT_NAME, size: 22, bold: true }),
+              new TextRun({ text: cleanMathForPrint(q.theory_data.model_answer), font: FONT_NAME, size: 22 }),
             ],
           })
         );
@@ -643,10 +764,10 @@ export async function exportMarkingSchemeToDocx(exam: Exam, school?: School | nu
       if (q.theory_data?.score_breakdown) {
         docChildren.push(
           new Paragraph({
-            spacing: { before: 40, after: 80 },
+            spacing: { before: 20, after: 80 },
             children: [
-              new TextRun({ text: 'Marking Breakdown: ', font: FONT_NAME, size: 22, bold: true, color: '047857' }),
-              new TextRun({ text: q.theory_data.score_breakdown, font: FONT_NAME, size: 22 }),
+              new TextRun({ text: 'Marking Scheme: ', font: FONT_NAME, size: 22, bold: true }),
+              new TextRun({ text: cleanMathForPrint(q.theory_data.score_breakdown), font: FONT_NAME, size: 22 }),
             ],
           })
         );
@@ -659,8 +780,26 @@ export async function exportMarkingSchemeToDocx(exam: Exam, school?: School | nu
       {
         properties: {
           page: {
+            size: { width: 11906, height: 16838 },
             margin: { top: 720, right: 720, bottom: 720, left: 720 },
           },
+        },
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({
+                    text: 'CONFIDENTIAL — For examiners only  •  ROCKCRAF Academic Engine',
+                    font: FONT_NAME,
+                    size: 16,
+                    color: 'B91C1C',
+                  }),
+                ],
+              }),
+            ],
+          }),
         },
         children: docChildren,
       },
@@ -669,6 +808,7 @@ export async function exportMarkingSchemeToDocx(exam: Exam, school?: School | nu
 
   const blob = await Packer.toBlob(doc);
   const cleanSubject = exam.subject.replace(/[^a-zA-Z0-9]/g, '_');
-  const filename = `${cleanSubject}_CONFIDENTIAL_Marking_Scheme.docx`;
+  const cleanClass = exam.class_name.replace(/[^a-zA-Z0-9]/g, '_');
+  const filename = `${schoolName.slice(0, 15)}_${cleanSubject}_${cleanClass}_MarkingScheme.docx`;
   saveAs(blob, filename);
 }
