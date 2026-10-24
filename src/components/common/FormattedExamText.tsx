@@ -45,7 +45,7 @@ function normalizeExamMath(input: string): string {
   let value = String(input || '').replace(/\*\*(.*?)\*\*/gs, '$1');
 
   // Convert raw parenthetical formulas such as (v = \frac{d}{t}) to inline TeX.
-  value = value.replace(/\(([^()\n]*?(?:\\[A-Za-z]+|[_^]|(?:=|≤|≥|≠|≈))[^()\n]*)\)/g, (_match, formula: string) => {
+  value = value.replace(/(?<!\\)\(([^()\n]*?(?:\\[A-Za-z]+|[_^]|(?:=|≤|≥|≠|≈))[^()\n]*)(?<!\\)\)/g, (_match, formula: string) => {
     const trimmed = formula.trim();
     if (trimmed.startsWith('\\(') || trimmed.startsWith('\\[')) return _match;
     return '\\(' + trimmed + '\\)';
