@@ -36,6 +36,11 @@ const ai: any = groqApiKey
 const MODELS = groqApiKey
   ? ['openai/gpt-oss-120b']
   : ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+const configuredBatchDelay = Number(process.env.GROQ_BATCH_DELAY_MS);
+const BATCH_DELAY_MS = groqApiKey && process.env.EXAM_QUEUE_ENABLED === 'true'
+  ? (Number.isFinite(configuredBatchDelay) && configuredBatchDelay >= 0 ? configuredBatchDelay : 40000)
+  : 0;
+const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 type ExamGenerationInput = {
   subject: string;
@@ -105,10 +110,17 @@ export async function generateExamDraft(input: ExamGenerationInput) {
   const sectionA: any[] = [];
   const sectionB: any[] = [];
   let provider = MODELS[0];
+  let completedBatches = 0;
+  const generatePacedSection = async (prompt: string, sectionName: string) => {
+    if (completedBatches > 0 && BATCH_DELAY_MS > 0) await wait(BATCH_DELAY_MS);
+    const result = await generateSection(prompt, sectionName);
+    completedBatches += 1;
+    return result;
+  };
 
   for (let offset = 0; offset < objectiveCount; offset += 10) {
     const count = Math.min(10, objectiveCount - offset);
-    const result = await generateSection(objectivePrompt(count), 'objectives');
+    const result = await generatePacedSection(objectivePrompt(count), 'objectives');
     provider = result.model;
     const batch = Array.isArray(result.data.section_a) ? result.data.section_a : [];
     if (batch.length !== count) throw new Error('The AI returned an incomplete objective batch. Please retry.');
@@ -117,7 +129,7 @@ export async function generateExamDraft(input: ExamGenerationInput) {
 
   for (let offset = 0; offset < theoryCount; offset += 2) {
     const count = Math.min(2, theoryCount - offset);
-    const result = await generateSection(theoryPrompt(count), 'theory');
+    const result = await generatePacedSection(theoryPrompt(count), 'theory');
     provider = result.model;
     const batch = Array.isArray(result.data.section_b) ? result.data.section_b : [];
     if (batch.length !== count) throw new Error('The AI returned an incomplete theory batch. Please retry.');
