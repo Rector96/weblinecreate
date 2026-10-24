@@ -586,7 +586,7 @@ export default async (req: Request) => {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
         return jsonResponse({ success: false, error: 'A valid exam request ID is required.' }, 400, corsHeaders);
       }
-      const rows = await supabaseAdminRequest('exam_requests?id=eq.' + requestId + '&select=id,school_id,teacher_id,requester_token_hash,status,generated_data,error_message&limit=1') as any[];
+      const rows = await supabaseAdminRequest('exam_requests?id=eq.' + requestId + '&select=id,school_id,teacher_id,requester_token_hash,status,generated_data,error_message,updated_at&limit=1') as any[];
       const job = rows?.[0];
       if (!job) return jsonResponse({ success: false, error: 'Exam request not found.' }, 404, corsHeaders);
       const schoolId = (req.headers.get('x-school-id') || '').trim();
@@ -602,6 +602,12 @@ export default async (req: Request) => {
         permitted = Boolean(user?.id && job.teacher_id && user.id === job.teacher_id);
       }
       if (!permitted) return jsonResponse({ success: false, error: 'You are not allowed to view this exam request.' }, 403, corsHeaders);
+      if (job.status === 'processing' && Date.now() - Date.parse(job.updated_at || '') > 20 * 60 * 1000) {
+        // A status poll can restart recovery if a background invocation exceeded its runtime.
+        void fetch(getSiteUrl(req) + '/.netlify/functions/exam-queue-worker-background', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wake: true }),
+        }).catch((error) => console.error('Could not restart stale exam queue work', error));
+      }
       return jsonResponse({ success: true, request_id: job.id, status: job.status, data: job.status === 'completed' ? job.generated_data : null, error: job.status === 'failed' ? job.error_message : null }, 200, corsHeaders);
     } catch (error) {
       console.error('Could not read exam queue status', error);
