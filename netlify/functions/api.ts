@@ -519,9 +519,23 @@ export default async (req: Request) => {
           const result = await generateExamDraft(body);
           return jsonResponse({ success: true, provider: result.provider, data: result.data }, 200, corsHeaders);
         } catch (error: any) {
-          const message = error instanceof Error ? error.message : String(error || '');
-          const limited = Number(error?.status || error?.code) === 429 || /rate.?limit|too many requests|tokens per minute/i.test(message);
-          return jsonResponse({ success: false, error: limited ? 'The AI question-setting desk is busy right now. Please wait a little and try again.' : 'We could not finish generating this exam. Please try again in a moment.' }, limited ? 429 : 503, corsHeaders);
+          const message = error instanceof Error ? error.message : String(error || 'Unknown Groq generation error');
+          const status = Number(error?.status || error?.code) || 0;
+          const limited = status === 429 || /rate.?limit|too many requests|tokens per minute/i.test(message);
+          // Keep the detailed provider error in server logs so failures can be diagnosed
+          // without exposing credentials or internal stack traces to teachers.
+          console.error('Synchronous Groq exam generation failed', { status: status || 'unknown', message: message.slice(0, 500) });
+          let userMessage = 'Groq could not complete this exam draft. Please try again shortly.';
+          if (limited) {
+            userMessage = 'Groq is temporarily rate-limited. Please wait 30–60 seconds before trying again.';
+          } else if (status === 401 || /invalid api key|authentication|unauthorized/i.test(message)) {
+            userMessage = 'Groq authentication failed. Please ask the administrator to check the GROQ_API_KEY in Netlify.';
+          } else if (status === 402 || /insufficient_quota|billing|credits exhausted|payment required/i.test(message)) {
+            userMessage = 'Groq API quota or billing limit has been reached. The administrator needs to check the Groq account.';
+          } else if (status === 403 || /model.*(not allowed|blocked|permission)/i.test(message)) {
+            userMessage = 'The configured Groq model is not enabled for this API key. Please ask the administrator to check Groq model permissions.';
+          }
+          return jsonResponse({ success: false, error: userMessage }, limited ? 429 : 503, corsHeaders);
         }
       }
       if (!ai) return jsonResponse({ success: false, error: 'AI generation is not configured on the server. Please contact the school administrator.' }, 503, corsHeaders);
