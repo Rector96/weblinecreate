@@ -34,6 +34,10 @@ declare
 begin
   perform pg_advisory_xact_lock(hashtext('rockcraft_exam_request_queue'));
 
+  update public.exam_requests
+  set status = 'pending', started_at = null, updated_at = now()
+  where status = 'processing' and updated_at < now() - interval '20 minutes';
+
   if exists (select 1 from public.exam_requests where status = 'processing') then
     return null;
   end if;
