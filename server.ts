@@ -55,7 +55,7 @@ TARGET DETAILS:
 - Term: ${term || 'First Term'}
 - Specific Topics to focus on: ${topics || 'All syllabus topics for this term'}
 - Difficulty standard: ${difficulty}
-- Special instructions: ${instructions || 'Follow the school's curriculum and instructions'}
+- Special instructions: ${instructions || "Follow the school's curriculum and instructions"}
 
 REQUIREMENTS:
 1. Generate EXACTLY ${safeObjCount} Section A Objective (Multiple Choice) questions.
