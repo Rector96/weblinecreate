@@ -42,14 +42,13 @@ function ensureMathJax(): Promise<void> {
  * - keep already-delimited MathJax expressions unchanged.
  */
 function normalizeExamMath(input: string): string {
-  let value = String(input || '').replace(/\\*\\*(.*?)\\*\\*/gs, '$1');
+  let value = String(input || '').replace(/\*\*(.*?)\*\*/gs, '$1');
 
-  // Turn raw formula-like parenthetical expressions, e.g. (v = \\frac{d}{t}),
-  // into inline TeX so fractions, operators, powers and subscripts render properly.
-  value = value.replace(/\\(([^()\\n]*?(?:\\\\[A-Za-z]+|[_^]|(?:=|≤|≥|≠|≈))[^()\\n]*)\\)/g, (_match, formula: string) => {
+  // Convert raw parenthetical formulas such as (v = \frac{d}{t}) to inline TeX.
+  value = value.replace(/\(([^()\n]*?(?:\\[A-Za-z]+|[_^]|(?:=|≤|≥|≠|≈))[^()\n]*)\)/g, (_match, formula: string) => {
     const trimmed = formula.trim();
-    if (trimmed.startsWith('\\\\(') || trimmed.startsWith('\\\\[')) return _match;
-    return '\\\\(' + trimmed + '\\\\)';
+    if (trimmed.startsWith('\\(') || trimmed.startsWith('\\[')) return _match;
+    return '\\(' + trimmed + '\\)';
   });
 
   return value;
@@ -57,7 +56,8 @@ function normalizeExamMath(input: string): string {
 
 /** Renders AI LaTeX using MathJax while keeping generated content as safe React text. */
 export const FormattedExamText: React.FC<{ text: string; className?: string }> = ({ text, className }) => {
-  const containerRef = useRef<HTMLSpanElement>(null);\n  const formattedText = normalizeExamMath(text);
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const formattedText = normalizeExamMath(text);
 
   useEffect(() => {
     let cancelled = false;
