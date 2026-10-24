@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { Exam } from '../../types';
 import { exportExamToDocx, exportMarkingSchemeToDocx } from '../../utils/docxExport';
+import { FormattedExamText } from '../common/FormattedExamText';
 import {
   X,
   Download,
@@ -155,14 +156,14 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                       {sectionAQuestions.map((q, idx) => (
                         <div key={q.id} className="space-y-1">
                           <p className="font-medium">
-                            <strong className="font-bold">{idx + 1}.</strong> {q.question_text}
+                            <strong className="font-bold">{idx + 1}.</strong> <FormattedExamText text={q.question_text} />
                           </p>
                           {q.objective_data && (
                             <div className="flex flex-wrap gap-x-4 gap-y-1 pl-4 text-slate-800">
-                              <span>[A] {q.objective_data.option_a}</span>
-                              <span>[B] {q.objective_data.option_b}</span>
-                              <span>[C] {q.objective_data.option_c}</span>
-                              <span>[D] {q.objective_data.option_d}</span>
+                              <span>[A] <FormattedExamText text={q.objective_data.option_a} /></span>
+                              <span>[B] <FormattedExamText text={q.objective_data.option_b} /></span>
+                              <span>[C] <FormattedExamText text={q.objective_data.option_c} /></span>
+                              <span>[D] <FormattedExamText text={q.objective_data.option_d} /></span>
                             </div>
                           )}
                         </div>
@@ -188,7 +189,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                         <div key={q.id} className="space-y-1">
                           <div className="flex items-start justify-between gap-2">
                             <p className="whitespace-pre-line">
-                              <strong className="font-bold">{idx + 1}.</strong> {q.question_text}
+                              <strong className="font-bold">{idx + 1}.</strong> <FormattedExamText text={q.question_text} />
                             </p>
                             <span className="font-bold italic text-slate-700 shrink-0">
                               [{q.marks} Marks]
@@ -250,17 +251,17 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                           <span>Question {idx + 1}</span>
                           <span className="text-blue-600">{q.marks} Marks Total</span>
                         </div>
-                        <p className="text-slate-700 italic font-serif">{q.question_text}</p>
+                        <p className="text-slate-700 italic font-serif"><FormattedExamText text={q.question_text} /></p>
                         {q.theory_data?.model_answer && (
                           <div className="p-2.5 rounded-xl bg-white border border-slate-200/80">
                             <span className="font-bold text-blue-900 block mb-0.5">Model Solution:</span>
-                            <p className="text-slate-800 whitespace-pre-line">{q.theory_data.model_answer}</p>
+                            <p className="text-slate-800 whitespace-pre-line"><FormattedExamText text={q.theory_data.model_answer} /></p>
                           </div>
                         )}
                         {q.theory_data?.score_breakdown && (
                           <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-900">
                             <span className="font-bold block mb-0.5">Scoring Breakdown:</span>
-                            <p>{q.theory_data.score_breakdown}</p>
+                            <p><FormattedExamText text={q.theory_data.score_breakdown} /></p>
                           </div>
                         )}
                       </div>
