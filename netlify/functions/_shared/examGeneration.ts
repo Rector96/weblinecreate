@@ -57,20 +57,26 @@ async function generateSection(prompt: string, sectionName: string) {
   if (!ai) throw new Error('AI generation is not configured on the server.');
   let lastError: unknown = null;
   for (const model of MODELS) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: { responseMimeType: 'application/json', temperature: 0.3 },
-      });
-      const parsed = JSON.parse(response.text || '');
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('The AI returned an invalid ' + sectionName + ' response.');
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: { responseMimeType: 'application/json', temperature: 0.3 },
+        });
+        const parsed = JSON.parse(response.text || '');
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new Error('The AI returned an invalid ' + sectionName + ' response.');
+        }
+        return { model, data: parsed };
+      } catch (error: any) {
+        lastError = error;
+        const errorText = error instanceof Error ? error.message : String(error || '');
+        const limited = Number(error?.status || error?.code) === 429 || /rate.?limit|too many requests|tokens per minute/i.test(errorText);
+        console.error('AI ' + sectionName + ' batch failed', error?.status || error?.code || 'unknown status', errorText.slice(0, 200));
+        if (!limited || attempt >= 2 || process.env.EXAM_QUEUE_ENABLED !== 'true') break;
+        await wait(BATCH_DELAY_MS > 0 ? BATCH_DELAY_MS : 40000);
       }
-      return { model, data: parsed };
-    } catch (error: any) {
-      lastError = error;
-      console.error('AI ' + sectionName + ' batch failed', error?.status || error?.code || 'unknown status', error?.message || 'No error message');
     }
   }
   throw lastError instanceof Error ? lastError : new Error('AI ' + sectionName + ' generation failed.');
