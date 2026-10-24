@@ -670,10 +670,17 @@ Give each question clear marks, a thorough model answer, and a useful step-by-st
         data: { section_a: sectionA, section_b: sectionB },
       }, 200, corsHeaders);
     } catch (e: any) {
-      return new Response(JSON.stringify({ success: false, error: e?.message }), {
-        status: 500,
-        headers: corsHeaders,
-      });
+      const statusCode = Number(e?.status || e?.code || 0);
+      const errorText = e instanceof Error ? e.message : String(e || '');
+      const rateLimited = statusCode === 429 || /rate.?limit|too many requests|tokens per minute/i.test(errorText);
+      const incomplete = /json|unexpected end|unterminated|incomplete/i.test(errorText);
+      const message = rateLimited
+        ? 'The AI question-setting desk is busy right now. Please wait a little and try again.'
+        : incomplete
+          ? 'The AI returned an incomplete response. No incomplete exam was loaded; please try again.'
+          : 'We could not finish generating this exam. Please try again in a moment. If it continues, contact your school administrator.';
+      console.error('Exam generation failed safely', statusCode || 'unknown status', errorText.slice(0, 240));
+      return jsonResponse({ success: false, error: message }, rateLimited ? 429 : 503, corsHeaders);
     }
   }
 
