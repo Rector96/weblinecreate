@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import { generateExamDraft } from './_shared/examGeneration';
 
 // Prefer Groq when configured; fall back to Gemini when no Groq key is available.
 // Both keys stay exclusively in the server-side Netlify Function runtime.
@@ -510,6 +511,19 @@ export default async (req: Request) => {
       const schoolId = body.school_id || req.headers.get('x-school-id');
       const authorization = await authorizeAiRequest(req, schoolId);
       if (!authorization.ok) return authorization.response;
+
+      // Safe rollout: keep the current synchronous flow until the SQL migration is applied
+      // and EXAM_QUEUE_ENABLED=true is configured in the Netlify Functions environment.
+      if (process.env.EXAM_QUEUE_ENABLED !== 'true') {
+        try {
+          const result = await generateExamDraft(body);
+          return jsonResponse({ success: true, provider: result.provider, data: result.data }, 200, corsHeaders);
+        } catch (error: any) {
+          const message = error instanceof Error ? error.message : String(error || '');
+          const limited = Number(error?.status || error?.code) === 429 || /rate.?limit|too many requests|tokens per minute/i.test(message);
+          return jsonResponse({ success: false, error: limited ? 'The AI question-setting desk is busy right now. Please wait a little and try again.' : 'We could not finish generating this exam. Please try again in a moment.' }, limited ? 429 : 503, corsHeaders);
+        }
+      }
       if (!ai) return jsonResponse({ success: false, error: 'AI generation is not configured on the server. Please contact the school administrator.' }, 503, corsHeaders);
 
       const inviteToken = (req.headers.get('x-school-invite-token') || '').trim().toUpperCase();
