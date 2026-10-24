@@ -6,12 +6,12 @@ const geminiAi: any = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) :
 const groqAi: any = groqApiKey
   ? {
       models: {
-        generateContent: async ({ contents, config }: { contents: string; config?: { temperature?: number; responseMimeType?: string } }) => {
+        generateContent: async ({ model, contents, config }: { model?: string; contents: string; config?: { temperature?: number; responseMimeType?: string } }) => {
           const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + groqApiKey, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              model: 'openai/gpt-oss-120b',
+              model: model || 'openai/gpt-oss-120b',
               messages: [
                 { role: 'system', content: 'You generate accurate Nigerian secondary-school exam questions. Return valid JSON only when requested.' },
                 { role: 'user', content: contents },
@@ -34,7 +34,7 @@ const groqAi: any = groqApiKey
 
 // Try Groq first when configured, then automatically fall back to Gemini if a key exists.
 const PROVIDERS = [
-  ...(groqAi ? [{ name: 'Groq', client: groqAi, models: ['openai/gpt-oss-120b'] }] : []),
+  ...(groqAi ? [{ name: 'Groq', client: groqAi, models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'] }] : []),
   ...(geminiAi ? [{ name: 'Gemini', client: geminiAi, models: ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'] }] : []),
 ];
 const configuredBatchDelay = Number(process.env.GROQ_BATCH_DELAY_MS);
