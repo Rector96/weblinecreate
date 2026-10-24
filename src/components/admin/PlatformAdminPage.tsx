@@ -5,7 +5,7 @@ import { School, PaymentTransaction } from '../../types';
 import {
   ShieldAlert, CreditCard, RefreshCw, Search, AlertCircle, Loader2,
   RotateCcw, CheckCircle2, Ban, Building2, FileText, Users, TrendingUp,
-  CalendarDays, ShieldCheck, Power, Download,
+  CalendarDays, ShieldCheck, Power, Download, Activity, Globe2,
 } from 'lucide-react';
 
 type AdminSchool = School & {
@@ -59,6 +59,7 @@ export const PlatformAdminPage: React.FC = () => {
   const [busySchoolId, setBusySchoolId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<any | null>(null);
 
   const loadData = useCallback(async () => {
     if (!isPlatformAdmin) { setIsLoading(false); return; }
@@ -67,13 +68,14 @@ export const PlatformAdminPage: React.FC = () => {
       setIsLoading(false); return;
     }
     setIsLoading(true); setErrorMessage(null);
-    const [schoolResult, paymentResult, examResult, profileResult] = await Promise.all([
+    const [schoolResult, paymentResult, examResult, profileResult, analyticsResult] = await Promise.all([
       supabase.from('schools').select('*').order('created_at', { ascending: false }),
       supabase.from('payments').select('*').order('created_at', { ascending: false }),
       supabase.from('exams').select('id,school_id,status,created_at'),
       supabase.from('profiles').select('school_id,created_at,full_name,email').order('created_at', { ascending: true }),
+      supabase.rpc('get_platform_analytics'),
     ]);
-    const failed = schoolResult.error || paymentResult.error || examResult.error || profileResult.error;
+    const failed = schoolResult.error || paymentResult.error || examResult.error || profileResult.error || analyticsResult.error;
     if (failed) {
       console.error('Unable to load platform admin data', failed);
       setErrorMessage(failed.message || 'Unable to load platform data. Check your Supabase policies and try again.');
@@ -100,10 +102,15 @@ export const PlatformAdminPage: React.FC = () => {
       return { ...school, total_exams: counts.total, published_exams: counts.published, draft_exams: counts.drafts, owner_registered_at: ownerBySchool.get(school.id) };
     }));
     setPayments((paymentResult.data || []).map(mapPayment));
+    setAnalytics(analyticsResult.data || null);
     setIsLoading(false);
   }, [isPlatformAdmin]);
 
-  useEffect(() => { void loadData(); }, [loadData]);
+  useEffect(() => {
+    void loadData();
+    const timer = window.setInterval(() => void loadData(), 30000);
+    return () => window.clearInterval(timer);
+  }, [loadData]);
 
   const updateSchool = async (school: AdminSchool, updates: Record<string, unknown>, confirmation: string, successMessage: string) => {
     if (!confirm(confirmation)) return;
@@ -192,6 +199,8 @@ export const PlatformAdminPage: React.FC = () => {
     { label: 'Verified revenue', value: money(totalRevenue), detail: 'Successful payments only', icon: TrendingUp, color: 'text-emerald-700 bg-emerald-50' },
     { label: 'Suspended', value: suspendedSchools, detail: 'Account access blocked', icon: Ban, color: 'text-rose-700 bg-rose-50' },
     { label: 'Trial usage', value: totalAi + totalManual, detail: totalAi + ' AI · ' + totalManual + ' manual', icon: Users, color: 'text-amber-700 bg-amber-50' },
+    { label: 'Active now', value: analytics?.active_users ?? 0, detail: (analytics?.active_visitors ?? 0) + ' active visitors · 15 min', icon: Activity, color: 'text-blue-700 bg-blue-50' },
+    { label: 'Visitors today', value: analytics?.today_visitors ?? 0, detail: (analytics?.today_sessions ?? 0) + ' sessions recorded', icon: Globe2, color: 'text-cyan-700 bg-cyan-50' },
   ];
 
   return (
@@ -253,6 +262,17 @@ export const PlatformAdminPage: React.FC = () => {
             })}</tbody>
           </table></div>}
         <p className="text-[10px] leading-relaxed text-slate-400">Paid status is based on the subscription fields. Manual activation changes access status only; it does not create a payment transaction or alter recorded revenue.</p>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-6 space-y-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><div><h3 className="text-lg font-black text-slate-900">Live platform activity</h3><p className="text-xs text-slate-500 mt-1">Real browser sessions and authenticated usage from Supabase.</p></div><span className="text-[10px] text-slate-400">Updated every 30 seconds</span></div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="rounded-2xl border border-slate-200 p-3"><p className="text-[10px] font-semibold text-slate-500">Registered users</p><p className="mt-1 text-xl font-black text-slate-900">{analytics?.registered_users ?? 0}</p></div>
+          <div className="rounded-2xl border border-slate-200 p-3"><p className="text-[10px] font-semibold text-slate-500">Active users</p><p className="mt-1 text-xl font-black text-slate-900">{analytics?.active_users ?? 0}</p></div>
+          <div className="rounded-2xl border border-slate-200 p-3"><p className="text-[10px] font-semibold text-slate-500">Visitors · 24 hours</p><p className="mt-1 text-xl font-black text-slate-900">{analytics?.visitors_24h ?? 0}</p></div>
+          <div className="rounded-2xl border border-slate-200 p-3"><p className="text-[10px] font-semibold text-slate-500">Users · 7 days</p><p className="mt-1 text-xl font-black text-slate-900">{analytics?.users_7d ?? 0}</p></div>
+        </div>
+        {Array.isArray(analytics?.school_activity) && analytics.school_activity.length > 0 && <div className="overflow-x-auto rounded-xl border border-slate-100"><table className="w-full text-left text-xs"><thead className="bg-slate-50 text-slate-500"><tr><th className="py-3 px-3">School</th><th className="py-3 px-3">Active visitors</th><th className="py-3 px-3">Active users</th><th className="py-3 px-3">Visitors · 24h</th></tr></thead><tbody className="divide-y divide-slate-100">{analytics.school_activity.map((row: any) => <tr key={row.school_id}><td className="py-3 px-3 font-semibold text-slate-900">{row.school_name}</td><td className="py-3 px-3">{row.active_visitors}</td><td className="py-3 px-3">{row.active_users}</td><td className="py-3 px-3">{row.visitors_24h}</td></tr>)}</tbody></table></div>}
       </section>
 
       <section className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-6 space-y-4 shadow-sm">

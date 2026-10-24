@@ -23,6 +23,7 @@ import { ProfilePage } from './components/profile/ProfilePage';
 import { PlatformAdminPage } from './components/admin/PlatformAdminPage';
 import { ExamPreviewModal } from './components/exams/ExamPreviewModal';
 import { PageLoader } from './components/common/PageLoader';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { Exam, School } from './types';
 
 function AppContent() {
@@ -100,6 +101,43 @@ function AppContent() {
       setIsPaystackOpen(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    const visitorKey = 'rockcraft_visitor_id';
+    const sessionKey = 'rockcraft_session_id';
+    let visitorId = localStorage.getItem(visitorKey);
+    let sessionId = sessionStorage.getItem(sessionKey);
+    if (!visitorId) {
+      visitorId = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+      localStorage.setItem(visitorKey, visitorId);
+    }
+    if (!sessionId) {
+      sessionId = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+      sessionStorage.setItem(sessionKey, sessionId);
+    }
+
+    const heartbeat = () => {
+      void supabase.auth.getSession().then(({ data }) => {
+        const headers = new Headers({ 'Content-Type': 'application/json' });
+        if (data.session?.access_token) headers.set('Authorization', `Bearer ${data.session.access_token}`);
+        return fetch('/api/platform-activity', {
+          method: 'POST', headers,
+          body: JSON.stringify({
+            session_id: sessionId,
+            visitor_id: visitorId,
+            school_id: school?.id || null,
+            page_path: window.location.pathname,
+          }),
+        });
+      }).catch(() => undefined);
+    };
+
+    heartbeat();
+    const timer = window.setInterval(heartbeat, 30000);
+    return () => window.clearInterval(timer);
+  }, [isAuthenticated, school?.id, visibleRoute]);
 
 
   const navigate = (route: string, param?: string) => {

@@ -350,6 +350,41 @@ export default async (req: Request) => {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  if (pathname.endsWith('/sitemap.xml') && req.method === 'GET') {
+    const origin = getSiteUrl(req).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${origin}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n</urlset>`;
+    return new Response(xml, { status: 200, headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
+  }
+
+  // Privacy-conscious platform activity heartbeat. The browser sends only random
+  // anonymous IDs, optional authenticated identity, school ID, and current route.
+  if (pathname.endsWith('/platform-activity') && req.method === 'POST') {
+    try {
+      if (Number(req.headers.get('content-length') || 0) > 4096) {
+        return jsonResponse({ success: false, error: 'Activity payload is too large.' }, 413, { 'Cache-Control': 'no-store' });
+      }
+      const body = await req.json() as { session_id?: unknown; visitor_id?: unknown; school_id?: unknown; page_path?: unknown };
+      const sessionId = typeof body.session_id === 'string' ? body.session_id.trim() : '';
+      const visitorId = typeof body.visitor_id === 'string' ? body.visitor_id.trim() : '';
+      if (sessionId.length < 16 || sessionId.length > 100 || visitorId.length < 16 || visitorId.length > 100) {
+        return jsonResponse({ success: false, error: 'Invalid activity IDs.' }, 400, { 'Cache-Control': 'no-store' });
+      }
+      const user = await getAuthenticatedUser(req);
+      const schoolId = typeof body.school_id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.school_id.trim())
+        ? body.school_id.trim()
+        : null;
+      const pagePath = typeof body.page_path === 'string' ? body.page_path.slice(0, 240) : '/';
+      await supabaseAdminRequest('rpc/record_platform_activity', {
+        method: 'POST',
+        body: JSON.stringify({ p_session_id: sessionId, p_visitor_id: visitorId, p_user_id: user?.id || null, p_school_id: schoolId, p_page_path: pagePath }),
+      });
+      return jsonResponse({ success: true }, 200, { 'Cache-Control': 'no-store' });
+    } catch (error) {
+      console.error('Platform activity heartbeat failed', error);
+      return jsonResponse({ success: false, error: 'Activity could not be recorded.' }, 503, { 'Cache-Control': 'no-store' });
+    }
+  }
+
   // Public invite preview: reveal school branding and curriculum options for a valid, active share link.
   if (pathname.endsWith('/school-invite') && req.method === 'GET') {
     try {
