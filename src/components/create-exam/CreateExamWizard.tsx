@@ -1738,7 +1738,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                               </div>
                             </div>
                           ) : (
-                            <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed">{q.question_text}</span>
+                            <FormattedExamText text={q.question_text} className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed" />
                           )}
                           <button type="button" onClick={() => beginPreviewEdit(`question:${q.id}`, q.question_text)} className="shrink-0 rounded-lg p-1.5 text-blue-700 hover:bg-blue-50" aria-label={`Edit theory question ${idx + 1}`} title="Edit question"><Edit3 className="h-4 w-4" /></button>
                         </div>
