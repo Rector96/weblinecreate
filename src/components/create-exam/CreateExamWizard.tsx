@@ -794,9 +794,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         : generationElapsedSeconds < 12
         ? 'Sending your exam brief to the question-setting desk…'
         : generationElapsedSeconds < 35
-          ? 'Your colleague is drafting the objective questions and checking the options.'
+          ? 'Your colleague is drafting the questions and checking the answer choices.'
           : generationElapsedSeconds < 70
-            ? 'Now preparing the theory questions and marking guide. Good work takes care.'
+            ? 'Your colleague is working through the questions and marking guide. A complete paper can take a little while.'
             : 'This is taking a little longer than usual. The page is still working on your exam; please keep it open.';
     return (
       <div className="fixed inset-0 z-[100] flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#07152f] px-5 py-8 text-center text-white" role="status" aria-live="polite" aria-label="ROCKCRAFT is generating your examination">
@@ -811,7 +811,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             {finishing ? <CheckCircle2 className="h-10 w-10 text-emerald-300" /> : <Loader2 className="h-10 w-10 animate-spin text-blue-200" />}
           </div>
           <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-blue-200">{finishing ? 'Final classroom checks' : 'Your exam is being prepared'}</p>
-          <h1 className="mt-3 text-2xl font-black leading-tight tracking-tight sm:text-4xl">{finishing ? 'Your paper is nearly ready' : generationStage === 'queued' ? 'Your colleague is next in line' : 'Your colleague is preparing your exam'}</h1>
+          <h1 className="mt-3 text-2xl font-black leading-tight tracking-tight sm:text-4xl">{finishing ? 'Your paper is nearly ready' : generationStage === 'queued' ? 'Your exam is safely in the queue' : 'Your colleague is preparing your exam'}</h1>
           <p className="mt-3 max-w-md text-sm leading-6 text-blue-100/90 sm:text-base">{activityMessage}</p>
           <div className="mt-5 flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs text-slate-200">
             <span className={'h-2 w-2 rounded-full ' + (finishing ? 'bg-emerald-300' : 'bg-sky-300 animate-pulse')} />
