@@ -43,7 +43,7 @@ export const FormattedExamText: React.FC<{ text: string; className?: string }> =
     let cancelled = false;
     const renderMath = async () => {
       const element = containerRef.current;
-      if (!element || (!text.includes('\\\\(') && !text.includes('\\\\['))) return;
+      if (!element || (!text.includes(String.fromCharCode(92) + '(') && !text.includes(String.fromCharCode(92) + '['))) return;
       try {
         await ensureMathJax();
         await window.MathJax?.startup?.promise;
