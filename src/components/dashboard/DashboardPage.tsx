@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../lib/auth';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { listSchoolExams } from '../../lib/examRepository';
@@ -6,15 +6,16 @@ import { Exam } from '../../types';
 import { exportExamToDocx, exportMarkingSchemeToDocx } from '../../utils/docxExport';
 import {
   FileText,
-  PlusCircle,
+  Plus,
   Users,
-  CreditCard,
   Copy,
   Check,
   Download,
   BookOpen,
   Share2,
-  Clock
+  Clock,
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -168,206 +169,334 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
-  const remainingAi = school ? Math.max(0, school.max_trial_ai_exams - school.ai_exams_used) : 0;
+  const maxAi = school?.max_trial_ai_exams ?? 3;
+  const usedAi = school?.ai_exams_used ?? 0;
+  const remainingAi = school ? Math.max(0, maxAi - usedAi) : 0;
+  const isPaid = school?.subscription_status === 'active';
+  const trialExhausted = !isPaid && remainingAi <= 0;
+  const creditProgress = isPaid ? 100 : maxAi > 0 ? Math.min(100, Math.round((usedAi / maxAi) * 100)) : 0;
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
+
+  const firstName = user?.full_name?.split(' ')[0] || 'there';
+
+  const quickActions = [
+    {
+      key: 'create',
+      label: 'Create',
+      hint: 'New paper',
+      icon: Plus,
+      onClick: () => navigate('create-exam'),
+      tone: 'primary' as const,
+    },
+    {
+      key: 'papers',
+      label: 'Papers',
+      hint: `${exams.length} saved`,
+      icon: FileText,
+      onClick: () => navigate('exams'),
+      tone: 'neutral' as const,
+    },
+    {
+      key: 'invite',
+      label: 'Invite',
+      hint: inviteToken || 'Teachers',
+      icon: Users,
+      onClick: () => {
+        if (inviteToken) void shareInvite();
+        else setDataError('No active teacher invite is available yet. Refresh or check your school admin role.');
+      },
+      tone: 'neutral' as const,
+    },
+    {
+      key: 'classes',
+      label: 'Classes',
+      hint: `${classesCount} active`,
+      icon: BookOpen,
+      onClick: () => navigate('classes'),
+      tone: 'neutral' as const,
+    },
+  ];
 
   return (
-    <div className="space-y-6 text-left">
-      {dataError && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">{dataError}</div>}
-      {/* 1. Welcome Greeting Header (Smooth Blue) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white rounded-3xl p-5 sm:p-6 shadow-lg shadow-blue-950/10">
-        <div className="space-y-1">
-          <div className="text-blue-200 text-xs font-semibold truncate max-w-full">
-            {school?.name || 'ROCKCRAF'}
-          </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-            Hi, {user?.full_name?.split(' ')[0] || 'there'}
-          </h2>
+    <div className="space-y-5 text-left max-w-3xl mx-auto">
+      {dataError && (
+        <div role="alert" className="rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+          {dataError}
         </div>
+      )}
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <button
-            onClick={() => navigate('create-exam')}
-            className="px-4 py-2.5 rounded-xl bg-white text-blue-900 font-bold text-xs hover:bg-blue-50 shadow-md active:scale-95 transition-all flex items-center gap-2"
-          >
-            <PlusCircle className="w-4 h-4 text-blue-600" />
-            <span>New exam</span>
-          </button>
-        </div>
+      {/* Greeting — soft, app-like */}
+      <div className="px-0.5 pt-0.5">
+        {school?.name && (
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 truncate">
+            {school.name}
+          </p>
+        )}
+        <h2 className="mt-0.5 text-[1.55rem] sm:text-2xl font-extrabold tracking-tight text-slate-900">
+          {greeting}, {firstName}
+        </h2>
+        <p className="mt-0.5 text-sm text-slate-500">
+          {exams.length === 0
+            ? 'Your first paper is one tap away.'
+            : 'Ready to set the next paper?'}
+        </p>
       </div>
 
-      {/* 2. KPI Summary Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-        {/* Card 1: Exams */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold text-slate-500">Exams</span>
-            <FileText className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 tabular-nums">{exams.length}</div>
-        </div>
+      {/* Credits wallet card — fintech balance feel, same blue family */}
+      <div
+        className={`relative overflow-hidden rounded-[1.35rem] p-4 sm:p-5 text-white shadow-md ${
+          isPaid
+            ? 'bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 shadow-emerald-900/10'
+            : trialExhausted
+            ? 'bg-gradient-to-br from-slate-800 via-slate-700 to-blue-900 shadow-slate-900/15'
+            : 'bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-600 shadow-blue-900/15'
+        }`}
+      >
+        <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-12 -left-6 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
 
-        {/* Card 2: Plan */}
-        <div className={`p-4 sm:p-5 rounded-2xl border shadow-xs ${
-          school?.subscription_status === 'active'
-            ? 'bg-emerald-50/50 border-emerald-200'
-            : (school?.ai_exams_used || 0) >= 4
-            ? 'bg-amber-50/60 border-amber-200'
-            : 'bg-white border-slate-200/80'
-        }`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500">Plan</span>
-            {school?.subscription_status === 'active' ? (
-              <span className="flex items-center gap-1 text-[10px] font-black uppercase bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-md">
-                <Check className="w-3 h-3" />
-                PAID
+        <div className="relative flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-white/80">
+              <Sparkles className="h-3.5 w-3.5 shrink-0" />
+              <span className="text-[11px] font-semibold uppercase tracking-wide">
+                {isPaid ? 'Subscription' : 'AI exam credits'}
               </span>
-            ) : (school?.ai_exams_used || 0) >= 4 ? (
-              <span className="text-[10px] font-bold uppercase bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md">
-                Limit
-              </span>
-            ) : (
-              <CreditCard className="w-4 h-4 text-sky-600" />
-            )}
+            </div>
+            <p className="mt-1.5 text-2xl sm:text-3xl font-black tracking-tight tabular-nums">
+              {isPaid ? 'Active plan' : `${remainingAi} left`}
+            </p>
+            <p className="mt-0.5 text-xs text-white/75">
+              {isPaid
+                ? 'Unlimited AI generation for this term'
+                : trialExhausted
+                ? 'Trial credits used · upgrade to continue'
+                : `${usedAi} of ${maxAi} trial AI exams used`}
+            </p>
           </div>
-          <div className={`text-base sm:text-lg font-black ${
-            school?.subscription_status === 'active' ? 'text-emerald-800' : 'text-slate-900'
-          }`}>
-            {school?.subscription_status === 'active'
-              ? 'Active'
-              : (school?.ai_exams_used || 0) >= 4
-              ? 'Limit reached'
-              : `${remainingAi} trials left`}
-          </div>
-          {school?.subscription_status !== 'active' && (
-            <button onClick={onOpenPaystack} className="mt-1 text-[11px] font-semibold text-blue-600 hover:underline">
-              Upgrade · ₦11,000
+
+          {!isPaid && (
+            <button
+              type="button"
+              onClick={onOpenPaystack}
+              className="shrink-0 rounded-full bg-white/95 px-3.5 py-2 text-xs font-bold text-blue-800 shadow-sm transition active:scale-95 hover:bg-white"
+            >
+              Upgrade · ₦11k
             </button>
+          )}
+          {isPaid && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+              <Check className="h-3 w-3" />
+              Paid
+            </span>
           )}
         </div>
 
-        {/* Card 3: Classes Managed */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold text-slate-500">Classes</span>
-            <BookOpen className="w-4 h-4 text-blue-600" />
+        {!isPaid && (
+          <div className="relative mt-4">
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/20">
+              <div
+                className="h-full rounded-full bg-white/90 transition-all duration-500"
+                style={{ width: `${creditProgress}%` }}
+              />
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 tabular-nums">
-            {classesCount}
-          </div>
-        </div>
-
-        {/* Card 4: Teacher Collaboration Token */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold text-slate-500">Invite code</span>
-            <Users className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-lg font-mono font-black text-blue-600 tracking-wider">
-            {inviteToken || 'No active invite'}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px]">
-            <button onClick={copyInvite} disabled={!inviteToken} className="hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-semibold text-slate-600">
-              {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-              <span>{copied ? 'Copied' : 'Copy link'}</span>
-            </button>
-            <button onClick={shareInvite} disabled={!inviteToken} className="hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-semibold text-blue-700">
-              <Share2 className="w-3 h-3" />
-              <span>Share with teachers</span>
-            </button>
-          </div>
-        </div>
+        )}
       </div>
+
+      {/* Quick actions — 2×2 app tiles */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+        {quickActions.map((action) => {
+          const Icon = action.icon;
+          const isPrimary = action.tone === 'primary';
+          return (
+            <button
+              key={action.key}
+              type="button"
+              onClick={action.onClick}
+              className={`flex items-center gap-3 rounded-2xl border p-3.5 text-left transition active:scale-[0.98] ${
+                isPrimary
+                  ? 'border-blue-200 bg-blue-50/80 shadow-sm shadow-blue-600/5 hover:bg-blue-50'
+                  : 'border-slate-200/80 bg-white shadow-xs hover:border-slate-300 hover:bg-slate-50/80'
+              }`}
+            >
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                  isPrimary
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/25'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                <Icon className="h-5 w-5" strokeWidth={isPrimary ? 2.5 : 2} />
+              </div>
+              <div className="min-w-0">
+                <p className={`text-sm font-bold ${isPrimary ? 'text-blue-900' : 'text-slate-900'}`}>
+                  {action.label}
+                </p>
+                <p className="truncate text-[11px] font-medium text-slate-500">{action.hint}</p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Invite strip for admins — compact, not a full KPI card */}
+      {role === 'school_admin' && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-3.5 py-3 shadow-xs">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Teacher invite</p>
+            <p className="font-mono text-sm font-bold tracking-wider text-blue-700">
+              {inviteToken || 'Generating…'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={copyInvite}
+            disabled={!inviteToken}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+          <button
+            type="button"
+            onClick={shareInvite}
+            disabled={!inviteToken}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            Share
+          </button>
+        </div>
+      )}
 
       {/* Recent exams */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-end justify-between gap-3 px-0.5">
           <div>
-            <h3 className="text-base font-bold text-slate-900 tracking-tight">Recent exams</h3>
-            <p className="text-xs text-slate-500">Official WAEC/JAMB formatted printable exams</p>
+            <h3 className="text-base font-bold tracking-tight text-slate-900">Recent</h3>
+            <p className="text-xs text-slate-500">Tap a paper to preview or export</p>
           </div>
           <button
+            type="button"
             onClick={() => navigate('exams')}
-            className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700"
           >
-            View All ({exams.length})
+            See all{exams.length > 0 ? ` (${exams.length})` : ''}
           </button>
         </div>
 
         {exams.length === 0 ? (
-          <div className="bg-white rounded-3xl p-8 border border-slate-200 text-center">
-            <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h4 className="text-sm font-bold text-slate-800">No exams generated yet</h4>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Start by crafting your first examination paper with AI or manual input.
+          <div className="rounded-[1.35rem] border border-dashed border-slate-200 bg-white px-6 py-10 text-center shadow-xs">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+              <FileText className="h-7 w-7" />
+            </div>
+            <h4 className="mt-4 text-sm font-bold text-slate-900">No papers yet</h4>
+            <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
+              Create your first exam with AI or write it manually. Export comes out in official school format.
             </p>
             <button
+              type="button"
               onClick={() => navigate('create-exam')}
-              className="mt-4 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
+              className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 active:scale-[0.98]"
             >
-              Create First Exam
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              Create with AI
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('create-exam')}
+              className="mt-2 block w-full text-center text-xs font-semibold text-slate-500 hover:text-slate-700"
+            >
+              Or write manually
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {exams.slice(0, 4).map((exam) => (
-              <div
-                key={exam.id}
-                onClick={() => onPreviewExam(exam)}
-                className="bg-white p-4 rounded-2xl border border-slate-200/80 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-                      <span className="font-semibold text-blue-600">{exam.subject}</span>
-                      <span>·</span>
-                      <span>{exam.class_name}</span>
-                      <span>·</span>
-                      <span>{exam.term}</span>
+          <div className="space-y-2.5">
+            {exams.slice(0, 5).map((exam) => {
+              const isPublished = exam.status === 'published';
+              return (
+                <div
+                  key={exam.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onPreviewExam(exam)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onPreviewExam(exam);
+                    }
+                  }}
+                  className="group flex cursor-pointer items-stretch gap-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs transition hover:border-blue-200 hover:shadow-sm"
+                >
+                  <div className={`w-1 shrink-0 ${isPublished ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                  <div className="min-w-0 flex-1 p-3.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-sm font-bold text-slate-900 group-hover:text-blue-700">
+                            {exam.subject}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                              isPublished
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-amber-50 text-amber-800'
+                            }`}
+                          >
+                            {isPublished ? 'Published' : 'Draft'}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 truncate text-xs text-slate-500">
+                          {exam.class_name} · {exam.term} · {exam.exam_code}
+                        </p>
+                      </div>
+                      <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-300 group-hover:text-blue-500" />
                     </div>
-                    <h4 className="text-sm font-bold text-slate-900 mt-1 group-hover:text-blue-700 transition-colors">
-                      {exam.title}
-                    </h4>
+
+                    <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3 text-slate-400" />
+                        {exam.duration_minutes} mins
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <FileText className="h-3 w-3 text-slate-400" />
+                        {exam.questions?.length || 0} Qs
+                      </span>
+                      <span className="font-semibold tabular-nums text-slate-700">
+                        {exam.total_marks} marks
+                      </span>
+                    </div>
+
+                    <div className="mt-2.5 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDownloadDocx(exam, e)}
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-50 px-2.5 py-2 text-[11px] font-semibold text-blue-800 transition hover:bg-blue-100"
+                      >
+                        <Download className="h-3.5 w-3.5 text-blue-600" />
+                        {downloadingId === exam.id ? 'Exporting…' : 'DOCX'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDownloadScheme(exam, e)}
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-2.5 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-200"
+                        title="Confidential Marking Scheme"
+                      >
+                        <Download className="h-3.5 w-3.5 text-slate-600" />
+                        {downloadingId === `scheme_${exam.id}` ? 'Exporting…' : 'Scheme'}
+                      </button>
+                    </div>
                   </div>
-                  <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono shrink-0">
-                    {exam.exam_code}
-                  </span>
                 </div>
-
-                <div className="flex items-center gap-4 text-xs text-slate-500 mt-3 pt-3 border-t border-slate-100">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{exam.duration_minutes} mins</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <FileText className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{exam.questions?.length || 0} questions</span>
-                  </span>
-                  <span className="font-semibold text-slate-700 ml-auto tabular-nums">
-                    {exam.total_marks} Marks
-                  </span>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="flex items-center gap-2 mt-3 pt-2">
-                  <button
-                    onClick={(e) => handleDownloadDocx(exam, e)}
-                    className="flex-1 py-1.5 px-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5 text-blue-600" />
-                    <span>{downloadingId === exam.id ? 'Exporting...' : 'DOCX Paper'}</span>
-                  </button>
-
-                  <button
-                    onClick={(e) => handleDownloadScheme(exam, e)}
-                    className="flex-1 py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
-                    title="Confidential Marking Scheme"
-                  >
-                    <Download className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Marking Scheme</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
