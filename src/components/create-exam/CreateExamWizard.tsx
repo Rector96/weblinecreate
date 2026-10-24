@@ -20,6 +20,7 @@ import {
   DEFAULT_EXAM_INSTRUCTIONS
 } from '../../data/nigerianCurriculum';
 import { ScientificSymbolPicker } from '../common/ScientificSymbolPicker';
+import { FormattedExamText } from '../common/FormattedExamText';
 import { VoiceInputButton } from '../common/VoiceInputButton';
 import { exportExamToDocx, exportMarkingSchemeToDocx } from '../../utils/docxExport';
 import {
@@ -1645,7 +1646,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                               </div>
                             </div>
                           ) : (
-                            <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed">{q.question_text}</span>
+                            <FormattedExamText text={q.question_text} className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed" />
                           )}
                           <button type="button" onClick={() => beginPreviewEdit(`question:${q.id}`, q.question_text)} className="shrink-0 rounded-lg p-1.5 text-blue-700 hover:bg-blue-50" aria-label={`Edit question ${idx + 1}`} title="Edit question"><Edit3 className="h-4 w-4" /></button>
                         </div>
@@ -1692,7 +1693,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                                   </div>
                                 ) : (
                                   <>
-                                    <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{q.objective_data?.[optKey] || ''}</span>
+                                    <FormattedExamText text={q.objective_data?.[optKey] || ''} className="min-w-0 flex-1 whitespace-pre-wrap break-words" />
                                     <button type="button" onClick={() => beginPreviewEdit(optionField, q.objective_data?.[optKey] || '')} className="shrink-0 rounded-md p-1 text-blue-700 hover:bg-blue-100" aria-label={`Edit option ${opt}`} title={`Edit option ${opt}`}><Edit3 className="h-3.5 w-3.5" /></button>
                                   </>
                                 )}
