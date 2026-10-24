@@ -35,15 +35,35 @@ function ensureMathJax(): Promise<void> {
   return window.__rockcraftMathJaxPromise;
 }
 
+/**
+ * Normalize common raw AI output before typesetting:
+ * - remove literal Markdown bold markers from exam questions;
+ * - wrap equations/formulas in parentheses even when the model omitted TeX delimiters;
+ * - keep already-delimited MathJax expressions unchanged.
+ */
+function normalizeExamMath(input: string): string {
+  let value = String(input || '').replace(/\*\*(.*?)\*\*/gs, '$1');
+
+  // Convert raw parenthetical formulas such as (v = \frac{d}{t}) to inline TeX.
+  value = value.replace(/(?<!\\)\(([^()\n]*?(?:\\[A-Za-z]+|[_^]|(?:=|≤|≥|≠|≈))[^()\n]*)(?<!\\)\)/g, (_match, formula: string) => {
+    const trimmed = formula.trim();
+    if (trimmed.startsWith('\\(') || trimmed.startsWith('\\[')) return _match;
+    return '\\(' + trimmed + '\\)';
+  });
+
+  return value;
+}
+
 /** Renders AI LaTeX using MathJax while keeping generated content as safe React text. */
 export const FormattedExamText: React.FC<{ text: string; className?: string }> = ({ text, className }) => {
   const containerRef = useRef<HTMLSpanElement>(null);
+  const formattedText = normalizeExamMath(text);
 
   useEffect(() => {
     let cancelled = false;
     const renderMath = async () => {
       const element = containerRef.current;
-      if (!element || (!text.includes(String.fromCharCode(92) + '(') && !text.includes(String.fromCharCode(92) + '['))) return;
+      if (!element || (!formattedText.includes(String.fromCharCode(92) + '(') && !formattedText.includes(String.fromCharCode(92) + '['))) return;
       try {
         await ensureMathJax();
         await window.MathJax?.startup?.promise;
@@ -59,7 +79,7 @@ export const FormattedExamText: React.FC<{ text: string; className?: string }> =
       cancelled = true;
       if (containerRef.current) window.MathJax?.typesetClear?.([containerRef.current]);
     };
-  }, [text]);
+  }, [formattedText]);
 
-  return <span ref={containerRef} className={className}>{text}</span>;
+  return <span ref={containerRef} className={className}>{formattedText}</span>;
 };
