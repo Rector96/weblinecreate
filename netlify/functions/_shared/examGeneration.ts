@@ -79,11 +79,13 @@ async function generateSection(prompt: string, sectionName: string) {
 
           // Keep queued work paced to respect provider limits. In synchronous fallback mode,
           // use short retries so the function does not spend 40 seconds sleeping on each try.
-          if (limited && attempt < 2) {
-            const delay = process.env.EXAM_QUEUE_ENABLED === 'true'
-              ? (BATCH_DELAY_MS > 0 ? BATCH_DELAY_MS : 40000)
-              : 1200 * (attempt + 1);
-            await wait(delay);
+          // A 429 means this model's quota is exhausted for now. Do not retry
+          // the same model in the same minute; immediately try the next model/provider.
+          if (limited) break;
+
+          // Retry transient non-rate-limit errors briefly before moving to the next model.
+          if (attempt < 2) {
+            await wait(1200 * (attempt + 1));
             continue;
           }
           // Exhausted this provider/model; try the next configured provider before failing.
@@ -128,7 +130,7 @@ export async function generateExamDraft(input: ExamGenerationInput) {
 
   const sectionA: any[] = [];
   const sectionB: any[] = [];
-  let provider = MODELS[0];
+  let provider = 'Not selected';
   let completedBatches = 0;
   const generatePacedSection = async (prompt: string, sectionName: string) => {
     if (completedBatches > 0 && BATCH_DELAY_MS > 0) await wait(BATCH_DELAY_MS);
