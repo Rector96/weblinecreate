@@ -254,11 +254,10 @@ export async function buildExamDocxBlob(exam: Exam, school?: School | null): Pro
   }
 
   if (sectionBQuestions.length > 0) {
-    const sectionBMarks = exam.section_b_marks || sectionBQuestions.reduce((s, q) => s + (Number(q.marks) || 15), 0);
     docChildren.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 120, after: 40 },
-      children: [new TextRun({ text: `SECTION B: ESSAY / THEORY [${sectionBMarks} MARKS]`, font: FONT_NAME, size: 20, bold: true, underline: {} })],
+      children: [new TextRun({ text: 'SECTION B: ESSAY / THEORY', font: FONT_NAME, size: 20, bold: true, underline: {} })],
     }));
     docChildren.push(new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -268,7 +267,7 @@ export async function buildExamDocxBlob(exam: Exam, school?: School | null): Pro
 
     sectionBQuestions.forEach((q, idx) => {
       const lines = cleanMathForPrint(q.question_text).split('\n').filter((l) => l.trim().length > 0);
-      const marksLabel = `  [${q.marks || 15} Marks]`;
+      const marksLabel = '';
       if (lines.length === 0) {
         docChildren.push(new Paragraph({
           spacing: { before: 60, after: 30 },
