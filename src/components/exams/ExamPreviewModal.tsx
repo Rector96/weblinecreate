@@ -27,6 +27,18 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
 
   const sectionAQuestions = (exam.questions || []).filter((q) => q.section === 'A');
   const sectionBQuestions = (exam.questions || []).filter((q) => q.section === 'B');
+  // Estimate the objective section's footprint so a page break is only forced when it
+  // is likely to fit on page one. Longer papers flow naturally across pages instead.
+  const estimatedObjectiveLength = sectionAQuestions.reduce((total, q) => {
+    const options = q.objective_data
+      ? [q.objective_data.option_a, q.objective_data.option_b, q.objective_data.option_c, q.objective_data.option_d].join(' ')
+      : '';
+    return total + (q.question_text || '').length + options.length + 35;
+  }, 0);
+  const shouldStartTheoryOnNewPage =
+    sectionBQuestions.length > 0 &&
+    sectionAQuestions.length >= 8 &&
+    estimatedObjectiveLength < 1900;
 
   const handlePrint = () => {
     window.print();
@@ -175,7 +187,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
 
                 {/* Section B: Theory */}
                 {sectionBQuestions.length > 0 && (
-                  <div className={`exam-theory-section space-y-3 pt-3 border-t border-slate-300 ${sectionAQuestions.length >= 8 ? "exam-theory-new-page" : ""}`}>
+                  <div className={`exam-theory-section space-y-3 pt-3 border-t border-slate-300 ${shouldStartTheoryOnNewPage ? "exam-theory-new-page" : ""}`}>
                     <div className="text-center">
                       <h3 className="text-sm font-bold uppercase underline">
                         SECTION B: ESSAY / THEORY
