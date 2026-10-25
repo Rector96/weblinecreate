@@ -46,7 +46,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
 
   return (
     <div className="exam-preview-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in">
-      <div className="w-full max-w-4xl max-h-[95vh] bg-slate-100 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-left border border-slate-300">
+      <div className="exam-preview-dialog w-full max-w-4xl max-h-[95vh] bg-slate-100 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-left border border-slate-300">
         {/* Top Control Toolbar */}
         <div className="exam-preview-toolbar bg-white px-5 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
