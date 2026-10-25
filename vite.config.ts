@@ -12,7 +12,7 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg', 'rockcraft-rc.svg'],
+        includeAssets: ['rockcraft-logo.png', 'favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
           id: '/',
           name: 'ROCKCRAFT - Nigerian School Exam Paper Builder',
@@ -25,7 +25,7 @@ export default defineConfig(() => {
           start_url: '/',
           scope: '/',
           icons: [
-            { src: '/rockcraft-rc.svg?v=3', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+            { src: '/rockcraft-logo.png?v=4', sizes: '256x256', type: 'image/png', purpose: 'any' },
           ],
         },
         workbox: {
