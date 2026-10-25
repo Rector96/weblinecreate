@@ -160,6 +160,16 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
 
   const sectionAQuestions = (exam.questions || []).filter((q) => q.section === 'A');
   const sectionBQuestions = (exam.questions || []).filter((q) => q.section === 'B');
+  const estimatedObjectiveLength = sectionAQuestions.reduce((total, q) => {
+    const options = q.objective_data
+      ? [q.objective_data.option_a, q.objective_data.option_b, q.objective_data.option_c, q.objective_data.option_d].join(' ')
+      : '';
+    return total + (q.question_text || '').length + options.length + 35;
+  }, 0);
+  const shouldStartTheoryOnNewPage =
+    sectionBQuestions.length > 0 &&
+    sectionAQuestions.length >= 8 &&
+    estimatedObjectiveLength < 1900;
 
   const docChildren: any[] = [];
   const schoolLogoRun = await getSchoolLogoRun(school);
@@ -417,7 +427,7 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
 
   // Keep a substantial objective section together, then begin theory on page two.
   // This gives typical school papers a deliberate two-page rhythm instead of an awkward split.
-  if (sectionBQuestions.length > 0 && sectionAQuestions.length >= 8) {
+  if (shouldStartTheoryOnNewPage) {
     docChildren.push(new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: '' })] }));
   }
 
