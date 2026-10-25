@@ -206,8 +206,8 @@ button:active:not(:disabled) {
 .rockcraft-toast { will-change: opacity, transform; }
 .rockcraft-toast-visible { animation: rockcraftToastIn 320ms cubic-bezier(.2,.8,.2,1) both; }
 .rockcraft-toast-hidden { opacity: 0; transform: translate3d(1rem,0,0); pointer-events: none; }
-.rockcraft-toast-error > div { border-color: #fecdd3; border-left: 4px solid #e11d48; }
-.rockcraft-toast-success > div { border-color: #a7f3d0; border-left: 4px solid #059669; }
+.rockcraft-toast-error > div { border-color: #fda4af; border-left: 4px solid #be123c; background: #fff1f2; }
+.rockcraft-toast-success > div { border-color: #6ee7b7; border-left: 4px solid #047857; background: #ecfdf5; }
 @media (prefers-reduced-motion: reduce) {
   .rockcraft-toast-visible { animation: none; }
 }

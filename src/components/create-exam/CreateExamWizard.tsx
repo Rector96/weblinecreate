@@ -862,12 +862,12 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   return (
     <div className="max-w-2xl mx-auto space-y-3 sm:space-y-4 text-left pb-28 sm:pb-10">
       {/* Consistent right-side toast notifications for errors and success messages */}
-      <div className="pointer-events-none fixed top-[max(1rem,env(safe-area-inset-top))] right-3 sm:right-6 z-[100] w-[calc(100%-1.5rem)] max-w-sm" aria-live="polite" aria-atomic="true">
+      <div className="pointer-events-none fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-3 sm:bottom-6 sm:right-6 z-[100] w-[calc(100%-1.5rem)] max-w-sm" aria-live="polite" aria-atomic="true">
         <div className={`rockcraft-toast ${errorToast ? 'rockcraft-toast-visible rockcraft-toast-error' : notification ? 'rockcraft-toast-visible rockcraft-toast-success' : 'rockcraft-toast-hidden'}`}>
-          {(errorToast || notification) && <div role={errorToast ? 'alert' : 'status'} className="pointer-events-auto flex items-start gap-3 rounded-2xl border bg-white/95 p-4 shadow-xl backdrop-blur-md">
-            {errorToast ? <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" /> : <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />}
-            <span className="min-w-0 flex-1 break-words text-sm leading-relaxed text-slate-800">{errorToast || notification}</span>
-            <button type="button" onClick={() => { setErrorToast(null); setStepError(null); setAiError(null); setNotification(null); }} className="rounded-lg px-1 text-xl leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Dismiss notification">×</button>
+          {(errorToast || notification) && <div role={errorToast ? 'alert' : 'status'} className="pointer-events-auto flex max-h-28 items-start gap-2.5 overflow-y-auto rounded-xl border bg-white p-3 shadow-xl backdrop-blur-md sm:max-h-32">
+            {errorToast ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-700" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />}
+            <span className="min-w-0 flex-1 break-words text-xs font-semibold leading-5 text-slate-900 sm:text-sm">{errorToast || notification}</span>
+            <button type="button" onClick={() => { setErrorToast(null); setStepError(null); setAiError(null); setNotification(null); }} className="rounded-md px-1 text-lg leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Dismiss notification">×</button>
           </div>}
         </div>
       </div>
@@ -1037,7 +1037,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             />
           </div>
 
-          <div className="pt-4 flex justify-end">
+          {stepError && <div role="alert" className="flex items-start gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold leading-5 text-rose-900"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-700" /><span>{stepError}</span></div>}
+          <div className="pt-2 flex justify-end">
             <button
               onClick={handleStep1Next}
               className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700 active:scale-[0.99]"
