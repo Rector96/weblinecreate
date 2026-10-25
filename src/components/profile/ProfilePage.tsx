@@ -82,7 +82,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setMessage('Please choose a logo smaller than 5 MB.');
+      setMessage('Please choose a logo up to 5 MB.');
       return;
     }
     const reader = new FileReader();
