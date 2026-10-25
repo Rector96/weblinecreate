@@ -68,13 +68,26 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setLogoUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    e.currentTarget.value = '';
+    if (!file) return;
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setMessage('Please upload your school logo as PNG, JPG or WebP so it works in exam previews and exported documents.');
+      return;
     }
+    if (file.size > 1024 * 1024) {
+      setMessage('Please choose a logo smaller than 1 MB for reliable saving and fast loading.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setLogoUrl(reader.result);
+        setMessage('Logo selected. Save School Profile Changes to apply it across your school exam papers.');
+      }
+    };
+    reader.onerror = () => setMessage('Could not read that logo. Please try another image.');
+    reader.readAsDataURL(file);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -184,6 +197,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
         className="bg-white p-4 sm:p-6 md:p-7 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm space-y-4 sm:space-y-5 min-w-0"
       >
         {/* School Logo Section */}
+        {!logoUrl && canEdit && (
+          <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
+            <strong>Action needed: add your school logo.</strong> Upload your official crest here and save your profile. ROCKCRAFT will use it in the header of your exam paper previews, print/PDF output and new DOCX exports.
+          </div>
+        )}
         <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center gap-3 sm:gap-4 pb-4 sm:pb-5 border-b border-slate-100 min-w-0">
           <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
             {logoUrl ? (
@@ -210,7 +228,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           <div>
             <h4 className="text-xs font-bold text-slate-900">Official School Crest / Logo</h4>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Appears at the top of your exported DOCX exam papers. PNG, JPG or SVG.
+              Your school logo appears on exam previews, printed / saved PDF papers and DOCX exports. Use PNG, JPG or WebP (maximum 1 MB).
             </p>
             <label className="inline-block mt-2 text-[11px] font-semibold text-blue-600 hover:text-blue-800 cursor-pointer">
               <span>Change Logo</span>
