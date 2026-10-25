@@ -10,7 +10,7 @@
   "theme_color": "#1d4ed8",
   "icons": [
     {
-      "src": "/rockcraft-rc.svg?v=3",
+      "src": "/rockcraft-rc.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
