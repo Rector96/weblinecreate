@@ -22,6 +22,9 @@ create index if not exists user_feedback_school_id_idx
 
 alter table public.user_feedback enable row level security;
 
+grant insert on public.user_feedback to anon, authenticated;
+grant select on public.user_feedback to authenticated;
+
 drop policy if exists "Visitors can submit feedback" on public.user_feedback;
 create policy "Visitors can submit feedback"
   on public.user_feedback
