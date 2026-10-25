@@ -36,9 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
     <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-white border-r border-slate-200/90 h-screen sticky top-0 shrink-0 p-5 overflow-y-auto">
       {/* Brand Header */}
       <div className="flex items-center gap-3 pb-6 border-b border-slate-100">
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-700 to-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-600/20 font-black text-sm">
-          RC
-        </div>
+        <img src="/rockcraft-rc.svg?v=3" alt="ROCKCRAFT logo" className="w-10 h-10 object-contain shrink-0" />
         <div className="flex flex-col min-w-0">
           <span className="text-base font-extrabold text-slate-900 tracking-tight">ROCKCRAF</span>
           <span className="text-xs text-slate-500 font-medium truncate">

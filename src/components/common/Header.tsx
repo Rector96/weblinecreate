@@ -19,7 +19,7 @@ export const Header: React.FC<HeaderProps> = ({ navigate, onOpenPaystack }) => {
           onClick={() => navigate('dashboard')}
           className="flex items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-lg group"
         >
-          <img src="/rockcraft-rc.svg" alt="ROCKCRAFT" className="w-10 h-10 object-contain shrink-0 group-hover:scale-105 transition-transform duration-150" />
+          <img src="/rockcraft-rc.svg?v=3" alt="ROCKCRAFT" className="w-10 h-10 object-contain shrink-0 group-hover:scale-105 transition-transform duration-150" />
           <div className="flex flex-col">
             <span className="text-base font-extrabold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
               ROCKCRAF

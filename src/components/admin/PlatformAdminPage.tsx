@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../lib/auth';
+import { FeedbackAdminPanel } from './FeedbackAdminPanel';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { School, PaymentTransaction } from '../../types';
 import {
@@ -221,6 +222,8 @@ export const PlatformAdminPage: React.FC = () => {
 
       {errorMessage && <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-sm text-rose-800 flex items-start gap-2"><AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /><span>{errorMessage}</span></div>}
       {notice && <div role="status" className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">{notice}</div>}
+
+      <FeedbackAdminPanel />
 
       <section className="grid grid-cols-2 xl:grid-cols-3 gap-3">
         {statCards.map(({label,value,detail,icon:Icon,color}) => <div key={label} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm min-w-0"><div className="flex items-center justify-between gap-2"><span className="text-[11px] text-slate-500 font-semibold">{label}</span><span className={'p-2 rounded-xl ' + color}><Icon className="w-4 h-4" /></span></div><div className="text-xl sm:text-2xl font-black text-slate-900 mt-2 truncate">{value}</div><p className="text-[10px] text-slate-400 mt-1">{detail}</p></div>)}

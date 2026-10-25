@@ -67,24 +67,53 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
   }, [state]);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = e.currentTarget.files?.[0];
     e.currentTarget.value = '';
     if (!file) return;
     const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      setMessage('Please upload your school logo as PNG, JPG or WebP so it works in exam previews and exported documents.');
+      setMessage('Please upload your school logo as PNG, JPG or WebP.');
       return;
     }
-    if (file.size > 1024 * 1024) {
-      setMessage('Please choose a logo smaller than 1 MB for reliable saving and fast loading.');
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage('Please choose a logo smaller than 5 MB.');
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setLogoUrl(reader.result);
-        setMessage('Logo selected. Save School Profile Changes to apply it across your school exam papers.');
+      if (typeof reader.result !== 'string') {
+        setMessage('Could not read that logo. Please try another image.');
+        return;
       }
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1, 600 / Math.max(image.width, image.height));
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext('2d');
+        if (!context) {
+          setMessage('Your browser could not prepare the logo. Please try another image.');
+          return;
+        }
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        // Compact data URLs avoid oversized school rows and remain available to exam exports.
+        let quality = 0.86;
+        let compressed = canvas.toDataURL('image/webp', quality);
+        while (compressed.length > 220000 && quality > 0.42) {
+          quality -= 0.1;
+          compressed = canvas.toDataURL('image/webp', quality);
+        }
+        if (compressed.length > 250000) {
+          setMessage('This logo is still too large after compression. Please use a simpler or smaller image.');
+          return;
+        }
+        setLogoUrl(compressed);
+        setMessage('Logo prepared. Select Save School Profile Changes to store it permanently.');
+      };
+      image.onerror = () => setMessage('Could not decode that logo. Please try another image.');
+      image.src = reader.result;
     };
     reader.onerror = () => setMessage('Could not read that logo. Please try another image.');
     reader.readAsDataURL(file);
@@ -118,9 +147,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
       setMessage('Could not save school details. Please check your connection and try again.');
       return;
     }
-    refreshSchool();
-    setMessage('School details updated successfully.');
-    setTimeout(() => setMessage(null), 3000);
+    await refreshSchool();
+    setMessage('School details and logo saved successfully. The updated logo is now available across exam creation and exports.');
+    setTimeout(() => setMessage(null), 5000);
   };
 
   return (

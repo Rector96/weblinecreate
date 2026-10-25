@@ -24,7 +24,7 @@ export interface AuthContextType {
   }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateUserProfile: (updates: Partial<UserProfile>) => void;
-  refreshSchool: () => void;
+  refreshSchool: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -259,9 +259,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const refreshSchool = () => {
+  const refreshSchool = async () => {
     if (user?.user_id) {
-      void supabase.auth.getUser().then(({ data }) => loadUserContext(data.user || null));
+      const { data } = await supabase.auth.getUser();
+      await loadUserContext(data.user || null);
     }
   };
 

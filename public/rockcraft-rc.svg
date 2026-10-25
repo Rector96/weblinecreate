@@ -1,8 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
-  <title id="title">ROCKCRAFT RC logo</title>
-  <defs><linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#071b55"/><stop offset=".52" stop-color="#075fe8"/><stop offset="1" stop-color="#08b9f2"/></linearGradient></defs>
-  <path d="M13 17 49 3 85 17 77 22 49 12 21 22Z" fill="url(#blue)"/>
-  <path d="M21 21v8m56-8v8" stroke="#073caa" stroke-width="3" stroke-linecap="round"/>
-  <text x="4" y="93" font-family="Arial,Helvetica,sans-serif" font-size="84" font-weight="900" letter-spacing="-10" fill="url(#blue)">RC</text>
-  <path d="M19 102c20 11 51 12 83 0" fill="none" stroke="url(#blue)" stroke-width="5" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">ROCKCRAFT blue RC graduation logo</title>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#061b59"/><stop offset=".48" stop-color="#075de8"/><stop offset="1" stop-color="#08baf2"/></linearGradient>
+    <linearGradient id="shade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#06164f"/><stop offset="1" stop-color="#0738b0"/></linearGradient>
+  </defs>
+  <g fill="url(#blue)">
+    <path d="M35 98 148 49Q154 46 161 49L275 98Q285 103 275 109L238 128Q230 132 221 127L166 103Q154 98 141 103L78 131Q72 134 65 131L35 113Q25 108 35 98Z"/>
+    <path d="M59 125 59 171 77 171 77 124Z"/>
+    <path d="M63 171Q50 171 49 188L43 222Q42 237 58 238Q75 239 75 222L70 188Q69 171 63 171Z"/>
+    <path d="M80 132Q153 91 225 132L225 179 80 179Z" fill="url(#shade)"/>
+    <path d="M93 177H252C302 177 337 207 337 249C337 290 306 319 265 322L298 365C315 389 344 407 382 411C422 415 453 402 480 377L449 354C429 373 407 382 383 382C345 382 318 358 318 326C318 294 344 272 381 272C403 272 424 281 441 298L472 271C446 239 414 221 377 221C342 221 315 235 294 257C280 214 245 192 200 192H93Z" opacity="0"/>
+    <path d="M91 191H214C266 191 302 222 302 267C302 310 269 340 224 340H103V472H47V300H212C230 300 239 288 239 274C239 259 229 249 212 249H91Z"/>
+    <path d="M281 204C307 178 345 164 385 164C432 164 468 186 493 223L452 254C434 229 411 216 384 216C355 216 334 232 321 253L286 276C281 250 280 226 281 204Z"/>
+    <path d="M320 278C334 254 356 243 383 243C409 243 432 255 449 275L490 305C465 340 428 359 385 359C342 359 307 339 284 307L320 278Z"/>
+    <path d="M76 323C126 325 177 344 216 379C257 416 292 440 340 440C377 440 408 428 434 407C406 444 365 462 317 462C268 462 230 442 191 408C151 373 116 347 76 323Z" fill="#06b9ee"/>
+  </g>
+  <path d="M78 133Q153 94 224 133" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+  <path d="M286 205C307 232 314 260 304 289C294 319 273 337 244 345L275 388C299 420 335 437 378 440" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
 </svg>
