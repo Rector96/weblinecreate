@@ -226,12 +226,12 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
   // Route validation and AI errors through one consistent right-side toast.
   useEffect(() => {
-    const nextError = stepError || aiError;
+    // Step validation errors are shown inline beside Continue; toast only async/AI errors to avoid duplicates.
+    const nextError = aiError;
     if (!nextError) return;
     setErrorToast(nextError);
     const timer = window.setTimeout(() => {
       setErrorToast(null);
-      setStepError((current) => current === nextError ? null : current);
       setAiError((current) => current === nextError ? null : current);
     }, 4800);
     return () => window.clearTimeout(timer);
@@ -867,7 +867,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           {(errorToast || notification) && <div role={errorToast ? 'alert' : 'status'} className="pointer-events-auto flex max-h-28 items-start gap-2.5 overflow-y-auto rounded-xl border bg-white p-3 shadow-xl backdrop-blur-md sm:max-h-32">
             {errorToast ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-700" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />}
             <span className="min-w-0 flex-1 break-words text-xs font-semibold leading-5 text-slate-900 sm:text-sm">{errorToast || notification}</span>
-            <button type="button" onClick={() => { setErrorToast(null); setStepError(null); setAiError(null); setNotification(null); }} className="rounded-md px-1 text-lg leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Dismiss notification">×</button>
+            <button type="button" onClick={() => { setErrorToast(null); setAiError(null); setNotification(null); }} className="rounded-md px-1 text-lg leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Dismiss notification">×</button>
           </div>}
         </div>
       </div>
