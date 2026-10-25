@@ -39,6 +39,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
     sectionBQuestions.length > 0 &&
     sectionAQuestions.length >= 8 &&
     estimatedObjectiveLength < 1900;
+  const useTwoObjectiveColumns = sectionAQuestions.length >= 20 && estimatedObjectiveLength / Math.max(sectionAQuestions.length, 1) < 180;
 
   const handlePrint = () => {
     // Print only the exam paper in a clean document. Printing the whole app with
@@ -171,27 +172,17 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
               <div className="space-y-6">
                 {/* Official Header */}
                 <div className="text-center space-y-1 pb-4 border-b-2 border-slate-800">
-                  {school?.logo_url && (
-                    <div className="flex justify-center pb-2">
-                      <img src={school.logo_url} alt={`${school.name || 'School'} logo`} className="h-20 w-20 object-contain" />
+                  <div className="flex items-center justify-start gap-3 text-left">
+                    {school?.logo_url && (
+                      <img src={school.logo_url} alt={`${school.name || 'School'} logo`} className="h-16 w-16 shrink-0 object-contain" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h1 className="text-xl sm:text-2xl font-bold uppercase tracking-tight">{school?.name || 'SCHOOL NAME'}</h1>
+                      {school?.motto && <p className="text-xs italic text-slate-600">"{school.motto}"</p>}
+                      {(school?.address || school?.lga || school?.state) && <p className="text-xs text-slate-600">{school.address || [school.lga, school.state].filter(Boolean).join(', ')}</p>}
+                      {(school?.phone || school?.email) && <p className="text-[11px] text-slate-600">{[school.phone, school.email].filter(Boolean).join('  •  ')}</p>}
                     </div>
-                  )}
-                  <h1 className="text-xl sm:text-2xl font-bold uppercase tracking-tight">
-                    {school?.name || 'SCHOOL NAME'}
-                  </h1>
-                  {school?.motto && (
-                    <p className="text-xs italic text-slate-600">"{school.motto}"</p>
-                  )}
-                  {(school?.address || school?.lga || school?.state) && (
-                    <p className="text-xs text-slate-600">
-                      {school.address || [school.lga, school.state].filter(Boolean).join(', ')}
-                    </p>
-                  )}
-                  {(school?.phone || school?.email) && (
-                    <p className="text-[11px] text-slate-600">
-                      {[school.phone, school.email].filter(Boolean).join('  •  ')}
-                    </p>
-                  )}
+                  </div>
                   <h2 className="text-sm sm:text-base font-bold uppercase underline mt-3">
                     {exam.term.toUpperCase()} EXAMINATION — {exam.session} ACADEMIC SESSION
                   </h2>
@@ -225,7 +216,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                       </p>
                     </div>
 
-                    <div className="exam-objective-list space-y-2 text-xs">
+                    <div className={`exam-objective-list space-y-2 text-xs ${useTwoObjectiveColumns ? "exam-objective-two-columns" : ""}`}>
                       {sectionAQuestions.map((q, idx) => (
                         <div key={q.id} className="space-y-1">
                           <p className="font-medium">
@@ -264,9 +255,6 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                             <p className="whitespace-pre-line">
                               <strong className="font-bold">{idx + 1}.</strong> <FormattedExamText text={q.question_text} />
                             </p>
-                            <span className="font-bold italic text-slate-700 shrink-0">
-                              [{q.marks} Marks]
-                            </span>
                           </div>
                         </div>
                       ))}
