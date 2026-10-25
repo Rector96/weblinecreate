@@ -85,6 +85,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [aiNumTheory, setAiNumTheory] = useState(3);
   const [aiDifficulty, setAiDifficulty] = useState<'Standard' | 'Foundational / Basic' | 'Advanced / Rigorous'>('Standard');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [generationStage, setGenerationStage] = useState<'queued' | 'working' | 'finishing' | null>(null);
+  const [generationElapsedSeconds, setGenerationElapsedSeconds] = useState(0);
   const [schoolClasses, setSchoolClasses] = useState<Array<{ id?: string; name: string; level?: string }>>([]);
   const [schoolSubjects, setSchoolSubjects] = useState<string[]>([]);
   const [curriculumLoaded, setCurriculumLoaded] = useState(false);
@@ -140,6 +142,15 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     }
   }, [currentStep, questions.length]);
+
+  useEffect(() => {
+    if (!isGeneratingAI) {
+      setGenerationElapsedSeconds(0);
+      return;
+    }
+    const timer = window.setInterval(() => setGenerationElapsedSeconds((s) => s + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [isGeneratingAI]);
 
   useEffect(() => {
     if (guestSchool) {
@@ -257,6 +268,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     // checks the current subscription and quota when the exam is published.
 
     setIsGeneratingAI(true);
+    setGenerationStage('working');
+    setGenerationElapsedSeconds(0);
     setAiError(null);
 
     try {
@@ -287,6 +300,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       }
 
       if (json?.success && json?.queued && json?.request_id) {
+        setGenerationStage('queued');
         let finishedPolling = false;
         // Poll the durable queue every three seconds. The same waiting screen stays visible
         // throughout; transient delays never look like a blank page or a failed request.
@@ -300,6 +314,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           try { statusJson = JSON.parse(statusText); } catch { throw new Error('We temporarily could not read the exam progress. Please keep this page open and try again shortly.'); }
           if (!statusResponse.ok || !statusJson?.success) throw new Error(statusJson?.error || 'We could not check the exam progress. Please try again.');
           if (statusJson.status === 'failed') throw new Error(statusJson.error || 'Your exam draft could not be completed. Please try again.');
+          if (statusJson.status === 'processing') setGenerationStage('working');
+          else if (statusJson.status === 'queued') setGenerationStage('queued');
           if (statusJson.status === 'completed' && statusJson.data) {
             json = { success: true, data: statusJson.data };
             finishedPolling = true;
@@ -367,6 +383,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           throw new Error('The AI returned no usable questions. Please try again or use manual entry.');
         }
 
+        setGenerationStage('finishing');
         await new Promise((resolve) => window.setTimeout(resolve, 1400));
         setQuestions(parsedQuestions);
         setCurrentStep(4);
@@ -378,6 +395,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       setAiError(e?.message || 'Network error while contacting AI engine. Try again or switch to manual.');
     } finally {
       setIsGeneratingAI(false);
+      setGenerationStage(null);
     }
   };
 
