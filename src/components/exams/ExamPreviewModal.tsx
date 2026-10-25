@@ -64,10 +64,11 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl"
-              title="Print Examination Paper"
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5"
+              title="Print or save the formatted examination as PDF"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print / Save PDF</span>
             </button>
 
             <button
@@ -93,7 +94,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
 
         {/* Paper Container (Scrollable) */}
         <div className="exam-preview-scroll flex-1 overflow-y-auto p-4 sm:p-8">
-          <div className="exam-paper-print bg-white max-w-3xl mx-auto p-6 sm:p-10 rounded-2xl shadow-sm border border-slate-200 font-serif text-slate-900 leading-relaxed text-left">
+          <div data-watermark={school?.name || "SCHOOL NAME"} className="exam-paper-print bg-white max-w-3xl mx-auto p-6 sm:p-10 rounded-2xl shadow-sm border border-slate-200 font-serif text-slate-900 leading-relaxed text-left">
             {activeTab === 'paper' ? (
               <div className="space-y-6">
                 {/* Official Header */}
@@ -174,7 +175,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
 
                 {/* Section B: Theory */}
                 {sectionBQuestions.length > 0 && (
-                  <div className="exam-theory-section space-y-3 pt-3 border-t border-slate-300">
+                  <div className={`exam-theory-section space-y-3 pt-3 border-t border-slate-300 ${sectionAQuestions.length >= 8 ? "exam-theory-new-page" : ""}`}>
                     <div className="text-center">
                       <h3 className="text-sm font-bold uppercase underline">
                         SECTION B: ESSAY / THEORY
