@@ -38,12 +38,7 @@ create policy "Platform admins can read feedback"
   for select
   to authenticated
   using (
-    exists (
-      select 1
-      from public.user_roles role_row
-      where role_row.user_id = auth.uid()
-        and role_row.role = 'platform_admin'
-    )
+    public.is_platform_admin()
   );
 
 comment on table public.user_feedback is
