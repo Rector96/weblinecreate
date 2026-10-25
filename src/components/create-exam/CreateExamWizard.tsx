@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
@@ -795,13 +796,13 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     const finishing = generationStage === 'finishing';
     const elapsedLabel = `${Math.floor(generationElapsedSeconds / 60)}:${String(generationElapsedSeconds % 60).padStart(2, '0')}`;
 
-    return (
+    return createPortal(
       <div
-        className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col items-center justify-center overflow-hidden bg-[#06122a] px-6 text-center text-white"
+        className="fixed inset-0 z-[2147483647] flex h-[100dvh] min-h-[100vh] w-screen flex-col items-center justify-center overflow-hidden bg-[#06122a] px-6 text-center text-white"
         role="status"
         aria-live="polite"
         aria-label={finishing ? 'Exam ready' : 'Generating exam'}
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+        style={{ position: 'fixed', inset: 0, width: '100vw', height: '100dvh', minHeight: '100vh', margin: 0, borderRadius: 0, isolation: 'isolate' }}
       >
         <div className="pointer-events-none absolute -left-16 top-10 h-56 w-56 rounded-full bg-blue-500/30 blur-3xl" />
         <div className="pointer-events-none absolute -right-12 bottom-16 h-64 w-64 rounded-full bg-indigo-500/25 blur-3xl" />
@@ -855,7 +856,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             {finishing ? 'Opening review…' : 'Keep this page open'}
           </p>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
