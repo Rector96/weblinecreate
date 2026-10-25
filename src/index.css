@@ -163,6 +163,13 @@ button:active:not(:disabled) {
   }
 }
 
+.exam-objective-two-columns { column-count: 2; column-gap: 1.4rem; column-fill: balance; }
+.exam-objective-two-columns > div { break-inside: avoid; page-break-inside: avoid; margin-bottom: .45rem; }
+.exam-objective-two-columns > div > p { display: inline; }
+.exam-objective-two-columns > div > div { display: flex; flex-wrap: wrap; gap: .15rem .5rem; padding-left: .7rem; }
+@media (max-width: 640px) {
+  .exam-objective-two-columns { column-count: 1; }
+}
 /* A4 examination paper preview and print layout */
 @page { size: A4 portrait; margin: 10mm 12mm 12mm; }
 @media print {
