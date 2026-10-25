@@ -134,6 +134,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [activeManualSection, setActiveManualSection] = useState<'A' | 'B'>('A');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
 
   // Keep the review step visible after AI generation, especially on mobile
   // where the browser may retain the scroll position of the generator form.
@@ -221,8 +222,26 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
   const showNotification = (msg: string) => {
     setNotification(msg);
-    setTimeout(() => setNotification(null), 3500);
   };
+
+  // Route validation and AI errors through one consistent right-side toast.
+  useEffect(() => {
+    const nextError = stepError || aiError;
+    if (!nextError) return;
+    setErrorToast(nextError);
+    const timer = window.setTimeout(() => {
+      setErrorToast(null);
+      setStepError((current) => current === nextError ? null : current);
+      setAiError((current) => current === nextError ? null : current);
+    }, 4800);
+    return () => window.clearTimeout(timer);
+  }, [stepError, aiError]);
+
+  useEffect(() => {
+    if (!notification) return;
+    const timer = window.setTimeout(() => setNotification(null), 4200);
+    return () => window.clearTimeout(timer);
+  }, [notification]);
 
   // Step 1 Validation
   const handleStep1Next = async () => {
@@ -842,13 +861,16 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
   return (
     <div className="max-w-2xl mx-auto space-y-3 sm:space-y-4 text-left pb-28 sm:pb-10">
-      {/* Toast Notification */}
-      {notification && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>{notification}</span>
+      {/* Consistent right-side toast notifications for errors and success messages */}
+      <div className="pointer-events-none fixed top-[max(1rem,env(safe-area-inset-top))] right-3 sm:right-6 z-[100] w-[calc(100%-1.5rem)] max-w-sm" aria-live="polite" aria-atomic="true">
+        <div className={`rockcraft-toast ${errorToast ? 'rockcraft-toast-visible rockcraft-toast-error' : notification ? 'rockcraft-toast-visible rockcraft-toast-success' : 'rockcraft-toast-hidden'}`}>
+          {(errorToast || notification) && <div role={errorToast ? 'alert' : 'status'} className="pointer-events-auto flex items-start gap-3 rounded-2xl border bg-white/95 p-4 shadow-xl backdrop-blur-md">
+            {errorToast ? <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" /> : <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />}
+            <span className="min-w-0 flex-1 break-words text-sm leading-relaxed text-slate-800">{errorToast || notification}</span>
+            <button type="button" onClick={() => { setErrorToast(null); setStepError(null); setAiError(null); setNotification(null); }} className="rounded-lg px-1 text-xl leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Dismiss notification">×</button>
+          </div>}
         </div>
-      )}
+      </div>
 
       {/* Wizard Progress Stepper */}
       <div className="sticky top-0 z-20 -mx-1 sm:mx-0 rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-xs backdrop-blur-md sm:p-3.5">
@@ -916,12 +938,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             </p>
           </div>
 
-          {stepError && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{stepError}</span>
-            </div>
-          )}
+
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -1176,12 +1193,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             </button>
           </div>
 
-          {aiError && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{aiError}</span>
-            </div>
-          )}
+
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-600">
@@ -1298,7 +1310,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {/* ============================================================== */}
       {currentStep === 3 && method === 'manual' && (
         <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs space-y-5 animate-in fade-in">
-          {stepError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{stepError}</div>}
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold text-slate-900 tracking-tight">Step 3: Manual Authoring</h3>
