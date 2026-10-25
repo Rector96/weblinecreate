@@ -418,7 +418,7 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
   // Keep a substantial objective section together, then begin theory on page two.
   // This gives typical school papers a deliberate two-page rhythm instead of an awkward split.
   if (sectionBQuestions.length > 0 && sectionAQuestions.length >= 8) {
-    docChildren.push(new Paragraph({ children: [new TextRun({ text: '', break: 1 })], pageBreakBefore: true }));
+    docChildren.push(new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: '' })] }));
   }
 
   // ==========================================
