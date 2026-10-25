@@ -32,7 +32,7 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff,woff2}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff,woff2}'],\n          skipWaiting: true,\n          clientsClaim: true,\n          cleanupOutdatedCaches: true,
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
