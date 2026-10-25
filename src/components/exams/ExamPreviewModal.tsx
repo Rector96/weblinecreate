@@ -93,7 +93,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
   </style>
 </head>
 <body>
-  ${paperHtml}
+  <div class="exam-preview-overlay"><div class="exam-preview-dialog">${paperHtml}</div></div>
   <script>
     window.addEventListener('load', function () {
       setTimeout(function () { window.focus(); window.print(); }, 500);
