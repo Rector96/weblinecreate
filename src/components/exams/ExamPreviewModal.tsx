@@ -41,7 +41,67 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
     estimatedObjectiveLength < 1900;
 
   const handlePrint = () => {
-    window.print();
+    // Print only the exam paper in a clean document. Printing the whole app with
+    // visibility:hidden leaves hidden app content in the layout and creates blank pages.
+    const paper = document.querySelector<HTMLElement>('.exam-paper-print');
+    if (!paper) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.alert('Please allow pop-ups for this site, then choose Print / Save PDF again.');
+      return;
+    }
+
+    const stylesheetLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
+      .map((link) => link.href)
+      .filter(Boolean)
+      .map((href) => `<link rel="stylesheet" href="${href}">`)
+      .join('');
+    const inlineStyles = Array.from(document.querySelectorAll<HTMLStyleElement>('style'))
+      .map((style) => style.outerHTML)
+      .join('');
+    const paperHtml = paper.outerHTML;
+
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${school?.name || 'School'} - ${exam.subject} Examination</title>
+  ${stylesheetLinks}
+  ${inlineStyles}
+  <style>
+    @page { size: A4 portrait; margin: 10mm 12mm 12mm; }
+    html, body { margin:0!important; padding:0!important; width:100%!important; min-height:0!important; height:auto!important; background:#fff!important; }
+    body { color:#111827!important; font-family:"Times New Roman",Georgia,serif!important; }
+    .exam-paper-print { position:relative!important; display:block!important; width:100%!important; max-width:none!important; height:auto!important; min-height:0!important; margin:0!important; padding:0!important; overflow:visible!important; border:0!important; border-radius:0!important; box-shadow:none!important; background:#fff!important; color:#111827!important; font-size:9.5pt!important; line-height:1.25!important; }
+    .exam-paper-print::before { content:attr(data-watermark); position:absolute!important; z-index:0!important; top:260px!important; left:0!important; width:100%!important; transform:rotate(-32deg)!important; transform-origin:center!important; text-align:center!important; font-family:Arial,sans-serif!important; font-size:38pt!important; font-weight:800!important; letter-spacing:.04em!important; line-height:1.1!important; color:rgba(30,58,95,.065)!important; pointer-events:none!important; }
+    .exam-paper-print > * { position:relative; z-index:1; }
+    .exam-paper-print .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top:.65rem!important; }
+    .exam-paper-print .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top:.45rem!important; }
+    .exam-paper-print .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top:.3rem!important; }
+    .exam-paper-print h1 { font-size:17pt!important; line-height:1.15!important; }
+    .exam-paper-print h2 { font-size:11pt!important; line-height:1.2!important; }
+    .exam-paper-print h3 { font-size:10pt!important; line-height:1.2!important; }
+    .exam-paper-print img { max-height:68px!important; width:auto!important; }
+    .exam-theory-new-page { break-before:auto!important; page-break-before:auto!important; }
+    .exam-objective-list > div, .exam-theory-section > div > div, .exam-paper-print table, .exam-paper-print img { break-inside:avoid!important; page-break-inside:avoid!important; }
+    .exam-objective-list, .exam-theory-section { break-inside:auto!important; page-break-inside:auto!important; }
+    h1,h2,h3 { break-after:avoid!important; page-break-after:avoid!important; }
+    * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
+  </style>
+</head>
+<body>
+  <div class="exam-preview-overlay"><div class="exam-preview-dialog">${paperHtml}</div></div>
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () { window.focus(); window.print(); }, 500);
+    });
+  </script>
+</body>
+</html>`);
+    printWindow.document.close();
   };
 
   return (
