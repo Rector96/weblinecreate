@@ -44,6 +44,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (!message) return;
+    const timeout = window.setTimeout(() => setMessage(null), 4200);
+    return () => window.clearTimeout(timeout);
+  }, [message]);
+
+  useEffect(() => {
     if (school) {
       setName(school.name);
       setAdminName(school.admin_name);
@@ -76,7 +82,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setMessage('Please choose a logo smaller than 5 MB.');
+      setMessage('Please choose a logo up to 5 MB.');
       return;
     }
     const reader = new FileReader();
@@ -88,7 +94,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
       const image = new Image();
       image.onload = () => {
         const canvas = document.createElement('canvas');
-        const scale = Math.min(1, 600 / Math.max(image.width, image.height));
+        const scale = Math.min(1, 900 / Math.max(image.width, image.height));
         canvas.width = Math.max(1, Math.round(image.width * scale));
         canvas.height = Math.max(1, Math.round(image.height * scale));
         const context = canvas.getContext('2d');
@@ -101,13 +107,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
         // Compact data URLs avoid oversized school rows and remain available to exam exports.
         let quality = 0.86;
         let compressed = canvas.toDataURL('image/webp', quality);
-        while (compressed.length > 220000 && quality > 0.42) {
+        while (compressed.length > 220000 && quality > 0.22) {
           quality -= 0.1;
           compressed = canvas.toDataURL('image/webp', quality);
-        }
-        if (compressed.length > 250000) {
-          setMessage('This logo is still too large after compression. Please use a simpler or smaller image.');
-          return;
         }
         if (!school || !isSupabaseConfigured()) {
           setMessage('Could not save this logo because the school account is not ready. Please sign in again and retry.');
@@ -183,12 +185,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
         </p>
       </div>
 
-      {message && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-          <span>{message}</span>
+      <div aria-live="polite" aria-atomic="true" className="fixed top-4 right-3 sm:right-6 z-[80] w-[calc(100%-1.5rem)] max-w-sm pointer-events-none">
+        <div className={`transition-all duration-300 ease-out transform ${message ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'}`}>
+          {message && <div role="status" className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-sm ${/could not|couldn't|please|error|unavailable|not saved|failed|try again|not configured/i.test(message) ? 'border-rose-200 bg-white text-rose-800' : 'border-emerald-200 bg-white text-slate-800'}`}>
+            {/could not|couldn't|please|error|unavailable|not saved|failed|try again|not configured/i.test(message) ? <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" /> : <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />}
+            <span className="min-w-0 flex-1 text-sm leading-relaxed">{message}</span>
+            <button type="button" onClick={() => setMessage(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Dismiss notification"><span aria-hidden="true">×</span></button>
+          </div>}
         </div>
-      )}
+      </div>
 
       {/* Subscription Status Card */}
       {school && (
