@@ -19,9 +19,7 @@ import { Exam, School } from '../types';
 
 const FONT_NAME = 'Times New Roman';
 
-/**
- * Convert AI / KaTeX-style markup into plain printable text for Word.
- */
+/** Convert AI / KaTeX-style markup into plain printable text for Word. */
 export function cleanMathForPrint(input: string | null | undefined): string {
   if (!input) return '';
   let s = String(input);
@@ -86,7 +84,8 @@ async function getSchoolLogoRun(school?: School | null): Promise<ImageRun | null
   }
 }
 
-export async function exportExamToDocx(exam: Exam, school?: School | null): Promise<void> {
+/** Build the official dense A4 exam paper as a Blob (used by single download and ZIP). */
+export async function buildExamDocxBlob(exam: Exam, school?: School | null): Promise<Blob> {
   const schoolName = (school?.name || 'SCHOOL NAME').toUpperCase();
   const motto = school?.motto ? `"${school.motto}"` : '';
   const address = school?.address || [school?.lga, school?.state].filter(Boolean).join(', ');
@@ -345,7 +344,12 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
     }],
   });
 
-  const blob = await Packer.toBlob(doc);
+  return await Packer.toBlob(doc);
+}
+
+export async function exportExamToDocx(exam: Exam, school?: School | null): Promise<void> {
+  const schoolName = (school?.name || 'SCHOOL NAME').toUpperCase();
+  const blob = await buildExamDocxBlob(exam, school);
   const cleanSubject = (exam.subject || 'Exam').replace(/[^a-zA-Z0-9]/g, '_');
   const cleanClass = (exam.class_name || 'Class').replace(/[^a-zA-Z0-9]/g, '_');
   const termSlug = (exam.term || 'Term').replace(/\s+/g, '');
