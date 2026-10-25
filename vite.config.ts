@@ -25,10 +25,7 @@ export default defineConfig(() => {
           start_url: '/',
           scope: '/',
           icons: [
-            { src: '/rockcraft-rc.svg?v=2', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-            { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: '/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: '/rockcraft-rc.svg?v=3', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
           ],
         },
         workbox: {
