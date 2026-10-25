@@ -11,7 +11,14 @@ export const WhatsAppButton: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const closeTimer = useRef<number | null>(null);
-  useEffect(() => () => { if (closeTimer.current) window.clearTimeout(closeTimer.current); }, []);
+  const toastTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (closeTimer.current) window.clearTimeout(closeTimer.current); if (toastTimer.current) window.clearTimeout(toastTimer.current); }, []);
+  useEffect(() => {
+    if (!status || status.ok) return;
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setStatus(null), 5200);
+    return () => { if (toastTimer.current) window.clearTimeout(toastTimer.current); };
+  }, [status]);
   const phoneNumber = '2349032299387';
   const whatsappMessage = encodeURIComponent('Hello ROCKCRAFT Support Team, I need help with my account or exam papers.');
   const avatar = user?.avatar_url || school?.logo_url || '';
@@ -42,7 +49,10 @@ export const WhatsAppButton: React.FC = () => {
         browser_info: navigator.userAgent.slice(0, 500),
         account_image_url: avatar || null,
       });
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase feedback insert rejected', { code: error.code, message: error.message, details: error.details, hint: error.hint });
+        throw error;
+      }
       setMessage('');
       setStatus({ ok: true, text: 'Thank you for reaching out! Your feedback has been sent to the ROCKCRAFT team.' });
       if (closeTimer.current) window.clearTimeout(closeTimer.current);
@@ -51,8 +61,10 @@ export const WhatsAppButton: React.FC = () => {
         setStatus(null);
       }, 2600);
     } catch (error) {
+      const dbError = error as { message?: string; code?: string; details?: string; hint?: string };
       console.error('Feedback submission failed', error);
-      setStatus({ ok: false, text: 'We could not send your feedback. Please try again or contact us on WhatsApp.' });
+      const detail = [dbError?.message, dbError?.code ? `Code: ${dbError.code}` : ''].filter(Boolean).join(' · ');
+      setStatus({ ok: false, text: detail ? `Feedback was not saved: ${detail}. If this is a database setup error, ask the platform administrator to run the ROCKCRAFT feedback SQL in Supabase.` : 'Feedback could not be saved. Please retry or contact us on WhatsApp.' });
     } finally {
       setBusy(false);
     }
@@ -60,6 +72,7 @@ export const WhatsAppButton: React.FC = () => {
 
   return (
     <>
+      {status && !status.ok && <div className="fixed top-4 right-3 sm:right-6 z-[90] w-[calc(100%-1.5rem)] max-w-sm pointer-events-none" aria-live="polite" aria-atomic="true"><div role="alert" className="pointer-events-auto flex items-start gap-3 rounded-2xl border border-rose-200 bg-white p-4 text-rose-900 shadow-xl animate-page-enter"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" /><p className="min-w-0 flex-1 text-sm leading-relaxed break-words">{status.text}</p><button type="button" onClick={() => setStatus(null)} className="rounded-lg px-2 text-xl leading-none text-slate-400 hover:bg-slate-100" aria-label="Dismiss notification">×</button></div></div>}
       <div className="fixed bottom-20 md:bottom-6 right-3 sm:right-6 z-40 flex flex-col items-end gap-2">
         <a href={`https://wa.me/${phoneNumber}?text=${whatsappMessage}`} target="_blank" rel="noopener noreferrer"
           className="flex items-center gap-2 rounded-full bg-[#25D366] hover:bg-[#1fb956] text-white px-3.5 py-3 shadow-lg shadow-emerald-950/20 transition active:scale-95 text-xs font-bold"
@@ -110,9 +123,7 @@ export const WhatsAppButton: React.FC = () => {
                   placeholder="Tell us what happened, what you expected, or what we can improve..." className="w-full resize-y rounded-xl border border-slate-200 px-3 py-3 text-sm leading-relaxed focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
                 <p className="text-right text-[10px] text-slate-400 mt-1">{message.length}/4000</p>
               </div>
-              {status && <div role={status.ok ? 'status' : 'alert'} className={`rounded-xl p-3 flex items-start gap-2 text-xs ${status.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
-                {status.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}{status.text}
-              </div>}
+              {status?.ok && <div role="status" className="rounded-xl p-3 flex items-start gap-2 text-xs bg-emerald-50 text-emerald-800"><CheckCircle2 className="w-4 h-4 shrink-0" />{status.text}</div>}
               <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-60 text-white px-4 py-3.5 text-sm font-bold transition">
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}{busy ? 'Sending feedback…' : 'Send feedback'}
               </button>
