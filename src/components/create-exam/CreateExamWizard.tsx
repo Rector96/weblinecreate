@@ -755,7 +755,71 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const sectionBQuestions = questions.filter((q) => q.section === 'B');
 
   if (isGeneratingAI) {
-    return <PageLoader />;
+    const finishing = generationStage === 'finishing';
+    const elapsedLabel = `${Math.floor(generationElapsedSeconds / 60)}:${String(generationElapsedSeconds % 60).padStart(2, '0')}`;
+
+    return (
+      <div
+        className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col items-center justify-center overflow-hidden bg-[#06122a] px-6 text-center text-white"
+        role="status"
+        aria-live="polite"
+        aria-label={finishing ? 'Exam ready' : 'Generating exam'}
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+      >
+        <div className="pointer-events-none absolute -left-16 top-10 h-56 w-56 rounded-full bg-blue-500/30 blur-3xl" />
+        <div className="pointer-events-none absolute -right-12 bottom-16 h-64 w-64 rounded-full bg-indigo-500/25 blur-3xl" />
+
+        <div className="relative z-10 flex w-full max-w-xs flex-col items-center sm:max-w-sm">
+          <div className="mb-6 flex h-36 w-36 items-center justify-center sm:h-40 sm:w-40">
+            {finishing ? (
+              <div className="flex h-28 w-28 items-center justify-center rounded-full bg-emerald-500/20 ring-4 ring-emerald-400/40 animate-in zoom-in duration-500">
+                <CheckCircle2 className="h-14 w-14 text-emerald-300" strokeWidth={2.25} />
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="flex h-36 w-36 flex-col items-center justify-center rounded-[1.75rem] border border-white/15 bg-gradient-to-b from-white/15 to-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm sm:h-40 sm:w-40">
+                  <div className="mb-1 text-5xl leading-none sm:text-6xl" aria-hidden="true">🎓</div>
+                  <div className="mt-1 flex items-center gap-1.5 rounded-full bg-blue-500/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-100">
+                    <Sparkles className="h-3 w-3 animate-pulse" />
+                    AI
+                  </div>
+                </div>
+                <div className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 shadow-lg shadow-blue-600/40 ring-4 ring-[#06122a]">
+                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+            {finishing ? 'Exam ready' : 'Generating your exam'}
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-300">
+            {subject} · {className}
+          </p>
+
+          {!finishing && (
+            <div className="mt-5 flex items-center gap-2 text-xs font-medium text-slate-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
+              <span>{generationStage === 'queued' ? 'In queue' : 'Writing questions'}</span>
+              <span className="font-mono tabular-nums text-slate-500">{elapsedLabel}</span>
+            </div>
+          )}
+
+          <div className="mt-7 h-1 w-36 overflow-hidden rounded-full bg-white/10 sm:w-44">
+            <div
+              className={`h-full rounded-full bg-gradient-to-r from-sky-300 to-blue-400 transition-all duration-700 ${
+                finishing ? 'w-full' : 'w-2/5 animate-[rockcraft-loading-sweep_1.8s_ease-in-out_infinite]'
+              }`}
+            />
+          </div>
+
+          <p className="mt-5 text-[11px] text-slate-500">
+            {finishing ? 'Opening review…' : 'Keep this page open'}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
