@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MessageCircle, MessageSquareText, X, Send, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
@@ -10,6 +10,8 @@ export const WhatsAppButton: React.FC = () => {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const closeTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (closeTimer.current) window.clearTimeout(closeTimer.current); }, []);
   const phoneNumber = '2349032299387';
   const whatsappMessage = encodeURIComponent('Hello ROCKCRAFT Support Team, I need help with my account or exam papers.');
   const avatar = user?.avatar_url || school?.logo_url || '';
@@ -25,27 +27,35 @@ export const WhatsAppButton: React.FC = () => {
       setStatus({ ok: false, text: 'Feedback is temporarily unavailable. Please contact us on WhatsApp.' });
       return;
     }
-    setBusy(true); setStatus(null);
-    const { error } = await supabase.from('user_feedback').insert({
-      subject: subject.trim(),
-      message: message.trim(),
-      user_id: user?.user_id || null,
-      user_name: user?.full_name || school?.admin_name || null,
-      user_email: user?.email || school?.email || null,
-      school_id: school?.id || null,
-      school_name: school?.name || null,
-      page_path: window.location.pathname,
-      browser_info: navigator.userAgent.slice(0, 500),
-      account_image_url: avatar || null,
-    });
-    setBusy(false);
-    if (error) {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const { error } = await supabase.from('user_feedback').insert({
+        subject: subject.trim(),
+        message: message.trim(),
+        user_id: user?.user_id || null,
+        user_name: user?.full_name || school?.admin_name || null,
+        user_email: user?.email || school?.email || null,
+        school_id: school?.id || null,
+        school_name: school?.name || null,
+        page_path: window.location.pathname,
+        browser_info: navigator.userAgent.slice(0, 500),
+        account_image_url: avatar || null,
+      });
+      if (error) throw error;
+      setMessage('');
+      setStatus({ ok: true, text: 'Thank you for reaching out! Your feedback has been sent to the ROCKCRAFT team.' });
+      if (closeTimer.current) window.clearTimeout(closeTimer.current);
+      closeTimer.current = window.setTimeout(() => {
+        setOpen(false);
+        setStatus(null);
+      }, 2600);
+    } catch (error) {
       console.error('Feedback submission failed', error);
-      setStatus({ ok: false, text: 'We could not send this feedback. Please try again or contact us on WhatsApp.' });
-      return;
+      setStatus({ ok: false, text: 'We could not send your feedback. Please try again or contact us on WhatsApp.' });
+    } finally {
+      setBusy(false);
     }
-    setMessage('');
-    setStatus({ ok: true, text: 'Thank you! Your feedback has been sent to the ROCKCRAFT team.' });
   };
 
   return (
@@ -69,7 +79,7 @@ export const WhatsAppButton: React.FC = () => {
         <div className="fixed inset-0 z-50 pointer-events-none">
           <button type="button" className="pointer-events-auto absolute inset-0 bg-slate-950/25" aria-label="Close feedback form" onClick={() => setOpen(false)} />
           <section role="dialog" aria-modal="true" aria-labelledby="feedback-title"
-            className="pointer-events-auto absolute right-3 bottom-36 sm:right-6 sm:bottom-28 w-[calc(100%-1.5rem)] max-w-md max-h-[min(76dvh,680px)] overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl animate-page-enter">
+            className={`pointer-events-auto absolute right-3 bottom-36 sm:right-6 sm:bottom-28 w-[calc(100%-1.5rem)] max-w-md max-h-[min(76dvh,680px)] overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl transition-all duration-300 ease-out ${status?.ok ? 'animate-page-enter' : 'animate-page-enter'}`}>
             <div className="rounded-t-3xl bg-gradient-to-r from-blue-950 to-blue-700 p-5 text-white">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -82,7 +92,14 @@ export const WhatsAppButton: React.FC = () => {
               </div>
               {(user || school) && <p className="text-[11px] text-blue-100 mt-3 truncate">Sending as {user?.full_name || school?.name || user?.email}</p>}
             </div>
-            <form onSubmit={submitFeedback} className="p-5 space-y-4">
+            {status?.ok ? (
+              <div className="p-7 sm:p-9 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-8 ring-emerald-50/60"><CheckCircle2 className="h-8 w-8" /></div>
+                <h3 className="mt-5 text-xl font-black text-slate-900">Thank you for reaching out!</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">Your feedback has been sent to our team. We appreciate you helping us make ROCKCRAFT better.</p>
+                <p className="mt-4 text-xs text-slate-400">This window will close automatically…</p>
+              </div>
+            ) : <form onSubmit={submitFeedback} className="p-5 space-y-4">
               <div><label htmlFor="feedback-subject" className="block text-xs font-bold text-slate-700 mb-1.5">What is this about?</label>
                 <select id="feedback-subject" value={subject} onChange={e => setSubject(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
                   <option>Suggestion</option><option>Bug / something is not working</option><option>Exam paper or PDF issue</option><option>Account / school profile</option><option>Billing / subscription</option><option>Other feedback</option>
@@ -100,7 +117,7 @@ export const WhatsAppButton: React.FC = () => {
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}{busy ? 'Sending feedback…' : 'Send feedback'}
               </button>
               <p className="text-[10px] leading-relaxed text-slate-400">We attach the current page, browser details and available account/school information so our team can investigate. We do not collect your precise location.</p>
-            </form>
+            </form>}
           </section>
         </div>
       )}
