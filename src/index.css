@@ -172,6 +172,12 @@ button:active:not(:disabled) {
   .exam-preview-overlay { position:static!important; display:block!important; inset:auto!important; padding:0!important; margin:0!important; background:#fff!important; overflow:visible!important; }
   .exam-preview-toolbar, .exam-preview-scroll { display:contents!important; }
   .exam-paper-print { position:static!important; display:block!important; width:100%!important; max-width:none!important; margin:0!important; padding:0!important; border:0!important; border-radius:0!important; box-shadow:none!important; overflow:visible!important; font-size:10pt!important; line-height:1.35!important; }
+  .exam-paper-print { position:relative!important; }
+  .exam-paper-print::before { content:attr(data-watermark); position:absolute; z-index:0; top:48%; left:50%; transform:translate(-50%,-50%) rotate(-32deg); width:100%; text-align:center; font-family:Arial,sans-serif; font-size:clamp(28pt,7vw,64pt); font-weight:800; letter-spacing:.06em; color:rgba(30,58,95,.055)!important; white-space:normal; pointer-events:none; }
+  .exam-paper-print > * { position:relative; z-index:1; }
+  .exam-theory-new-page { break-before:page!important; page-break-before:always!important; }
+  .exam-question { break-inside:avoid; page-break-inside:avoid; }
+  .exam-objective-list > div { break-inside:avoid; page-break-inside:avoid; }
   .exam-question { break-inside:avoid; page-break-inside:avoid; }
   .exam-objective-list, .exam-theory-section { break-inside:auto; page-break-inside:auto; }
   h1,h2,h3 { break-after:avoid; page-break-after:avoid; }
