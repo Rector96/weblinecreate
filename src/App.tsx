@@ -226,7 +226,6 @@ function AppContent() {
         <AuthPage
           onSuccess={() => navigate('dashboard')}
         />
-        <WhatsAppButton />
       </div>
     );
   }
@@ -316,8 +315,8 @@ function AppContent() {
         {/* Mobile Floating Bottom Dock */}
         {!isTeacher && <BottomNav currentRoute={visibleRoute} navigate={navigate} />}
 
-        {/* WhatsApp Customer Support Float */}
-        <WhatsAppButton />
+        {/* Support shortcuts appear only on the dashboard home and school profile pages. */}
+        {!isTeacher && (visibleRoute === 'dashboard' || visibleRoute === 'profile') && <WhatsAppButton />}
       </div>
 
       {/* Global Modals */}
