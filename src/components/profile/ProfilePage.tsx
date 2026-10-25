@@ -109,8 +109,28 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           setMessage('This logo is still too large after compression. Please use a simpler or smaller image.');
           return;
         }
-        setLogoUrl(compressed);
-        setMessage('Logo prepared. Select Save School Profile Changes to store it permanently.');
+        if (!school || !isSupabaseConfigured()) {
+          setMessage('Could not save this logo because the school account is not ready. Please sign in again and retry.');
+          return;
+        }
+        setMessage('Saving your school logo…');
+        void (async () => {
+          try {
+            const { data, error } = await supabase
+              .from('schools')
+              .update({ logo_url: compressed })
+              .eq('id', school.id)
+              .select('id')
+              .single();
+            if (error || !data) throw error || new Error('The school logo was not saved.');
+            setLogoUrl(compressed);
+            await refreshSchool();
+            setMessage('School logo saved permanently. It will remain after refresh and is available to exam previews and exports.');
+          } catch (error) {
+            console.error('School logo save failed', error);
+            setMessage('The logo could not be saved. Check your connection and permissions, then try again.');
+          }
+        })();
       };
       image.onerror = () => setMessage('Could not decode that logo. Please try another image.');
       image.src = reader.result;
@@ -257,7 +277,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           <div>
             <h4 className="text-xs font-bold text-slate-900">Official School Crest / Logo</h4>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Your school logo appears on exam previews, printed / saved PDF papers and DOCX exports. Use PNG, JPG or WebP (maximum 1 MB).
+              Your school logo appears on exam previews, printed / saved PDF papers and DOCX exports. Use PNG, JPG or WebP (maximum 5 MB).
             </p>
             <label className="inline-block mt-2 text-[11px] font-semibold text-blue-600 hover:text-blue-800 cursor-pointer">
               <span>Change Logo</span>
