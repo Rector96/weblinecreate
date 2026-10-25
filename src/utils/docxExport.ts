@@ -160,6 +160,16 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
 
   const sectionAQuestions = (exam.questions || []).filter((q) => q.section === 'A');
   const sectionBQuestions = (exam.questions || []).filter((q) => q.section === 'B');
+  const estimatedObjectiveLength = sectionAQuestions.reduce((total, q) => {
+    const options = q.objective_data
+      ? [q.objective_data.option_a, q.objective_data.option_b, q.objective_data.option_c, q.objective_data.option_d].join(' ')
+      : '';
+    return total + (q.question_text || '').length + options.length + 35;
+  }, 0);
+  const shouldStartTheoryOnNewPage =
+    sectionBQuestions.length > 0 &&
+    sectionAQuestions.length >= 8 &&
+    estimatedObjectiveLength < 1900;
 
   const docChildren: any[] = [];
   const schoolLogoRun = await getSchoolLogoRun(school);
@@ -415,6 +425,12 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
     });
   }
 
+  // Keep a substantial objective section together, then begin theory on page two.
+  // This gives typical school papers a deliberate two-page rhythm instead of an awkward split.
+  if (shouldStartTheoryOnNewPage) {
+    docChildren.push(new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: '' })] }));
+  }
+
   // ==========================================
   // 3. SECTION B: THEORY / ESSAY
   // ==========================================
@@ -511,10 +527,10 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
               height: 16838, // A4 height in twips
             },
             margin: {
-              top: 540, // 0.375 in (tight A4 single-sheet optimization)
-              right: 540,
-              bottom: 540,
-              left: 540,
+              top: 760,
+              right: 760,
+              bottom: 760,
+              left: 760,
             },
           },
         },
@@ -533,6 +549,16 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
                 ],
               }),
             ],
+          }),
+        },
+        headers: {
+          default: new Header({
+            children: [new Paragraph({
+              alignment: AlignmentType.CENTER,
+              border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'D8E2F0', space: 4 } },
+              spacing: { after: 70 },
+              children: [new TextRun({ text: schoolName, font: FONT_NAME, size: 14, bold: true, color: 'D6DDE8' })],
+            })],
           }),
         },
         footers: {
@@ -562,7 +588,7 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
                     size: 18,
                   }),
                   new TextRun({
-                    text: '  •  ROCKCRAF Academic Engine',
+                    text: `  •  ${schoolName}  •  ROCKCRAFT Academic Engine`,
                     font: FONT_NAME,
                     size: 18,
                     color: '888888',
@@ -781,7 +807,7 @@ export async function exportMarkingSchemeToDocx(exam: Exam, school?: School | nu
         properties: {
           page: {
             size: { width: 11906, height: 16838 },
-            margin: { top: 720, right: 720, bottom: 720, left: 720 },
+            margin: { top: 900, right: 760, bottom: 900, left: 760 },
           },
         },
         footers: {
