@@ -13,15 +13,13 @@ export const Header: React.FC<HeaderProps> = ({ navigate, onOpenPaystack }) => {
 
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-slate-200/70 px-3 sm:px-6 py-3 flex items-center justify-between gap-3">
-      {/* Zone 1: Single Brand Wordmark ROCKCRAF */}
+      {/* Zone 1: Single Brand Wordmark ROCKCRAFT */}
       <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={() => navigate('dashboard')}
           className="flex items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-lg group"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-blue-500 flex items-center justify-center text-white shadow-sm shadow-blue-600/20 group-hover:scale-105 transition-transform duration-150">
-            <span className="font-extrabold text-sm tracking-tighter">RC</span>
-          </div>
+          <img src="/rockcraft-rc.svg" alt="ROCKCRAFT" className="w-10 h-10 object-contain shrink-0 group-hover:scale-105 transition-transform duration-150" />
           <div className="flex flex-col">
             <span className="text-base font-extrabold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
               ROCKCRAF
