@@ -103,37 +103,20 @@ export async function buildExamDocxBlob(exam: Exam, school?: School | null): Pro
 
   const docChildren: any[] = [];
   const logo = await getSchoolLogoRun(school);
-  if (logo) {
-    docChildren.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [logo] }));
-  }
-
-  docChildren.push(new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { after: 40 },
-    children: [new TextRun({ text: schoolName, font: FONT_NAME, size: 28, bold: true })],
+  const schoolHeaderParagraphs = [
+    new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: schoolName, font: FONT_NAME, size: 26, bold: true })] }),
+    ...(motto ? [new Paragraph({ spacing: { after: 10 }, children: [new TextRun({ text: motto, font: FONT_NAME, size: 16, italics: true })] })] : []),
+    ...(address ? [new Paragraph({ spacing: { after: 10 }, children: [new TextRun({ text: address, font: FONT_NAME, size: 16 })] })] : []),
+    ...(schoolContacts ? [new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: schoolContacts, font: FONT_NAME, size: 15 })] })] : []),
+  ];
+  docChildren.push(new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: none,
+    rows: [new TableRow({ children: [
+      new TableCell({ width: { size: 16, type: WidthType.PERCENTAGE }, borders: none, verticalAlign: 'center', children: [new Paragraph({ alignment: AlignmentType.CENTER, children: logo ? [logo] : [] })] }),
+      new TableCell({ width: { size: 84, type: WidthType.PERCENTAGE }, borders: none, verticalAlign: 'center', children: schoolHeaderParagraphs }),
+    ]})],
   }));
-
-  if (motto) {
-    docChildren.push(new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 20 },
-      children: [new TextRun({ text: motto, font: FONT_NAME, size: 18, italics: true })],
-    }));
-  }
-  if (address) {
-    docChildren.push(new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 20 },
-      children: [new TextRun({ text: address, font: FONT_NAME, size: 18 })],
-    }));
-  }
-  if (schoolContacts) {
-    docChildren.push(new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 60 },
-      children: [new TextRun({ text: schoolContacts, font: FONT_NAME, size: 16 })],
-    }));
-  }
 
   docChildren.push(new Paragraph({
     alignment: AlignmentType.CENTER,
