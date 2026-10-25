@@ -25,7 +25,7 @@ export default defineConfig(() => {
           start_url: '/',
           scope: '/',
           icons: [
-            { src: '/rockcraft-logo.png?v=4', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+            { src: '/rockcraft-logo.png?v=4', sizes: '256x256', type: 'image/png', purpose: 'any' },
           ],
         },
         workbox: {
