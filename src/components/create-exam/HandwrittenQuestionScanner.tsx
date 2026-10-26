@@ -66,7 +66,6 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
       streamRef.current = stream;
       setCameraOpen(true);
-      setCameraOpen(true);
     } catch (e) {
       setCameraError(e instanceof Error && /permission|denied|notallowed/i.test(e.message)
         ? 'Camera permission was denied. Allow camera access in your browser settings, or upload a photo instead.'
@@ -193,8 +192,13 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       const response = await fetch('/api/scan-handwritten-questions', {
         method: 'POST', headers, body: JSON.stringify({ school_id: schoolId, pages }),
       });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.error || 'Could not read these pages. Try clearer photos.');
+      let result: any;
+      try { result = await response.json(); }
+      catch { throw new Error('The scanner API did not return JSON. The deployed Netlify function may be outdated or unavailable. Check the Netlify deploy status and function logs, then retry.'); }
+      if (!response.ok || !result.success) {
+        const details = Array.isArray(result.diagnostics) ? '\\n' + result.diagnostics.join('\\n') : '';
+        throw new Error((result.error || result.message || ('Scanner request failed with HTTP ' + response.status + '.')) + details);
+      }
       setQuestions(Array.isArray(result.data) ? result.data : []);
       setScanModel(typeof result.model === 'string' ? result.model : 'Gemini');
       if (!result.data?.length) throw new Error('No complete questions were detected. Try brighter, sharper photos with the whole page visible.');
