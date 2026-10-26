@@ -21,18 +21,19 @@ import { ExamsListPage } from './components/exams/ExamsListPage';
 import { ClassesPage } from './components/classes/ClassesPage';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { PlatformAdminPage } from './components/admin/PlatformAdminPage';
+import { CustomerCarePage } from './components/admin/CustomerCarePage';
 import { ExamPreviewModal } from './components/exams/ExamPreviewModal';
 import { PageLoader } from './components/common/PageLoader';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { Exam, School } from './types';
 
 function AppContent() {
-  const { isAuthenticated, school, role, isLoading } = useAuth();
+  const { isAuthenticated, school, role, isLoading, isCustomerCare } = useAuth();
   const isTeacher = role === 'teacher';
   const teacherAllowedRoutes = ['create-exam', 'exam-success', 'teacher-finished'];
   const [currentRoute, setCurrentRoute] = useState<string>('dashboard');
   const [routeParam, setRouteParam] = useState<string | null>(null);
-  const visibleRoute = isTeacher && !teacherAllowedRoutes.includes(currentRoute) ? 'create-exam' : currentRoute;
+  const visibleRoute = isTeacher && !teacherAllowedRoutes.includes(currentRoute) ? 'create-exam' : isCustomerCare && currentRoute !== 'customer-care' ? 'customer-care' : currentRoute;
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
@@ -307,16 +308,17 @@ function AppContent() {
               <ProfilePage onOpenPaystack={() => setIsPaystackOpen(true)} />
             )}
 
-            {!isTeacher && visibleRoute === 'admin' && <PlatformAdminPage />}
+            {!isTeacher && role === 'platform_admin' && visibleRoute === 'admin' && <PlatformAdminPage />}
+            {isCustomerCare && visibleRoute === 'customer-care' && <CustomerCarePage />}
             {visibleRoute === 'teacher-finished' && isTeacher && <div className="max-w-md mx-auto mt-10 bg-white rounded-3xl border border-slate-200 p-6 text-center shadow-sm"><div className="mx-auto mb-3 w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl">✓</div><h2 className="text-lg font-bold text-slate-900">Thank you for creating your exam.</h2><p className="text-sm text-slate-600 mt-2">Your marking scheme has been downloaded. Ask your school admin if you need another copy.</p><button onClick={() => navigate('create-exam')} className="mt-5 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white">Create another exam</button></div>}
           </div>
         </main>
 
         {/* Mobile Floating Bottom Dock */}
-        {!isTeacher && <BottomNav currentRoute={visibleRoute} navigate={navigate} />}
+        {!isTeacher && !isCustomerCare && <BottomNav currentRoute={visibleRoute} navigate={navigate} />}
 
         {/* Support shortcuts appear only on the dashboard home and school profile pages. */}
-        {!isTeacher && (visibleRoute === 'dashboard' || visibleRoute === 'profile') && <WhatsAppButton />}
+        {!isTeacher && !isCustomerCare && (visibleRoute === 'dashboard' || visibleRoute === 'profile') && <WhatsAppButton />}
       </div>
 
       {/* Global Modals */}
@@ -330,7 +332,7 @@ function AppContent() {
         onClose={() => setPreviewExam(null)}
       />
 
-      {!isTeacher && <WelcomeModal onStartExam={() => navigate('create-exam')} />}
+      {!isTeacher && !isCustomerCare && <WelcomeModal onStartExam={() => navigate('create-exam')} />}
     </div>
   );
 }
