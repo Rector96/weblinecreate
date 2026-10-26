@@ -619,15 +619,20 @@ Keep source order and question numbering where readable; renumber only when numb
     } catch (error: any) {
       const message = error instanceof Error ? error.message : 'Image analysis failed.';
       console.error('Handwritten question scan failed:', message.slice(0, 500));
-      const status = Number(error?.status || error?.code) || 0;
-      const userMessage = /API key|authentication|unauthorized/i.test(message)
-        ? 'Gemini authentication failed. Check GEMINI_API_KEY in Netlify Functions and redeploy.'
-        : /quota|rate.?limit|429/i.test(message) || status === 429
-          ? 'Gemini is temporarily rate-limited. Wait a little and try again.'
-          : message.startsWith('Page ') || message.startsWith('Each page')
-            ? message
-            : 'Could not analyze these images. Try clearer photos or fewer pages, then try again.';
-      return jsonResponse({ success: false, error: userMessage }, status === 429 ? 429 : 503, corsHeaders);
+      const status = Number(error?.status || (typeof error?.code === 'number' ? error.code : 0)) || 0;
+      const diagnostic = String(error?.message || message);
+      const userMessage = /API key|authentication|unauthorized/i.test(diagnostic) || status === 401
+        ? 'Gemini authentication failed. Check that GEMINI_API_KEY is valid and available to Netlify Functions, then redeploy.'
+        : /quota|rate.?limit|resource_exhausted/i.test(diagnostic) || status === 429
+          ? 'Gemini has reached its current quota or rate limit. Check Google AI Studio usage/billing, wait, and try again.'
+          : /not found|model.*(not supported|unavailable)|unsupported.*model/i.test(diagnostic) || status === 404
+            ? 'Gemini could not access a supported vision model for this API key. Check the enabled models and Google AI API project.'
+            : /invalid argument|bad request|unsupported image|payload/i.test(diagnostic) || status === 400
+              ? 'Gemini rejected the image request. Try one or two clear JPG/PNG photos with the whole page visible.'
+              : message.startsWith('Page ') || message.startsWith('Each page')
+                ? message
+                : 'Gemini could not process these photos right now. Please try 1–2 clear pages first. If it continues, check the Netlify Function logs for “Handwritten question scan failed”.';
+      return jsonResponse({ success: false, error: userMessage }, status === 429 ? 429 : status === 400 ? 400 : 503, corsHeaders);
     }
   }
 
