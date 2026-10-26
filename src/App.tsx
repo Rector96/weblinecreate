@@ -22,6 +22,7 @@ import { ProfilePage } from './components/profile/ProfilePage';
 import { PlatformAdminPage } from './components/admin/PlatformAdminPage';
 import { ExamPreviewModal } from './components/exams/ExamPreviewModal';
 import { PageLoader } from './components/common/PageLoader';
+import { PWAInstallBanner } from './components/common/PWAInstallBanner';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { Exam, School } from './types';
 
