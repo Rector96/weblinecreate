@@ -99,6 +99,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [notification, setNotification] = useState<string | null>(null);
   const [additionalObjectiveCount, setAdditionalObjectiveCount] = useState(5);
   const [additionalTheoryCount, setAdditionalTheoryCount] = useState(2);
+  const [additionalQuestionSection, setAdditionalQuestionSection] = useState<'A' | 'B'>('A');
   const [editingPreviewField, setEditingPreviewField] = useState<string | null>(null);
   const [previewEditDraft, setPreviewEditDraft] = useState('');
 
@@ -1226,8 +1227,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 type="number"
                 min={5}
                 max={50}
-                value={aiNumObj}
-                onChange={(e) => setAiNumObj(Number(e.target.value))}
+                value={aiNumObj === 0 ? '' : aiNumObj}
+                onChange={(e) => setAiNumObj(e.target.value === '' ? 0 : Number(e.target.value))}
+                onBlur={() => setAiNumObj((value) => Math.min(50, Math.max(5, value || 5)))}
                 className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
@@ -1240,8 +1242,9 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 type="number"
                 min={1}
                 max={6}
-                value={aiNumTheory}
-                onChange={(e) => setAiNumTheory(Number(e.target.value))}
+                value={aiNumTheory === 0 ? '' : aiNumTheory}
+                onChange={(e) => setAiNumTheory(e.target.value === '' ? 0 : Number(e.target.value))}
+                onBlur={() => setAiNumTheory((value) => Math.min(6, Math.max(1, value || 1)))}
                 className="w-full min-h-11 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
@@ -1602,29 +1605,31 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="bg-white/80 border border-blue-100 rounded-xl p-3 space-y-2">
-                <label htmlFor="target-objectives" className="block text-sm font-semibold text-slate-700">Additional objective questions</label>
-                <div className="flex items-center gap-2">
-                  <input id="target-objectives" type="number" min={1} max={20} value={additionalObjectiveCount} onChange={(event) => setAdditionalObjectiveCount(Math.min(20, Math.max(1, Number(event.target.value) || 1)))} className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm" aria-label="Number of additional objective questions" />
-                  <span className="text-xs text-slate-500">Added to the bottom of Section A</span>
-                </div>
-                <button type="button" onClick={() => handleGenerateMoreQuestions('A', additionalObjectiveCount)} disabled={isAddingMore} className="w-full rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-                  {isAddingMore ? 'Generating questions...' : `Generate & Add ${additionalObjectiveCount} objective question(s)`}
-                </button>
-              </div>
-
-              <div className="bg-white/80 border border-indigo-100 rounded-xl p-3 space-y-2">
-                <label htmlFor="target-theory" className="block text-sm font-semibold text-slate-700">Additional theory questions</label>
-                <div className="flex items-center gap-2">
-                  <input id="target-theory" type="number" min={1} max={10} value={additionalTheoryCount} onChange={(event) => setAdditionalTheoryCount(Math.min(10, Math.max(1, Number(event.target.value) || 1)))} className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm" aria-label="Number of additional theory questions" />
-                  <span className="text-xs text-slate-500">Added to the bottom of Section B</span>
-                </div>
-                <button type="button" onClick={() => handleGenerateMoreQuestions('B', additionalTheoryCount)} disabled={isAddingMore} className="w-full rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-                  {isAddingMore ? 'Generating questions...' : `Generate & Add ${additionalTheoryCount} theory question(s)`}
-                </button>
-              </div>
+            <div className="space-y-3">
+            <div className="inline-flex w-full rounded-xl border border-slate-200 bg-slate-100 p-1 gap-1" role="group" aria-label="Question type to add">
+              <button type="button" onClick={() => setAdditionalQuestionSection('A')} aria-pressed={additionalQuestionSection === 'A'} className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${additionalQuestionSection === 'A' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white'}`}>
+                Objective only
+              </button>
+              <button type="button" onClick={() => setAdditionalQuestionSection('B')} aria-pressed={additionalQuestionSection === 'B'} className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${additionalQuestionSection === 'B' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white'}`}>
+                Theory only
+              </button>
             </div>
+            {additionalQuestionSection === 'A' ? (
+              <div className="rounded-xl border border-blue-100 bg-white/80 p-3 space-y-2">
+                <label htmlFor="target-objectives" className="block text-sm font-semibold text-slate-700">How many objective questions do you want to add?</label>
+                <input id="target-objectives" type="number" inputMode="numeric" min={1} max={20} value={additionalObjectiveCount === 0 ? '' : additionalObjectiveCount} onChange={(event) => setAdditionalObjectiveCount(event.target.value === '' ? 0 : Math.min(20, Math.max(0, Number(event.target.value))))} onBlur={() => setAdditionalObjectiveCount((value) => Math.min(20, Math.max(1, value || 1)))} className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base" aria-label="Number of additional objective questions" placeholder="Enter a number" />
+                <p className="text-xs text-slate-500">Only objective questions will be generated. Existing questions stay unchanged.</p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-indigo-100 bg-white/80 p-3 space-y-2">
+                <label htmlFor="target-theory" className="block text-sm font-semibold text-slate-700">How many theory questions do you want to add?</label>
+                <input id="target-theory" type="number" inputMode="numeric" min={1} max={10} value={additionalTheoryCount === 0 ? '' : additionalTheoryCount} onChange={(event) => setAdditionalTheoryCount(event.target.value === '' ? 0 : Math.min(10, Math.max(0, Number(event.target.value))))} onBlur={() => setAdditionalTheoryCount((value) => Math.min(10, Math.max(1, value || 1)))} className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base" aria-label="Number of additional theory questions" placeholder="Enter a number" />
+                <p className="text-xs text-slate-500">Only theory questions will be generated. Existing questions stay unchanged.</p>
+              </div>
+            )}
+            <button type="button" onClick={() => handleGenerateMoreQuestions(additionalQuestionSection, additionalQuestionSection === 'A' ? additionalObjectiveCount : additionalTheoryCount)} disabled={isAddingMore || (additionalQuestionSection === 'A' ? additionalObjectiveCount < 1 : additionalTheoryCount < 1)} className={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 ${additionalQuestionSection === 'A' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+              {isAddingMore ? 'Generating questions...' : `Generate & Add ${additionalQuestionSection === 'A' ? additionalObjectiveCount : additionalTheoryCount} ${additionalQuestionSection === 'A' ? 'objective' : 'theory'} question(s)`}
+            </button>
           </div>
 
           {/* Authentic Document Paper Sheet (A4 Simulation with Times New Roman & Inline Options) */}
