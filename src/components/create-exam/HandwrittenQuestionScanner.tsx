@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Camera, Upload, X, Loader2, ScanText, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 type ExtractedQuestion = {
@@ -23,10 +23,25 @@ type Props = {
 
 export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthHeaders, onQuestionsExtracted, onClose }) => {
   const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [questions, setQuestions] = useState<ExtractedQuestion[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Keep one preview URL per selected file and revoke every URL when files are removed,
+  // scanning finishes, the scanner closes, or the component unmounts.
+  useEffect(() => {
+    const urls = files.map(file => URL.createObjectURL(file));
+    setPreviews(urls);
+    return () => urls.forEach(url => URL.revokeObjectURL(url));
+  }, [files]);
+
+  const clearPhotos = () => {
+    setFiles([]);
+    setPreviews([]);
+    if (inputRef.current) inputRef.current.value = '';
+  };
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -85,7 +100,12 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       if (!result.data?.length) throw new Error('No complete questions were detected. Try brighter, sharper photos with the whole page visible.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Scanning failed. Please try again.');
-    } finally { setBusy(false); }
+    } finally {
+      // Photos are only needed to submit the scan. Do not retain the original image files
+      // in the scanner once the request has been used, whether it succeeds or fails.
+      clearPhotos();
+      setBusy(false);
+    }
   };
 
   const update = (index: number, field: keyof ExtractedQuestion, value: string) => {
@@ -111,15 +131,15 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
         <div className="rounded-xl bg-blue-50 p-2.5 text-blue-700"><ScanText className="h-5 w-5" /></div>
         <div><h3 className="font-bold text-slate-900">Scan handwritten questions</h3><p className="mt-1 text-xs leading-5 text-slate-500">Upload up to 8 page photos. Gemini reads each page in order and flags uncertain handwriting for review.</p></div>
       </div>
-      <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Close scanner"><X className="h-4 w-4" /></button>
+      <button type="button" onClick={() => { clearPhotos(); onClose(); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Close scanner"><X className="h-4 w-4" /></button>
     </div>
     <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple className="hidden" onChange={e => { addFiles(e.target.files); e.currentTarget.value = ''; }} />
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       <button type="button" onClick={() => { if (inputRef.current) { inputRef.current.removeAttribute('capture'); inputRef.current.click(); } }} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Upload className="h-4 w-4" /> Upload page photos</button>
       <button type="button" onClick={() => { if (inputRef.current) { inputRef.current.setAttribute('capture', 'environment'); inputRef.current.click(); } }} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"><Camera className="h-4 w-4" /> Take a photo</button>
     </div>
-    {files.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{files.map((file, index) => <div key={file.name + file.lastModified + index} className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><img src={URL.createObjectURL(file)} alt={'Page ' + (index + 1)} className="h-28 w-full object-cover" /><span className="block truncate px-2 py-1 text-[11px] text-slate-600">Page {index + 1}</span><button type="button" onClick={() => setFiles(v => v.filter((_, i) => i !== index))} className="absolute right-1 top-1 rounded-full bg-white/95 p-1 text-slate-700 shadow" aria-label={'Remove page ' + (index + 1)}><X className="h-3.5 w-3.5" /></button></div>)}</div>}
-    <p className="text-[11px] text-slate-500">Tips: use bright, even light; keep the page flat and fully inside the frame. Upload pages in reading order. Up to 8 images, 8 MB each.</p>
+    {files.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{files.map((file, index) => <div key={file.name + file.lastModified + index} className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><img src={previews[index] || ''} alt={'Page ' + (index + 1)} className="h-28 w-full object-cover" /><span className="block truncate px-2 py-1 text-[11px] text-slate-600">Page {index + 1}</span><button type="button" onClick={() => setFiles(v => v.filter((_, i) => i !== index))} className="absolute right-1 top-1 rounded-full bg-white/95 p-1 text-slate-700 shadow" aria-label={'Remove page ' + (index + 1)}><X className="h-3.5 w-3.5" /></button></div>)}</div>}
+    <p className="text-[11px] text-slate-500">Tips: use bright, even light; keep the page flat and fully inside the frame. Upload pages in reading order. Up to 8 images, 8 MB each. Photos are sent for scanning only and are not saved to your ROCKCRAFT account.</p>
     {error && <p role="alert" className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</p>}
     <button type="button" disabled={busy || !files.length} onClick={scan} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Analysing all pages…</> : <><ScanText className="h-4 w-4" /> Analyse handwriting with Gemini</>}</button>
     {questions.length > 0 && <div className="space-y-3 border-t border-slate-100 pt-4">
