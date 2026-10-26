@@ -543,7 +543,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                   option_b: item.option_b || 'Option B',
                   option_c: item.option_c || 'Option C',
                   option_d: item.option_d || 'Option D',
-                  correct_option: item.correct_option || 'A',
+                  correct_option: item.correct_option || '',
                 }
               : undefined,
           theory_data:
