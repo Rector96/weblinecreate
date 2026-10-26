@@ -45,7 +45,8 @@ import {
   Check,
   Edit3,
   X,
-  CreditCard
+  CreditCard,
+  ScanText
 } from 'lucide-react';
 
 interface CreateExamWizardProps {
@@ -1059,120 +1060,95 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       {/* STEP 2: METHOD SELECTION (AI vs MANUAL) */}
       {/* ============================================================== */}
       {currentStep === 2 && (
-        <div key="step-2" className="space-y-4 rounded-[1.35rem] border border-slate-200/80 bg-white p-4 shadow-xs animate-in fade-in duration-300 sm:p-5">
+        <div key="step-2" className="space-y-3 rounded-[1.35rem] border border-slate-200/80 bg-white p-3 shadow-xs animate-in fade-in duration-300 sm:space-y-4 sm:p-5">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">Creation method</p>
-            <h3 className="mt-0.5 text-lg font-extrabold tracking-tight text-slate-900">How do you want to set this paper?</h3>
-            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-              AI drafts a full paper for you to review. Manual lets you type every question yourself.
-            </p>
+            <h3 className="mt-0.5 text-lg font-extrabold tracking-tight text-slate-900">Choose how to create your paper</h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">Select one option. You can review and edit the questions before publishing.</p>
           </div>
 
-          {/* Subscription Banner */}
-          {school && school.subscription_status === 'active' ? (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs text-emerald-900 font-medium">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>
-                  <strong>PAID · FULL TERM ACTIVE:</strong> Unlimited AI & Manual Exam Generations Unlocked
-                </span>
-              </div>
-              <span className="bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full text-[10px]">
-                PAID
+          {school && (
+            <div className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-[11px] ${school.subscription_status === 'active' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : (school.ai_exams_used || 0) >= 4 ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-blue-100 bg-blue-50 text-blue-900'}`}>
+              <span className="min-w-0 leading-4">
+                {school.subscription_status === 'active'
+                  ? 'Full-term access active · AI generation unlocked'
+                  : (school.ai_exams_used || 0) >= 4
+                    ? 'Free AI trial used · Payment may be required to publish another AI exam'
+                    : `Free AI trial · ${Math.max(0, 4 - (school.ai_exams_used || 0))} generation(s) remaining`}
               </span>
-            </div>
-          ) : school && school.ai_exams_used >= 4 ? (
-            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <span className="font-bold text-amber-900 block">
-                  4 of 4 Free Trial Exams Completed!
-                </span>
-                <span>
-                  To generate your <strong>5th exam</strong>, please complete payment for full term access.
-                </span>
-              </div>
-              <button
-                onClick={onOpenPaystack}
-                className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0 flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
-              >
-                <CreditCard className="w-3.5 h-3.5" />
-                <span>Pay ₦11,000 via Paystack</span>
-              </button>
-            </div>
-          ) : (
-            <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-2xl text-xs text-blue-900 flex items-center justify-between">
-              <span>Free Trial Active: <strong>{4 - (school?.ai_exams_used || 0)} of 4</strong> free AI generations remaining</span>
-              <span className="text-[10px] text-blue-600 font-semibold">Attempt 5 requires payment</span>
+              {school.subscription_status !== 'active' && (school.ai_exams_used || 0) >= 4 && (
+                <button type="button" onClick={onOpenPaystack} className="shrink-0 rounded-lg bg-blue-600 px-2.5 py-1.5 font-bold text-white">Pay ₦11,000</button>
+              )}
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div
-              onClick={() => handleSelectMethod('ai')}
-              className={`p-5 rounded-3xl border-2 transition-all cursor-pointer text-left group ${
-                school?.subscription_status !== 'active' && (school?.ai_exams_used || 0) >= 4
-                  ? 'border-amber-300 bg-amber-50/30 hover:border-amber-500'
-                  : 'border-blue-200 hover:border-blue-600 bg-gradient-to-br from-blue-50/50 to-white hover:shadow-md'
-              }`}
-            >
-              <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center mb-4 shadow-sm shadow-blue-600/30 group-hover:scale-105 transition-transform">
-                <Sparkles className="w-6 h-6" />
-              </div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-base font-bold text-blue-950">AI Question Generator</h4>
-                {school?.subscription_status === 'active' ? (
-                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                    Unlimited
-                  </span>
-                ) : (school?.ai_exams_used || 0) >= 4 ? (
-                  <span className="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">
-                    5th Attempt Paywall
-                  </span>
-                ) : (
-                  <span className="text-[10px] bg-blue-200 text-blue-900 font-bold px-2 py-0.5 rounded-full">
-                    Recommended
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                Generate clear, curriculum-aligned multiple-choice and theory questions with confidential marking guides.
-              </p>
-              <div className="mt-4 text-xs font-bold text-blue-600 flex items-center gap-1">
-                <span>
-                  {school?.subscription_status !== 'active' && (school?.ai_exams_used || 0) >= 4
-                    ? 'Unlock 5th Exam (₦11,000)'
-                    : 'Configure AI Generator'}
-                </span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </div>
-            </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+            <button type="button" onClick={() => handleSelectMethod('ai')} className="group flex min-h-[145px] flex-col items-start rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white p-3 text-left transition hover:border-blue-600 hover:shadow-md sm:min-h-[160px] sm:p-4">
+              <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm"><Sparkles className="h-5 w-5" /></span>
+              <span className="text-sm font-bold leading-5 text-blue-950">Generate with AI</span>
+              <span className="mt-1 text-[11px] leading-4 text-slate-600">Create objective and theory questions from your syllabus topics.</span>
+              <span className="mt-auto pt-2 text-[11px] font-bold text-blue-700">Start AI generation <ArrowRight className="ml-1 inline h-3 w-3" /></span>
+            </button>
 
-            <div
-              onClick={() => handleSelectMethod('manual')}
-              className="p-5 rounded-3xl border border-slate-200 hover:border-slate-400 bg-white hover:shadow-md transition-all cursor-pointer text-left group"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <PenTool className="w-6 h-6" />
-              </div>
-              <h4 className="text-base font-bold text-slate-900">Manual Authoring</h4>
-              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                Type or dictate your own past exam questions. Includes full scientific symbol picker, voice dictation, and custom marking schemes.
-              </p>
-              <div className="mt-4 text-xs font-bold text-slate-700 flex items-center gap-1">
-                <span>Start Manual Input</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </div>
-            </div>
+            <button type="button" onClick={() => handleSelectMethod('manual')} className="group flex min-h-[145px] flex-col items-start rounded-2xl border-2 border-slate-200 bg-white p-3 text-left transition hover:border-slate-500 hover:shadow-md sm:min-h-[160px] sm:p-4">
+              <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white"><PenTool className="h-5 w-5" /></span>
+              <span className="text-sm font-bold leading-5 text-slate-900">Type questions</span>
+              <span className="mt-1 text-[11px] leading-4 text-slate-600">Write or dictate questions and create your own marking scheme.</span>
+              <span className="mt-auto pt-2 text-[11px] font-bold text-slate-800">Start typing <ArrowRight className="ml-1 inline h-3 w-3" /></span>
+            </button>
+
+            <button type="button" onClick={() => setShowHandwritingScanner(value => !value)} aria-expanded={showHandwritingScanner} className="group col-span-2 flex min-h-[88px] items-center gap-3 rounded-2xl border-2 border-indigo-200 bg-indigo-50/60 p-3 text-left transition hover:border-indigo-500 hover:bg-indigo-50 sm:min-h-[96px] sm:p-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white"><ScanText className="h-5 w-5" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-indigo-950">Snap or upload handwritten questions</span>
+                <span className="mt-1 block text-[11px] leading-4 text-slate-600">Use your camera or upload page photos. AI extracts the questions for you to review.</span>
+              </span>
+              <span className="shrink-0 text-xs font-bold text-indigo-700">{showHandwritingScanner ? 'Close' : 'Choose'} <ArrowRight className="ml-1 inline h-3.5 w-3.5" /></span>
+            </button>
           </div>
 
-          <div className="pt-2 flex justify-between items-center">
-            <button
-              onClick={() => setCurrentStep(1)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Details</span>
+          {showHandwritingScanner && school?.id && (
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/30 p-2.5 sm:p-3">
+              <HandwrittenQuestionScanner
+                schoolId={school.id}
+                getAuthHeaders={getAiAuthHeaders}
+                onClose={() => setShowHandwritingScanner(false)}
+                onQuestionsExtracted={(items) => {
+                  const stamp = Date.now();
+                  const imported: Question[] = items.map((item: any, index: number) => ({
+                    id: `q_scan_${stamp}_${index}`,
+                    section: item.section,
+                    question_number: index + 1,
+                    question_text: item.question_text,
+                    marks: Number(item.marks) || (item.section === 'A' ? 1 : 10),
+                    objective_data: item.section === 'A' ? {
+                      option_a: item.option_a || '',
+                      option_b: item.option_b || '',
+                      option_c: item.option_c || '',
+                      option_d: item.option_d || '',
+                      correct_option: item.correct_option || '',
+                    } : undefined,
+                    theory_data: item.section === 'B' ? {
+                      model_answer: item.model_answer || '',
+                      score_breakdown: item.score_breakdown || '',
+                      max_score: Number(item.marks) || 10,
+                    } : undefined,
+                  }));
+                  setQuestions(imported);
+                  setMethod('manual');
+                  setCurrentStep(4);
+                  setShowHandwritingScanner(false);
+                  showNotification(`Imported ${imported.length} questions from handwritten pages. Please review all questions and options before publishing.`);
+                }}
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-1">
+            <button type="button" onClick={() => setCurrentStep(1)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+              <ArrowLeft className="h-4 w-4" /> Back to details
             </button>
+            <span className="text-[10px] text-slate-400">Step 2 of 4</span>
           </div>
         </div>
       )}
