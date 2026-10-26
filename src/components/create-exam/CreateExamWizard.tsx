@@ -1630,6 +1630,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             <button type="button" onClick={() => handleGenerateMoreQuestions(additionalQuestionSection, additionalQuestionSection === 'A' ? additionalObjectiveCount : additionalTheoryCount)} disabled={isAddingMore || (additionalQuestionSection === 'A' ? additionalObjectiveCount < 1 : additionalTheoryCount < 1)} className={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 ${additionalQuestionSection === 'A' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
               {isAddingMore ? 'Generating questions...' : `Generate & Add ${additionalQuestionSection === 'A' ? additionalObjectiveCount : additionalTheoryCount} ${additionalQuestionSection === 'A' ? 'objective' : 'theory'} question(s)`}
             </button>
+            </div>
           </div>
 
           {/* Authentic Document Paper Sheet (A4 Simulation with Times New Roman & Inline Options) */}
