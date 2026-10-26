@@ -29,6 +29,7 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
   const [error, setError] = useState('');
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState('');
+  const [cameraQuality, setCameraQuality] = useState('Point the camera at a full page to check readability.');
   const [testingGemini, setTestingGemini] = useState(false);
   const [geminiStatus, setGeminiStatus] = useState<{ success: boolean; message: string; model?: string; diagnostics?: string[] } | null>(null);
   const [scanModel, setScanModel] = useState('');
@@ -65,18 +66,38 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
       streamRef.current = stream;
       setCameraOpen(true);
-      requestAnimationFrame(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play().catch(() => setCameraError('Tap the camera preview to start video, or use the photo upload option.'));
-        }
-      });
+      setCameraOpen(true);
     } catch (e) {
       setCameraError(e instanceof Error && /permission|denied|notallowed/i.test(e.message)
         ? 'Camera permission was denied. Allow camera access in your browser settings, or upload a photo instead.'
         : 'Could not open the camera. Check camera permission and ensure the site is using HTTPS.');
     }
   };
+
+  useEffect(() => {
+    if (!cameraOpen || !streamRef.current || !videoRef.current) return;
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    void video.play().catch(() => setCameraError('Tap the camera preview to start video, or use the photo upload option.'));
+    const timer = window.setInterval(() => {
+      if (!video.videoWidth || !video.videoHeight) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = 64; canvas.height = 64;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let total = 0;
+      for (let i = 0; i < pixels.length; i += 4) total += 0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2];
+      const brightness = total / (pixels.length / 4);
+      setCameraQuality(brightness < 65
+        ? 'Too dark: move to brighter, even lighting before capturing.'
+        : brightness > 225
+          ? 'Image may be overexposed: reduce glare and avoid direct reflections.'
+          : 'Lighting looks usable. Keep all page edges visible and hold the camera steady.');
+    }, 900);
+    return () => window.clearInterval(timer);
+  }, [cameraOpen]);
 
   const captureCameraPhoto = () => {
     const video = videoRef.current;
@@ -217,7 +238,7 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
     </div>
     {cameraOpen && <div className="space-y-3 rounded-xl border border-blue-200 bg-slate-950 p-3">
       <video ref={videoRef} autoPlay muted playsInline onClick={() => void videoRef.current?.play()} className="max-h-[55vh] w-full rounded-lg object-contain" aria-label="Live camera preview" />
-      <p className="text-xs leading-5 text-slate-200">Keep the entire page inside the frame, avoid shadows and hold the camera steady. Capture each page in order.</p>
+      <p className="text-xs leading-5 text-slate-200">Live image check: {cameraQuality} Keep the entire page inside the frame and capture pages in order.</p>
       {cameraError && <p role="alert" className="text-xs text-amber-200">{cameraError}</p>}
       <div className="grid grid-cols-2 gap-2"><button type="button" onClick={captureCameraPhoto} disabled={files.length >= 8} className="min-h-11 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-900 disabled:opacity-50">Capture page ({files.length}/8)</button><button type="button" onClick={stopCamera} className="min-h-11 rounded-lg border border-white/30 px-3 py-2 text-sm font-semibold text-white">Close camera</button></div>
     </div>}
