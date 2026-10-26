@@ -21,7 +21,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpenPaystack }) => {
   const { school, isPlatformAdmin, isCustomerCare } = useAuth();
 
-  const navItems = isCustomerCare ? [
+  const navItems: Array<{ id: string; label: string; icon: React.ComponentType<any>; isPrimary?: boolean }> = isCustomerCare ? [
     { id: 'customer-care', label: 'School contacts', icon: Headset },
   ] : [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
