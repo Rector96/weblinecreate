@@ -24,6 +24,7 @@ import { ScientificSymbolPicker } from '../common/ScientificSymbolPicker';
 import { FormattedExamText } from '../common/FormattedExamText';
 import { PageLoader } from '../common/PageLoader';
 import { VoiceInputButton } from '../common/VoiceInputButton';
+import { HandwrittenQuestionScanner } from './HandwrittenQuestionScanner';
 import { exportExamToDocx, exportMarkingSchemeToDocx } from '../../utils/docxExport';
 import {
   Sparkles,
@@ -101,6 +102,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [additionalTheoryCount, setAdditionalTheoryCount] = useState(2);
   const [additionalQuestionSection, setAdditionalQuestionSection] = useState<'A' | 'B'>('A');
   const [editingPreviewField, setEditingPreviewField] = useState<string | null>(null);
+  const [showHandwritingScanner, setShowHandwritingScanner] = useState(false);
   const [previewEditDraft, setPreviewEditDraft] = useState('');
 
   // Questions State
@@ -541,7 +543,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                   option_b: item.option_b || 'Option B',
                   option_c: item.option_c || 'Option C',
                   option_d: item.option_d || 'Option D',
-                  correct_option: item.correct_option || 'A',
+                  correct_option: item.correct_option || '',
                 }
               : undefined,
           theory_data:
@@ -1198,6 +1200,54 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           </div>
 
 
+
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-900">Already have handwritten questions?</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">Photograph or upload pages and let Gemini extract questions, choices, formulas and diagram labels for review.</p>
+              </div>
+              <button type="button" onClick={() => setShowHandwritingScanner(value => !value)} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-indigo-200 bg-white px-4 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100">
+                {showHandwritingScanner ? 'Hide scanner' : 'Scan handwritten pages'}
+              </button>
+            </div>
+            {showHandwritingScanner && school?.id && (
+              <div className="mt-4">
+                <HandwrittenQuestionScanner
+                  schoolId={school.id}
+                  getAuthHeaders={getAiAuthHeaders}
+                  onClose={() => setShowHandwritingScanner(false)}
+                  onQuestionsExtracted={(items) => {
+                    const stamp = Date.now();
+                    const imported: Question[] = items.map((item: any, index: number) => ({
+                      id: `q_scan_${stamp}_${index}`,
+                      section: item.section,
+                      question_number: index + 1,
+                      question_text: item.question_text,
+                      marks: Number(item.marks) || (item.section === 'A' ? 1 : 10),
+                      objective_data: item.section === 'A' ? {
+                        option_a: item.option_a || '',
+                        option_b: item.option_b || '',
+                        option_c: item.option_c || '',
+                        option_d: item.option_d || '',
+                        correct_option: item.correct_option || '',
+                      } : undefined,
+                      theory_data: item.section === 'B' ? {
+                        model_answer: item.model_answer || '',
+                        score_breakdown: item.score_breakdown || '',
+                        max_score: Number(item.marks) || 10,
+                      } : undefined,
+                    }));
+                    setQuestions(imported);
+                    setMethod('manual');
+                    setCurrentStep(4);
+                    setShowHandwritingScanner(false);
+                    showNotification(`Imported ${imported.length} questions from handwritten pages. Please review all questions and options before publishing.`);
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-600">

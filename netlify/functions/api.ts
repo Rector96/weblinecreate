@@ -537,6 +537,77 @@ export default async (req: Request) => {
     return await verifyPaystackPayment(req);
   }
 
+  // Vision-based extraction of handwritten exam pages. Uses Gemini independently of the text-generation provider.
+  if (pathname.endsWith('/scan-handwritten-questions') && req.method === 'POST') {
+    try {
+      const rawLength = Number(req.headers.get('content-length') || 0);
+      if (rawLength > 38_000_000) return jsonResponse({ success: false, error: 'Images are too large. Upload fewer or smaller page photos.' }, 413, corsHeaders);
+      if (!geminiAi || !geminiApiKey) return jsonResponse({ success: false, error: 'Handwriting scanning needs GEMINI_API_KEY in Netlify Functions environment. Add it and redeploy.' }, 503, corsHeaders);
+      const body = await req.json() as any;
+      const schoolId = body?.school_id || req.headers.get('x-school-id');
+      const authorization = await authorizeAiRequest(req, schoolId);
+      if (!authorization.ok) return authorization.response;
+      if (!Array.isArray(body.pages) || body.pages.length < 1 || body.pages.length > 8) {
+        return jsonResponse({ success: false, error: 'Upload between 1 and 8 page photos per scan.' }, 400, corsHeaders);
+      }
+      const allowedMime = new Set(['image/jpeg', 'image/png', 'image/webp']);
+      let totalBytes = 0;
+      const imageParts = body.pages.map((page: any, index: number) => {
+        if (!page || !allowedMime.has(page.mimeType) || typeof page.data !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(page.data)) {
+          throw new Error('Page ' + (index + 1) + ' is not a valid JPG, PNG, or WebP image.');
+        }
+        const estimatedBytes = Math.floor(page.data.length * 3 / 4);
+        totalBytes += estimatedBytes;
+        if (estimatedBytes > 8 * 1024 * 1024) throw new Error('Each page photo must be 8 MB or smaller.');
+        return { inlineData: { mimeType: page.mimeType, data: page.data } };
+      });
+      if (totalBytes > 28 * 1024 * 1024) return jsonResponse({ success: false, error: 'Combined image size is too large. Scan fewer pages at a time.' }, 413, corsHeaders);
+      const prompt = `You are a meticulous document-reading assistant helping a teacher digitize handwritten examination papers. Analyze EVERY attached page in the exact order provided; do not skip page edges, continuation lines, question subparts, answer choices, formulas, units, tables, or diagram labels. Extract only what is actually present; never invent missing text, options, correct answers, marks, or answer keys. Join a question continued across pages into one question. Preserve mathematical notation as readable plain text/LaTeX where appropriate. Classify multiple-choice questions as section A and theory/essay questions as section B. If the page contains a diagram, describe it briefly in question_text using [Diagram: ...] and preserve every legible label. If handwriting or a symbol is uncertain, choose the most plausible reading only when context strongly supports it and add a review_notes entry explaining the uncertainty. Set confidence to low/medium/high based on legibility. Do not solve questions and do not infer correct_option unless the source explicitly marks an answer key. For objective questions extract all four options where present; if an option is absent or unreadable, leave it as an empty string and flag it. Return JSON only with this exact shape:
+{"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"","marks":1,"confidence":"medium","review_notes":["..."]},{"section":"B","question_number":1,"question_text":"...","marks":10,"confidence":"high","review_notes":[]}],"page_notes":["..."]}
+Keep source order and question numbering where readable; renumber only when numbering is absent. Exclude page headers, names, school addresses and unrelated notes unless they form part of a question.`;
+      const response = await geminiAi.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
+        config: { responseMimeType: 'application/json', temperature: 0.1 },
+      });
+      let parsed: any;
+      try { parsed = JSON.parse(response.text || '{}'); }
+      catch { throw new Error('Gemini could not return structured questions from these photos. Try clearer images or fewer pages.'); }
+      const questions = (Array.isArray(parsed.questions) ? parsed.questions : []).filter((q: any) =>
+        q && typeof q.question_text === 'string' && q.question_text.trim() &&
+        (q.section === 'A' || q.section === 'B')
+      ).slice(0, 100).map((q: any, i: number) => ({
+        section: q.section,
+        question_number: Number.isInteger(Number(q.question_number)) && Number(q.question_number) > 0 ? Number(q.question_number) : i + 1,
+        question_text: String(q.question_text).slice(0, 5000),
+        ...(q.section === 'A' ? {
+          option_a: typeof q.option_a === 'string' ? q.option_a.slice(0, 2000) : '',
+          option_b: typeof q.option_b === 'string' ? q.option_b.slice(0, 2000) : '',
+          option_c: typeof q.option_c === 'string' ? q.option_c.slice(0, 2000) : '',
+          option_d: typeof q.option_d === 'string' ? q.option_d.slice(0, 2000) : '',
+          ...(typeof q.correct_option === 'string' && ['A','B','C','D'].includes(q.correct_option.toUpperCase()) ? { correct_option: q.correct_option.toUpperCase() } : {}),
+        } : {}),
+        marks: Number.isFinite(Number(q.marks)) && Number(q.marks) > 0 ? Math.min(100, Number(q.marks)) : (q.section === 'A' ? 1 : 10),
+        confidence: ['high','medium','low'].includes(q.confidence) ? q.confidence : 'medium',
+        review_notes: Array.isArray(q.review_notes) ? q.review_notes.filter((n: any) => typeof n === 'string').slice(0, 8).map((n: string) => n.slice(0, 300)) : [],
+      }));
+      if (!questions.length) return jsonResponse({ success: false, error: 'No questions could be confidently extracted. Try brighter, sharper photos with the full page visible.' }, 422, corsHeaders);
+      return jsonResponse({ success: true, data: questions, page_notes: Array.isArray(parsed.page_notes) ? parsed.page_notes.slice(0, 8) : [] }, 200, corsHeaders);
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : 'Image analysis failed.';
+      console.error('Handwritten question scan failed:', message.slice(0, 500));
+      const status = Number(error?.status || error?.code) || 0;
+      const userMessage = /API key|authentication|unauthorized/i.test(message)
+        ? 'Gemini authentication failed. Check GEMINI_API_KEY in Netlify Functions and redeploy.'
+        : /quota|rate.?limit|429/i.test(message) || status === 429
+          ? 'Gemini is temporarily rate-limited. Wait a little and try again.'
+          : message.startsWith('Page ') || message.startsWith('Each page')
+            ? message
+            : 'Could not analyze these images. Try clearer photos or fewer pages, then try again.';
+      return jsonResponse({ success: false, error: userMessage }, status === 429 ? 429 : 503, corsHeaders);
+    }
+  }
+
   // 1. ENQUEUE EXAM GENERATION; a background worker performs the slower AI work.
   if (pathname.endsWith('/generate-questions') && req.method === 'POST') {
     try {
@@ -835,5 +906,5 @@ Respond strictly with a JSON object:
 };
 
 export const config = {
-  path: ['/api/generate-questions', '/api/exam-request-status', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite', '/api/check-exam-conflict', '/api/publish-exam'],
+  path: ['/api/generate-questions', '/api/exam-request-status', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite', '/api/check-exam-conflict', '/api/publish-exam', '/api/scan-handwritten-questions'],
 };
