@@ -1226,15 +1226,15 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                       question_text: item.question_text,
                       marks: Number(item.marks) || (item.section === 'A' ? 1 : 10),
                       objective_data: item.section === 'A' ? {
-                        option_a: item.option_a || 'Needs review',
-                        option_b: item.option_b || 'Needs review',
-                        option_c: item.option_c || 'Needs review',
-                        option_d: item.option_d || 'Needs review',
+                        option_a: item.option_a || '',
+                        option_b: item.option_b || '',
+                        option_c: item.option_c || '',
+                        option_d: item.option_d || '',
                         correct_option: item.correct_option || '',
                       } : undefined,
                       theory_data: item.section === 'B' ? {
-                        model_answer: item.model_answer || 'Answer not extracted from source; teacher to add.',
-                        score_breakdown: item.score_breakdown || 'Teacher to set marking scheme.',
+                        model_answer: item.model_answer || '',
+                        score_breakdown: item.score_breakdown || '',
                         max_score: Number(item.marks) || 10,
                       } : undefined,
                     }));
