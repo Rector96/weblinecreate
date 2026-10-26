@@ -19,6 +19,6 @@
   status = 200
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
   BUN_VERSION = "1.4.4"
 
