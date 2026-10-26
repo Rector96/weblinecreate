@@ -565,11 +565,34 @@ export default async (req: Request) => {
       const prompt = `You are a meticulous document-reading assistant helping a teacher digitize handwritten examination papers. Analyze EVERY attached page in the exact order provided; do not skip page edges, continuation lines, question subparts, answer choices, formulas, units, tables, or diagram labels. Extract only what is actually present; never invent missing text, options, correct answers, marks, or answer keys. Join a question continued across pages into one question. Preserve mathematical notation as readable plain text/LaTeX where appropriate. Classify multiple-choice questions as section A and theory/essay questions as section B. If the page contains a diagram, describe it briefly in question_text using [Diagram: ...] and preserve every legible label. If handwriting or a symbol is uncertain, choose the most plausible reading only when context strongly supports it and add a review_notes entry explaining the uncertainty. Set confidence to low/medium/high based on legibility. Do not solve questions and do not infer correct_option unless the source explicitly marks an answer key. For objective questions extract all four options where present; if an option is absent or unreadable, leave it as an empty string and flag it. Return JSON only with this exact shape:
 {"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"","marks":1,"confidence":"medium","review_notes":["..."]},{"section":"B","question_number":1,"question_text":"...","marks":10,"confidence":"high","review_notes":[]}],"page_notes":["..."]}
 Keep source order and question numbering where readable; renumber only when numbering is absent. Exclude page headers, names, school addresses and unrelated notes unless they form part of a question.`;
-      const response = await geminiAi.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
-        config: { responseMimeType: 'application/json', temperature: 0.1 },
-      });
+      let response: any;
+      let lastModelError: any = null;
+      // Vision/model availability can vary by Google API project. Try the preferred
+      // Flash model first, then compatible fallbacks before reporting a scan failure.
+      for (const model of ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest']) {
+        try {
+          response = await geminiAi.models.generateContent({
+            model,
+            contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
+            config: { responseMimeType: 'application/json', temperature: 0.1 },
+          });
+          if (response?.text) break;
+          lastModelError = new Error(`Gemini model ${model} returned an empty response.`);
+        } catch (modelError: any) {
+          lastModelError = modelError;
+          const message = String(modelError?.message || '');
+          const status = Number(modelError?.status || modelError?.code || 0);
+          // Authentication and quota errors are project-wide; retrying other models
+          // will not help and can consume additional quota.
+          if (/API key|authentication|unauthorized|permission denied|quota|rate.?limit/i.test(message) || status === 401 || status === 403 || status === 429) {
+            throw modelError;
+          }
+          console.warn(`Gemini handwriting scan model ${model} failed:`, message.slice(0, 400));
+        }
+      }
+      if (!response?.text) {
+        throw lastModelError || new Error('Gemini returned no text for the uploaded images.');
+      }
       let parsed: any;
       try { parsed = JSON.parse(response.text || '{}'); }
       catch { throw new Error('Gemini could not return structured questions from these photos. Try clearer images or fewer pages.'); }
