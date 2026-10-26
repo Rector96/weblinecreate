@@ -8,7 +8,8 @@ import {
   School as SchoolIcon,
   ShieldCheck,
   CreditCard,
-  Check
+  Check,
+  Headset
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -18,9 +19,11 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpenPaystack }) => {
-  const { school, isPlatformAdmin } = useAuth();
+  const { school, isPlatformAdmin, isCustomerCare } = useAuth();
 
-  const navItems = [
+  const navItems: Array<{ id: string; label: string; icon: React.ComponentType<any>; isPrimary?: boolean }> = isCustomerCare ? [
+    { id: 'customer-care', label: 'School contacts', icon: Headset },
+  ] : [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'exams', label: 'Exams', icon: FileText },
     { id: 'create-exam', label: 'Create exam', icon: PlusCircle, isPrimary: true },

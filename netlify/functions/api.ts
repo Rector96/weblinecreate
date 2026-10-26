@@ -537,6 +537,47 @@ export default async (req: Request) => {
     return await verifyPaystackPayment(req);
   }
 
+  // Gemini scanner diagnostics: proves the configured key can actually call a model without exposing the key.
+  if (pathname.endsWith('/gemini-scan-status') && req.method === 'POST') {
+    try {
+      const body = await req.json() as any;
+      const schoolId = body?.school_id || req.headers.get('x-school-id');
+      const authorization = await authorizeAiRequest(req, schoolId);
+      if (!authorization.ok) return authorization.response;
+      if (!geminiAi || !geminiApiKey) {
+        return jsonResponse({ success: false, configured: false, provider: 'Gemini', message: 'Gemini is not configured on this deployment. Add GEMINI_API_KEY to Netlify Functions environment variables and redeploy.' }, 503, corsHeaders);
+      }
+      const candidates = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+      const failures: string[] = [];
+      for (const model of candidates) {
+        try {
+          const result = await geminiAi.models.generateContent({
+            model,
+            contents: 'Reply with exactly: GEMINI_SCAN_READY',
+            config: { temperature: 0, maxOutputTokens: 20 },
+          });
+          const reply = String(result.text || '').trim();
+          if (!reply) throw new Error('Model returned an empty response.');
+          return jsonResponse({ success: true, configured: true, provider: 'Gemini', model, message: 'Gemini connection test passed. The scanner can reach this model.', checked_at: new Date().toISOString() }, 200, corsHeaders);
+        } catch (error: any) {
+          const message = error instanceof Error ? error.message : String(error);
+          const status = Number(error?.status || error?.code) || 0;
+          failures.push(model + ': ' + (status ? status + ' ' : '') + message.slice(0, 180));
+          if (status === 401 || status === 403 || /API key not valid|invalid api key|permission denied|unauthorized/i.test(message)) break;
+        }
+      }
+      console.error('Gemini scanner connection test failed:', failures);
+      const authFailure = failures.some(item => /401|403|invalid api key|permission denied|unauthorized/i.test(item));
+      return jsonResponse({ success: false, configured: true, provider: 'Gemini', message: authFailure
+        ? 'Gemini key was rejected or lacks permission. Verify the key in Google AI Studio and Netlify Functions, then redeploy.'
+        : 'Gemini is configured, but none of the tested models responded successfully. Check model availability, quota and billing in Google AI Studio.',
+        diagnostics: failures, checked_at: new Date().toISOString() }, authFailure ? 401 : 503, corsHeaders);
+    } catch (error: any) {
+      console.error('Gemini scanner status check failed:', String(error?.message || error).slice(0, 300));
+      return jsonResponse({ success: false, message: 'Could not complete the Gemini connection test. Check deployment logs.' }, 500, corsHeaders);
+    }
+  }
+
   // Vision-based extraction of handwritten exam pages. Uses Gemini independently of the text-generation provider.
   if (pathname.endsWith('/scan-handwritten-questions') && req.method === 'POST') {
     try {
@@ -565,14 +606,36 @@ export default async (req: Request) => {
       const prompt = `You are a meticulous document-reading assistant helping a teacher digitize handwritten examination papers. Analyze EVERY attached page in the exact order provided; do not skip page edges, continuation lines, question subparts, answer choices, formulas, units, tables, or diagram labels. Extract only what is actually present; never invent missing text, options, correct answers, marks, or answer keys. Join a question continued across pages into one question. Preserve mathematical notation as readable plain text/LaTeX where appropriate. Classify multiple-choice questions as section A and theory/essay questions as section B. If the page contains a diagram, describe it briefly in question_text using [Diagram: ...] and preserve every legible label. If handwriting or a symbol is uncertain, choose the most plausible reading only when context strongly supports it and add a review_notes entry explaining the uncertainty. Set confidence to low/medium/high based on legibility. Do not solve questions and do not infer correct_option unless the source explicitly marks an answer key. For objective questions extract all four options where present; if an option is absent or unreadable, leave it as an empty string and flag it. Return JSON only with this exact shape:
 {"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"","marks":1,"confidence":"medium","review_notes":["..."]},{"section":"B","question_number":1,"question_text":"...","marks":10,"confidence":"high","review_notes":[]}],"page_notes":["..."]}
 Keep source order and question numbering where readable; renumber only when numbering is absent. Exclude page headers, names, school addresses and unrelated notes unless they form part of a question.`;
-      const response = await geminiAi.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
-        config: { responseMimeType: 'application/json', temperature: 0.1 },
-      });
+      const candidates = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+      let response: any = null;
+      let activeModel = '';
+      const modelFailures: string[] = [];
+      for (const model of candidates) {
+        try {
+          response = await geminiAi.models.generateContent({
+            model,
+            contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
+            config: { responseMimeType: 'application/json', temperature: 0.1 },
+          });
+          if (!String(response?.text || '').trim()) throw new Error('Model returned an empty response.');
+          activeModel = model;
+          break;
+        } catch (modelError: any) {
+          const detail = modelError instanceof Error ? modelError.message : String(modelError);
+          const modelStatus = Number(modelError?.status || modelError?.code) || 0;
+          modelFailures.push(model + ': ' + (modelStatus ? modelStatus + ' ' : '') + detail.slice(0, 180));
+          if (modelStatus === 401 || modelStatus === 403 || /invalid api key|permission denied|unauthorized/i.test(detail)) throw modelError;
+          if (modelStatus === 429 || /quota|rate.?limit/i.test(detail)) throw modelError;
+        }
+      }
+      if (!response) {
+        const modelError = new Error('Gemini could not process this scan with the available models. ' + modelFailures.join(' | '));
+        (modelError as any).modelFailures = modelFailures;
+        throw modelError;
+      }
       let parsed: any;
       try { parsed = JSON.parse(response.text || '{}'); }
-      catch { throw new Error('Gemini could not return structured questions from these photos. Try clearer images or fewer pages.'); }
+      catch { throw new Error('Gemini responded, but its question data was not valid JSON. Please retry the scan.'); }
       const questions = (Array.isArray(parsed.questions) ? parsed.questions : []).filter((q: any) =>
         q && typeof q.question_text === 'string' && q.question_text.trim() &&
         (q.section === 'A' || q.section === 'B')
@@ -592,19 +655,24 @@ Keep source order and question numbering where readable; renumber only when numb
         review_notes: Array.isArray(q.review_notes) ? q.review_notes.filter((n: any) => typeof n === 'string').slice(0, 8).map((n: string) => n.slice(0, 300)) : [],
       }));
       if (!questions.length) return jsonResponse({ success: false, error: 'No questions could be confidently extracted. Try brighter, sharper photos with the full page visible.' }, 422, corsHeaders);
-      return jsonResponse({ success: true, data: questions, page_notes: Array.isArray(parsed.page_notes) ? parsed.page_notes.slice(0, 8) : [] }, 200, corsHeaders);
+      return jsonResponse({ success: true, provider: 'Gemini', model: activeModel, data: questions, page_notes: Array.isArray(parsed.page_notes) ? parsed.page_notes.slice(0, 8) : [] }, 200, corsHeaders);
     } catch (error: any) {
       const message = error instanceof Error ? error.message : 'Image analysis failed.';
       console.error('Handwritten question scan failed:', message.slice(0, 500));
       const status = Number(error?.status || error?.code) || 0;
-      const userMessage = /API key|authentication|unauthorized/i.test(message)
+      const modelFailures = Array.isArray(error?.modelFailures) ? error.modelFailures : undefined;
+      const userMessage = /API key|authentication|unauthorized|invalid api key|permission denied/i.test(message)
         ? 'Gemini authentication failed. Check GEMINI_API_KEY in Netlify Functions and redeploy.'
         : /quota|rate.?limit|429/i.test(message) || status === 429
-          ? 'Gemini is temporarily rate-limited. Wait a little and try again.'
-          : message.startsWith('Page ') || message.startsWith('Each page')
-            ? message
-            : 'Could not analyze these images. Try clearer photos or fewer pages, then try again.';
-      return jsonResponse({ success: false, error: userMessage }, status === 429 ? 429 : 503, corsHeaders);
+          ? 'Gemini quota or rate limit reached. Wait for the quota to reset, check Google AI Studio, or use a smaller scan.'
+          : /404|not found|model.*unavailable/i.test(message)
+            ? 'The configured Gemini model is unavailable for this API key. The scanner tried its fallback models; check model access in Google AI Studio.'
+            : /Page |Each page|Combined image size|Upload between/i.test(message)
+              ? message
+              : /valid JSON/i.test(message)
+                ? message
+                : 'Gemini could not finish analysing these images. Check the Gemini connection test below; if it passes, retry with fewer pages or clearer photos.';
+      return jsonResponse({ success: false, provider: 'Gemini', error: userMessage, diagnostics: modelFailures }, status === 429 ? 429 : status === 401 || status === 403 ? status : 503, corsHeaders);
     }
   }
 
@@ -906,5 +974,5 @@ Respond strictly with a JSON object:
 };
 
 export const config = {
-  path: ['/api/generate-questions', '/api/exam-request-status', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite', '/api/check-exam-conflict', '/api/publish-exam', '/api/scan-handwritten-questions'],
+  path: ['/api/generate-questions', '/api/exam-request-status', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite', '/api/check-exam-conflict', '/api/publish-exam', '/api/scan-handwritten-questions', '/api/gemini-scan-status'],
 };

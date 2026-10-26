@@ -27,7 +27,15 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
   const [questions, setQuestions] = useState<ExtractedQuestion[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [cameraQuality, setCameraQuality] = useState('Point the camera at a full page to check readability.');
+  const [testingGemini, setTestingGemini] = useState(false);
+  const [geminiStatus, setGeminiStatus] = useState<{ success: boolean; message: string; model?: string; diagnostics?: string[] } | null>(null);
+  const [scanModel, setScanModel] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Keep one preview URL per selected file and revoke every URL when files are removed,
   // scanning finishes, the scanner closes, or the component unmounts.
@@ -36,6 +44,96 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
     setPreviews(urls);
     return () => urls.forEach(url => URL.revokeObjectURL(url));
   }, [files]);
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    setCameraOpen(false);
+  };
+
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach(track => track.stop());
+  }, []);
+
+  const startCamera = async () => {
+    setCameraError('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Live camera is not supported in this browser. Use Take a photo or Upload page photos instead.');
+      return;
+    }
+    try {
+      stopCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+      streamRef.current = stream;
+      setCameraOpen(true);
+    } catch (e) {
+      setCameraError(e instanceof Error && /permission|denied|notallowed/i.test(e.message)
+        ? 'Camera permission was denied. Allow camera access in your browser settings, or upload a photo instead.'
+        : 'Could not open the camera. Check camera permission and ensure the site is using HTTPS.');
+    }
+  };
+
+  useEffect(() => {
+    if (!cameraOpen || !streamRef.current || !videoRef.current) return;
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    void video.play().catch(() => setCameraError('Tap the camera preview to start video, or use the photo upload option.'));
+    const timer = window.setInterval(() => {
+      if (!video.videoWidth || !video.videoHeight) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = 64; canvas.height = 64;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let total = 0;
+      for (let i = 0; i < pixels.length; i += 4) total += 0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2];
+      const brightness = total / (pixels.length / 4);
+      setCameraQuality(brightness < 65
+        ? 'Too dark: move to brighter, even lighting before capturing.'
+        : brightness > 225
+          ? 'Image may be overexposed: reduce glare and avoid direct reflections.'
+          : 'Lighting looks usable. Keep all page edges visible and hold the camera steady.');
+    }, 900);
+    return () => window.clearInterval(timer);
+  }, [cameraOpen]);
+
+  const captureCameraPhoto = () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setCameraError('Camera is not ready yet. Hold steady for a moment and try again.');
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(1, 2200 / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    const context = canvas.getContext('2d');
+    if (!context) { setCameraError('This browser cannot capture the image. Please upload a photo instead.'); return; }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(blob => {
+      if (!blob) { setCameraError('Could not capture this page. Please try again.'); return; }
+      const page = new File([blob], `rockcraft-page-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setFiles(current => {
+        if (current.length >= 8) { setError('You can scan up to 8 pages at a time.'); return current; }
+        return [...current, page];
+      });
+      setCameraError('');
+    }, 'image/jpeg', 0.9);
+  };
+
+  const testGemini = async () => {
+    setTestingGemini(true); setGeminiStatus(null);
+    try {
+      const headers = await getAuthHeaders();
+      headers.set('Content-Type', 'application/json');
+      const response = await fetch('/api/gemini-scan-status', { method: 'POST', headers, body: JSON.stringify({ school_id: schoolId }) });
+      const result = await response.json();
+      setGeminiStatus({ success: Boolean(result.success), message: result.message || result.error || 'Gemini test returned no message.', model: result.model, diagnostics: Array.isArray(result.diagnostics) ? result.diagnostics : undefined });
+    } catch (e) {
+      setGeminiStatus({ success: false, message: e instanceof Error ? e.message : 'Could not contact the Gemini diagnostic endpoint. Confirm the latest Netlify deployment is active.' });
+    } finally { setTestingGemini(false); }
+  };
 
   const clearPhotos = () => {
     setFiles([]);
@@ -94,16 +192,20 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       const response = await fetch('/api/scan-handwritten-questions', {
         method: 'POST', headers, body: JSON.stringify({ school_id: schoolId, pages }),
       });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.error || 'Could not read these pages. Try clearer photos.');
+      let result: any;
+      try { result = await response.json(); }
+      catch { throw new Error('The scanner API did not return JSON. The deployed Netlify function may be outdated or unavailable. Check the Netlify deploy status and function logs, then retry.'); }
+      if (!response.ok || !result.success) {
+        const details = Array.isArray(result.diagnostics) ? '\\n' + result.diagnostics.join('\\n') : '';
+        throw new Error((result.error || result.message || ('Scanner request failed with HTTP ' + response.status + '.')) + details);
+      }
       setQuestions(Array.isArray(result.data) ? result.data : []);
+      setScanModel(typeof result.model === 'string' ? result.model : 'Gemini');
       if (!result.data?.length) throw new Error('No complete questions were detected. Try brighter, sharper photos with the whole page visible.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Scanning failed. Please try again.');
     } finally {
-      // Photos are only needed to submit the scan. Do not retain the original image files
-      // in the scanner once the request has been used, whether it succeeds or fails.
-      clearPhotos();
+      // Keep selected pages on failure so the teacher can retry or remove a problematic page.
       setBusy(false);
     }
   };
@@ -136,14 +238,26 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
     <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple className="hidden" onChange={e => { addFiles(e.target.files); e.currentTarget.value = ''; }} />
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       <button type="button" onClick={() => { if (inputRef.current) { inputRef.current.removeAttribute('capture'); inputRef.current.click(); } }} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Upload className="h-4 w-4" /> Upload page photos</button>
-      <button type="button" onClick={() => { if (inputRef.current) { inputRef.current.setAttribute('capture', 'environment'); inputRef.current.click(); } }} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"><Camera className="h-4 w-4" /> Take a photo</button>
+      <button type="button" onClick={startCamera} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"><Camera className="h-4 w-4" /> Open live camera</button>
     </div>
+    {cameraOpen && <div className="space-y-3 rounded-xl border border-blue-200 bg-slate-950 p-3">
+      <video ref={videoRef} autoPlay muted playsInline onClick={() => void videoRef.current?.play()} className="max-h-[55vh] w-full rounded-lg object-contain" aria-label="Live camera preview" />
+      <p className="text-xs leading-5 text-slate-200">Live image check: {cameraQuality} Keep the entire page inside the frame and capture pages in order.</p>
+      {cameraError && <p role="alert" className="text-xs text-amber-200">{cameraError}</p>}
+      <div className="grid grid-cols-2 gap-2"><button type="button" onClick={captureCameraPhoto} disabled={files.length >= 8} className="min-h-11 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-900 disabled:opacity-50">Capture page ({files.length}/8)</button><button type="button" onClick={stopCamera} className="min-h-11 rounded-lg border border-white/30 px-3 py-2 text-sm font-semibold text-white">Close camera</button></div>
+    </div>}
+    {cameraError && !cameraOpen && <p role="alert" className="text-xs text-amber-800">{cameraError}</p>}
     {files.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{files.map((file, index) => <div key={file.name + file.lastModified + index} className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><img src={previews[index] || ''} alt={'Page ' + (index + 1)} className="h-28 w-full object-cover" /><span className="block truncate px-2 py-1 text-[11px] text-slate-600">Page {index + 1}</span><button type="button" onClick={() => setFiles(v => v.filter((_, i) => i !== index))} className="absolute right-1 top-1 rounded-full bg-white/95 p-1 text-slate-700 shadow" aria-label={'Remove page ' + (index + 1)}><X className="h-3.5 w-3.5" /></button></div>)}</div>}
     <p className="text-[11px] text-slate-500">Tips: use bright, even light; keep the page flat and fully inside the frame. Upload pages in reading order. Up to 8 images, 8 MB each. Photos are sent for scanning only and are not saved to your ROCKCRAFT account.</p>
+    <div className="rounded-xl border border-slate-200 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold text-slate-800">Gemini connection check</p><p className="text-xs leading-5 text-slate-500">Test the server-side Gemini key and model before uploading pages. Your API key is never shown.</p></div><button type="button" onClick={testGemini} disabled={testingGemini} className="min-h-10 shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50">{testingGemini ? 'Testing Gemini…' : 'Test Gemini now'}</button></div>
+      {geminiStatus && <div role="status" className={'mt-3 rounded-lg p-3 text-xs leading-5 ' + (geminiStatus.success ? 'bg-emerald-50 text-emerald-900' : 'bg-amber-50 text-amber-950')}><p className="font-bold">{geminiStatus.success ? 'Connection successful' : 'Connection test failed'}</p><p>{geminiStatus.message}</p>{geminiStatus.model && <p className="mt-1">Model: <strong>{geminiStatus.model}</strong></p>}{geminiStatus.diagnostics?.map((item, index) => <p key={index} className="mt-1 break-words">{item}</p>)}</div>}
+    </div>
     {error && <p role="alert" className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</p>}
     <button type="button" disabled={busy || !files.length} onClick={scan} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Analysing all pages…</> : <><ScanText className="h-4 w-4" /> Analyse handwriting with Gemini</>}</button>
     {questions.length > 0 && <div className="space-y-3 border-t border-slate-100 pt-4">
       <div className="flex items-center gap-2 text-sm font-bold text-slate-900"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> {questions.length} questions detected — review before adding</div>
+      {scanModel && <p className="text-xs text-slate-500">Processed by Gemini model: {scanModel}</p>}
       {questions.map((q, i) => <article key={i} className="space-y-2 rounded-xl border border-slate-200 p-3">
         <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-600">Question {i + 1} · {q.section === 'B' ? 'Theory' : 'Objective'}</span><span className={'rounded-full px-2 py-1 text-[10px] font-semibold ' + (q.confidence === 'low' ? 'bg-amber-100 text-amber-800' : q.confidence === 'medium' ? 'bg-blue-50 text-blue-800' : 'bg-emerald-50 text-emerald-800')}>{q.confidence || 'review' } confidence</span></div>
         <textarea aria-label={'Question ' + (i + 1) + ' text'} value={q.question_text} onChange={e => update(i, 'question_text', e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 p-2.5 text-sm leading-6 focus:border-blue-500 focus:outline-none" />

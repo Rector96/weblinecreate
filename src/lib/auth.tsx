@@ -10,6 +10,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isPlatformAdmin: boolean;
+  isCustomerCare: boolean;
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   registerSchoolAndAdmin: (data: {
@@ -267,10 +268,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isPlatformAdmin = role === 'platform_admin';
+  const isCustomerCare = role === 'customer_care';
 
   return (
     <AuthContext.Provider value={{
-      user, school, role, isAuthenticated: !!user, isLoading, isPlatformAdmin,
+      user, school, role, isAuthenticated: !!user, isLoading, isPlatformAdmin, isCustomerCare,
       login, resetPassword, registerSchoolAndAdmin,
       logout, updateUserProfile, refreshSchool,
     }}>

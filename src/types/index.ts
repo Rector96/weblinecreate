@@ -1,4 +1,4 @@
-export type UserRole = 'school_admin' | 'teacher' | 'platform_admin';
+export type UserRole = 'school_admin' | 'teacher' | 'platform_admin' | 'customer_care';
 
 export type InstitutionType = 'Secondary' | 'Comprehensive' | 'College' | 'International' | 'Technical' | 'Primary & Secondary';
 
