@@ -41,17 +41,39 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
     if (!files.length) { setError('Take a photo or upload at least one page.'); return; }
     setBusy(true); setError(''); setQuestions([]);
     try {
-      const pages = await Promise.all(files.map(file => new Promise<{ mimeType: string; data: string }>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const value = String(reader.result || '');
-          const data = value.split(',')[1];
-          if (!data) reject(new Error('Could not read one of the images.'));
-          else resolve({ mimeType: file.type, data });
-        };
-        reader.onerror = () => reject(new Error('Could not read one of the images.'));
-        reader.readAsDataURL(file);
-      })));
+      // Netlify synchronous function payloads are limited; resize/compress on-device before upload.
+      const pages = await Promise.all(files.map(async (file) => {
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const objectUrl = URL.createObjectURL(file);
+          const img = new Image();
+          img.onload = () => { URL.revokeObjectURL(objectUrl); resolve(img); };
+          img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Could not open one of the page photos.')); };
+          img.src = objectUrl;
+        });
+        const maxSide = 1800;
+        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Image compression is unavailable in this browser.');
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Could not prepare an image for scanning.')), 'image/jpeg', 0.78));
+        const data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const value = String(reader.result || '').split(',')[1];
+            value ? resolve(value) : reject(new Error('Could not read one of the compressed images.'));
+          };
+          reader.onerror = () => reject(new Error('Could not read one of the compressed images.'));
+          reader.readAsDataURL(blob);
+        });
+        return { mimeType: 'image/jpeg', data };
+      }));
+      const totalEncodedSize = pages.reduce((sum, page) => sum + page.data.length, 0);
+      if (totalEncodedSize > 5_000_000) throw new Error('These pages are still too large to send safely. Try scanning 3–4 pages at a time.');
       const headers = await getAuthHeaders();
       headers.set('Content-Type', 'application/json');
       const response = await fetch('/api/scan-handwritten-questions', {
