@@ -9,7 +9,6 @@ import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
 import { BottomNav } from './components/common/BottomNav';
 import { OfflineBanner } from './components/common/OfflineBanner';
-import { PWAInstallBanner } from './components/common/PWAInstallBanner';
 import { WhatsAppButton } from './components/common/WhatsAppButton';
 import { PaystackModal } from './components/common/PaystackModal';
 import { WelcomeModal } from './components/common/WelcomeModal';
@@ -245,9 +244,6 @@ function AppContent() {
         {/* Top Header */}
         {!isTeacher && <Header currentRoute={visibleRoute} navigate={navigate} onOpenPaystack={() => setIsPaystackOpen(true)} />}
 
-        {/* PWA In-App Install Banner */}
-        {!isTeacher && <PWAInstallBanner />}
-
         {/* Profile Completion Gate Warning */}
         {!isTeacher && isProfileIncomplete && currentRoute !== 'profile' && (
           <div className="mx-4 sm:mx-8 mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -339,6 +335,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppContent />
+      <PWAInstallBanner />
     </AuthProvider>
   );
 }
