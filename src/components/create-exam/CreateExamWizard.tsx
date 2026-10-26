@@ -1230,7 +1230,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                         option_b: item.option_b || 'Needs review',
                         option_c: item.option_c || 'Needs review',
                         option_d: item.option_d || 'Needs review',
-                        correct_option: item.correct_option || 'A',
+                        correct_option: item.correct_option || '',
                       } : undefined,
                       theory_data: item.section === 'B' ? {
                         model_answer: item.model_answer || 'Answer not extracted from source; teacher to add.',
