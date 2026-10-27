@@ -1120,6 +1120,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                     section: item.section,
                     question_number: index + 1,
                     question_text: item.question_text,
+                    image_url: item.diagram_image || undefined,
                     marks: Number(item.marks) || (item.section === 'A' ? 1 : 10),
                     objective_data: item.section === 'A' ? {
                       option_a: item.option_a || '',
@@ -1674,7 +1675,10 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                               </div>
                             </div>
                           ) : (
-                            <FormattedExamText text={q.question_text} className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed" />
+                            <div className="min-w-0 flex-1">
+                            <FormattedExamText text={q.question_text} className="whitespace-pre-wrap break-words text-sm leading-relaxed" />
+                            {q.image_url && <img src={q.image_url} alt={`Source diagram for question ${idx + 1}`} className="mt-2 max-h-56 max-w-full rounded-lg border border-slate-200 object-contain" />}
+                          </div>
                           )}
                           <button type="button" onClick={() => beginPreviewEdit(`question:${q.id}`, q.question_text)} className="shrink-0 rounded-lg p-1.5 text-blue-700 hover:bg-blue-50" aria-label={`Edit question ${idx + 1}`} title="Edit question"><Edit3 className="h-4 w-4" /></button>
                         </div>
@@ -1766,7 +1770,10 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                               </div>
                             </div>
                           ) : (
-                            <FormattedExamText text={q.question_text} className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed" />
+                            <div className="min-w-0 flex-1">
+                              <FormattedExamText text={q.question_text} className="whitespace-pre-wrap break-words text-sm leading-relaxed" />
+                              {q.image_url && <img src={q.image_url} alt={`Source diagram for theory question ${idx + 1}`} className="mt-2 max-h-56 max-w-full rounded-lg border border-slate-200 object-contain" />}
+                            </div>
                           )}
                           <button type="button" onClick={() => beginPreviewEdit(`question:${q.id}`, q.question_text)} className="shrink-0 rounded-lg p-1.5 text-blue-700 hover:bg-blue-50" aria-label={`Edit theory question ${idx + 1}`} title="Edit question"><Edit3 className="h-4 w-4" /></button>
                         </div>
