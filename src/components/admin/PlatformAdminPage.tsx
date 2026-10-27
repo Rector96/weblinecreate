@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { FeedbackAdminPanel } from './FeedbackAdminPanel';
+import { AiIssuesAdminPanel } from './AiIssuesAdminPanel';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { School, PaymentTransaction } from '../../types';
 import {
@@ -223,6 +224,7 @@ export const PlatformAdminPage: React.FC = () => {
       {errorMessage && <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-sm text-rose-800 flex items-start gap-2"><AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /><span>{errorMessage}</span></div>}
       {notice && <div role="status" className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">{notice}</div>}
 
+      <AiIssuesAdminPanel />
       <FeedbackAdminPanel />
 
       <section className="grid grid-cols-2 xl:grid-cols-3 gap-3">
