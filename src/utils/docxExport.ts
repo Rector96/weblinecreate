@@ -84,6 +84,20 @@ async function getSchoolLogoRun(school?: School | null): Promise<ImageRun | null
   }
 }
 
+async function getQuestionImageRun(dataUrl?: string): Promise<ImageRun | null> {
+  if (!dataUrl || !dataUrl.startsWith('data:image/')) return null;
+  try {
+    const comma = dataUrl.indexOf(',');
+    if (comma < 0) return null;
+    const binary = atob(dataUrl.slice(comma + 1));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    if (!bytes.length) return null;
+    const type: 'jpg' | 'png' = dataUrl.startsWith('data:image/png') ? 'png' : 'jpg';
+    return new ImageRun({ data: bytes, type, transformation: { width: 280, height: 180 } });
+  } catch { return null; }
+}
+
 /** Build the official dense A4 exam paper as a Blob (used by single download and ZIP). */
 export async function buildExamDocxBlob(exam: Exam, school?: School | null): Promise<Blob> {
   const schoolName = (school?.name || 'SCHOOL NAME').toUpperCase();
@@ -187,6 +201,8 @@ export async function buildExamDocxBlob(exam: Exam, school?: School | null): Pro
           new TextRun({ text: qText, font: FONT_NAME, size: 20 }),
         ],
       }));
+      const diagramRun = await getQuestionImageRun(q.image_url);
+      if (diagramRun) docChildren.push(new Paragraph({ spacing: { after: 24 }, indent: { left: 220 }, children: [diagramRun] }));
       if (q.objective_data) {
         const a = cleanMathForPrint(q.objective_data.option_a) || '—';
         const b = cleanMathForPrint(q.objective_data.option_b) || '—';
@@ -262,6 +278,8 @@ export async function buildExamDocxBlob(exam: Exam, school?: School | null): Pro
         }));
         return;
       }
+      const diagramRun = await getQuestionImageRun(q.image_url);
+      if (diagramRun) docChildren.push(new Paragraph({ spacing: { after: 24 }, indent: { left: 220 }, children: [diagramRun] }));
       lines.forEach((line, lIdx) => {
         if (lIdx === 0) {
           docChildren.push(new Paragraph({
