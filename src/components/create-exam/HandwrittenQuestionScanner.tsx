@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, Upload, X, Loader2, ScanText, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Camera, Upload, X, Loader2, ScanText, AlertTriangle } from 'lucide-react';
 
 type ExtractedQuestion = {
   section: 'A' | 'B';
@@ -26,7 +26,6 @@ type Props = {
 export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthHeaders, onQuestionsExtracted, onClose }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [questions, setQuestions] = useState<ExtractedQuestion[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +55,7 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
 
   const scan = async () => {
     if (!files.length) { setError('Take a photo or upload at least one page.'); return; }
-    setBusy(true); setError(''); setQuestions([]);
+    setBusy(true); setError('');
     try {
       // Netlify synchronous function payloads are limited; resize/compress on-device before upload.
       const pages = await Promise.all(files.map(async (file) => {
@@ -183,32 +182,18 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
         const match = crops.find(({ region, image }) => image && region.section === question.section && Number(region.question_number) === Number(question.question_number));
         return match?.image ? { ...question, diagram_image: match.image } : question;
       });
-      setQuestions(withDiagrams);
       if (!withDiagrams.length) throw new Error('No questions could be confidently extracted. Try brighter, sharper photos with the whole page visible.');
+      // Send extracted questions straight into the wizard's existing Step 4 review page.
+      // Do not render a second, separate preview inside this scanner.
+      onQuestionsExtracted(withDiagrams);
       clearPhotos();
+      onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Scanning failed. Please try again.');
     } finally {
       // Keep photos after a failed attempt so the teacher can retry without re-uploading.
       setBusy(false);
     }
-  };
-
-  const update = (index: number, field: keyof ExtractedQuestion, value: string) => {
-    setQuestions(current => current.map((q, i) => i === index ? { ...q, [field]: value } : q));
-  };
-
-  const accept = () => {
-    const cleaned = questions.filter(q => q.question_text.trim()).map((q, index) => ({
-      ...q, question_number: index + 1,
-      section: q.section === 'B' ? 'B' as const : 'A' as const,
-      ...(q.section === 'A' ? {
-        option_a: q.option_a || '', option_b: q.option_b || '', option_c: q.option_c || '', option_d: q.option_d || '',
-      } : {}),
-    }));
-    if (!cleaned.length) { setError('Add at least one question before continuing.'); return; }
-    onQuestionsExtracted(cleaned);
-    onClose();
   };
 
   return <section className="space-y-4 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm sm:p-5" aria-label="Handwritten question scanner">
@@ -238,16 +223,6 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       </div>, document.body
     )}
     <button type="button" disabled={busy || !files.length} onClick={scan} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Analysing all pages…</> : <><ScanText className="h-4 w-4" /> Analyse handwriting with Gemini</>}</button>
-    {questions.length > 0 && <div className="space-y-3 border-t border-slate-100 pt-4">
-      <div className="flex items-center gap-2 text-sm font-bold text-slate-900"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> {questions.length} questions detected — review before adding</div>
-      {questions.map((q, i) => <article key={i} className="space-y-2 rounded-xl border border-slate-200 p-3">
-        <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-600">Question {i + 1} · {q.section === 'B' ? 'Theory' : 'Objective'}</span><span className={'rounded-full px-2 py-1 text-[10px] font-semibold ' + (q.confidence === 'low' ? 'bg-amber-100 text-amber-800' : q.confidence === 'medium' ? 'bg-blue-50 text-blue-800' : 'bg-emerald-50 text-emerald-800')}>{q.confidence || 'review' } confidence</span></div>
-        <textarea aria-label={'Question ' + (i + 1) + ' text'} value={q.question_text} onChange={e => update(i, 'question_text', e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 p-2.5 text-sm leading-6 focus:border-blue-500 focus:outline-none" />
-        {q.diagram_image && <div className="rounded-lg border border-slate-200 bg-slate-50 p-2"><p className="mb-1 text-[10px] font-semibold text-slate-500">Cropped source diagram — check labels</p><img src={q.diagram_image} alt={'Diagram for question ' + (i + 1)} className="max-h-64 max-w-full rounded-md object-contain" /></div>}
-        {q.section === 'A' && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{(['option_a','option_b','option_c','option_d'] as const).map((field, optionIndex) => <label key={field} className="text-xs font-semibold text-slate-600">{'Option ' + 'ABCD'[optionIndex]}<textarea rows={2} value={q[field] || ''} onChange={e => update(i, field, e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-sm font-normal text-slate-800 focus:border-blue-500 focus:outline-none" /></label>)}</div>}
-        {q.review_notes?.length ? <p className="rounded-lg bg-amber-50 p-2 text-xs leading-5 text-amber-900"><AlertTriangle className="mr-1 inline h-3.5 w-3.5" />Please check: {q.review_notes.join('; ')}</p> : null}
-      </article>)}
-      <button type="button" onClick={accept} className="min-h-12 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700">Add reviewed questions to exam</button>
-    </div>}
+
   </section>;
 };
