@@ -103,6 +103,46 @@ async function supabaseAdminRequest(path: string, init: RequestInit = {}) {
   return data;
 }
 
+// Diagnostics must never mask the original AI response. Never persist prompts, image data, API keys, or stack traces.
+async function recordAiIssue(input: {
+  requestId: string; schoolId?: string | null; operation: string; stage: string;
+  provider?: string; model?: string | null; status?: number | null; code?: string | null;
+  message: string; durationMs?: number; metadata?: Record<string, unknown>;
+}) {
+  try {
+    if (!SUPABASE_URL || !SUPABASE_ADMIN_KEY) {
+      console.error('[AI issue logging unavailable]', { requestId: input.requestId, operation: input.operation, stage: input.stage });
+      return;
+    }
+    const safeMessage = String(input.message || 'Unknown AI operation error')
+      .replace(/(?:Bearer\s+)[A-Za-z0-9._-]+/gi, 'Bearer [redacted]')
+      .replace(/(?:api[_ -]?key|authorization)\s*[:=]\s*[^\s,;]+/gi, '[credential redacted]')
+      .slice(0, 1200);
+    await supabaseAdminRequest('ai_operation_issues', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        request_id: input.requestId,
+        school_id: input.schoolId || null,
+        operation: input.operation.slice(0, 80),
+        stage: input.stage.slice(0, 80),
+        provider: input.provider || 'gemini',
+        model: input.model || null,
+        http_status: input.status || null,
+        error_code: input.code || null,
+        error_message: safeMessage,
+        duration_ms: input.durationMs ?? null,
+        metadata: input.metadata || {},
+      }),
+    });
+  } catch (loggingError) {
+    console.error('[AI issue log write failed]', {
+      requestId: input.requestId,
+      message: loggingError instanceof Error ? loggingError.message.slice(0, 180) : 'unknown',
+    });
+  }
+}
+
 async function getAuthenticatedUser(req: Request) {
   const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim();
   const authApiKey = SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY;
@@ -539,12 +579,17 @@ export default async (req: Request) => {
 
   // Vision-based extraction of handwritten exam pages. Uses Gemini independently of the text-generation provider.
   if (pathname.endsWith('/scan-handwritten-questions') && req.method === 'POST') {
+    const requestId = crypto.randomUUID();
+    const scanStartedAt = Date.now();
+    let scanSchoolId: string | null = null;
+    let activeModel: string | null = null;
     try {
       const rawLength = Number(req.headers.get('content-length') || 0);
       if (rawLength > 38_000_000) return jsonResponse({ success: false, error: 'Images are too large. Upload fewer or smaller page photos.' }, 413, corsHeaders);
       if (!geminiAi || !geminiApiKey) return jsonResponse({ success: false, error: 'Handwriting scanning needs GEMINI_API_KEY in Netlify Functions environment. Add it and redeploy.' }, 503, corsHeaders);
       const body = await req.json() as any;
       const schoolId = body?.school_id || req.headers.get('x-school-id');
+      scanSchoolId = typeof schoolId === 'string' ? schoolId : null;
       const authorization = await authorizeAiRequest(req, schoolId);
       if (!authorization.ok) return authorization.response;
       if (!Array.isArray(body.pages) || body.pages.length < 1 || body.pages.length > 8) {
@@ -570,6 +615,7 @@ Keep source order and question numbering where readable; renumber only when numb
       // Vision/model availability can vary by Google API project. Try the preferred
       // Flash model first, then compatible fallbacks before reporting a scan failure.
       for (const model of ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest']) {
+        activeModel = model;
         try {
           response = await geminiAi.models.generateContent({
             model,
@@ -618,20 +664,31 @@ Keep source order and question numbering where readable; renumber only when numb
       return jsonResponse({ success: true, data: questions, page_notes: Array.isArray(parsed.page_notes) ? parsed.page_notes.slice(0, 8) : [] }, 200, corsHeaders);
     } catch (error: any) {
       const message = error instanceof Error ? error.message : 'Image analysis failed.';
-      console.error('Handwritten question scan failed:', message.slice(0, 500));
       const status = Number(error?.status || (typeof error?.code === 'number' ? error.code : 0)) || 0;
       const diagnostic = String(error?.message || message);
+      const category = status === 429 || /quota|rate.?limit|resource_exhausted/i.test(diagnostic) ? 'provider_rate_limit'
+        : status === 401 || /api key|authentication|unauthorized/i.test(diagnostic) ? 'provider_auth'
+        : status === 404 || /model.*(not found|unavailable|unsupported)/i.test(diagnostic) ? 'model_unavailable'
+        : /json|structured questions|empty response/i.test(diagnostic) ? 'invalid_model_output'
+        : status === 400 ? 'invalid_request' : 'provider_or_network_error';
+      console.error('Handwritten question scan failed:', { requestId, schoolId: scanSchoolId, category, status: status || null, model: activeModel, durationMs: Date.now() - scanStartedAt, message: message.slice(0, 300) });
+      await recordAiIssue({
+        requestId, schoolId: scanSchoolId, operation: 'handwriting_scan', stage: category,
+        provider: 'gemini', model: activeModel, status: status || null, code: category,
+        message: diagnostic, durationMs: Date.now() - scanStartedAt,
+        metadata: { pages: 'request received', retryable: status === 429 || status >= 500 || status === 0 },
+      });
       const userMessage = /API key|authentication|unauthorized/i.test(diagnostic) || status === 401
-        ? 'Gemini authentication failed. Check that GEMINI_API_KEY is valid and available to Netlify Functions, then redeploy.'
+        ? 'Handwriting scanning is temporarily unavailable. The ROCKCRAFT team has been notified. Please try again shortly.'
         : /quota|rate.?limit|resource_exhausted/i.test(diagnostic) || status === 429
-          ? 'Gemini has reached its current quota or rate limit. Check Google AI Studio usage/billing, wait, and try again.'
+          ? 'Oops, many schools may be scanning questions right now, or the AI service has reached a temporary limit. Please wait a little and try again. Your original photos remain on this screen until you retry.'
           : /not found|model.*(not supported|unavailable)|unsupported.*model/i.test(diagnostic) || status === 404
-            ? 'Gemini could not access a supported vision model for this API key. Check the enabled models and Google AI API project.'
+            ? 'Handwriting scanning is temporarily unavailable while we check the AI service. Please try again shortly; the issue has been recorded for the ROCKCRAFT team.'
             : /invalid argument|bad request|unsupported image|payload/i.test(diagnostic) || status === 400
-              ? 'Gemini rejected the image request. Try one or two clear JPG/PNG photos with the whole page visible.'
+              ? 'We could not process these photos. Try one or two clear JPG/PNG photos with the whole page visible.'
               : message.startsWith('Page ') || message.startsWith('Each page')
                 ? message
-                : 'Gemini could not process these photos right now. Please try 1–2 clear pages first. If it continues, check the Netlify Function logs for “Handwritten question scan failed”.';
+                : 'Oops, lots of schools may be using the scanner right now. Please be patient and try again in a moment. The issue has been recorded for the ROCKCRAFT team.';
       return jsonResponse({ success: false, error: userMessage }, status === 429 ? 429 : status === 400 ? 400 : 503, corsHeaders);
     }
   }
