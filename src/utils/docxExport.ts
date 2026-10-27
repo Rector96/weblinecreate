@@ -192,7 +192,7 @@ export async function buildExamDocxBlob(exam: Exam, school?: School | null): Pro
       children: [new TextRun({ text: 'Instruction: Answer all questions in this section. Choose the correct option (A–D).', font: FONT_NAME, size: 16, italics: true })],
     }));
 
-    sectionAQuestions.forEach((q, idx) => {
+    for (const [idx, q] of sectionAQuestions.entries()) {
       const qText = cleanMathForPrint(q.question_text) || `Question ${idx + 1}`;
       docChildren.push(new Paragraph({
         spacing: { before: 50, after: 16 },
@@ -249,7 +249,7 @@ export async function buildExamDocxBlob(exam: Exam, school?: School | null): Pro
           );
         }
       }
-    });
+    }
   }
 
   if (sectionBQuestions.length > 0) {
@@ -264,7 +264,7 @@ export async function buildExamDocxBlob(exam: Exam, school?: School | null): Pro
       children: [new TextRun({ text: 'Instruction: Answer the questions in this section in your answer booklet. Show all working clearly.', font: FONT_NAME, size: 16, italics: true })],
     }));
 
-    sectionBQuestions.forEach((q, idx) => {
+    for (const [idx, q] of sectionBQuestions.entries()) {
       const lines = cleanMathForPrint(q.question_text).split('\n').filter((l) => l.trim().length > 0);
       const marksLabel = '';
       if (lines.length === 0) {
@@ -298,7 +298,7 @@ export async function buildExamDocxBlob(exam: Exam, school?: School | null): Pro
           }));
         }
       });
-    });
+    }
   }
 
   if (docChildren.length < 3) {
