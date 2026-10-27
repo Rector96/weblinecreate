@@ -66,7 +66,7 @@ Keep source order; do not infer correct_option unless explicitly marked in sourc
     let response: any = null;
     let lastError: any = null;
     // Use one fast, stable vision model rather than waiting through multiple fallback models.
-    const models = ['gemini-2.5-flash'];
+    const models = ['gemini-3.8-flash'];
     for (const model of models) {
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
