@@ -60,23 +60,49 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
     try {
       // Netlify synchronous function payloads are limited; resize/compress on-device before upload.
       const pages = await Promise.all(files.map(async (file) => {
-        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-          const objectUrl = URL.createObjectURL(file);
-          const img = new Image();
-          img.onload = () => { URL.revokeObjectURL(objectUrl); resolve(img); };
-          img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Could not open one of the page photos.')); };
-          img.src = objectUrl;
-        });
+        // Decode with createImageBitmap first for better compatibility with mobile camera files.
+        let imageSource: CanvasImageSource;
+        let sourceWidth = 0;
+        let sourceHeight = 0;
+        let bitmap: ImageBitmap | null = null;
+        try {
+          if (typeof createImageBitmap !== 'function') throw new Error('ImageBitmap unavailable');
+          bitmap = await createImageBitmap(file);
+          imageSource = bitmap;
+          sourceWidth = bitmap.width;
+          sourceHeight = bitmap.height;
+        } catch {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Could not read the selected photo.'));
+            reader.onerror = () => reject(new Error('Could not read the selected photo.'));
+            reader.readAsDataURL(file);
+          });
+          const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error('This photo format cannot be opened by your browser. Please choose a JPG or PNG photo, or take a new photo using the camera button.'));
+            img.src = dataUrl;
+          });
+          imageSource = image;
+          sourceWidth = image.naturalWidth;
+          sourceHeight = image.naturalHeight;
+        }
+        if (!sourceWidth || !sourceHeight) {
+          bitmap?.close();
+          throw new Error('The selected photo is empty or unreadable. Please choose a clear JPG or PNG photo.');
+        }
         const maxSide = 1800;
-        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+        const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
         const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+        canvas.height = Math.max(1, Math.round(sourceHeight * scale));
         const context = canvas.getContext('2d');
-        if (!context) throw new Error('Image compression is unavailable in this browser.');
+        if (!context) { bitmap?.close(); throw new Error('Image compression is unavailable in this browser.'); }
         context.fillStyle = '#ffffff';
         context.fillRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        context.drawImage(imageSource, 0, 0, canvas.width, canvas.height);
+        bitmap?.close();
         const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Could not prepare an image for scanning.')), 'image/jpeg', 0.78));
         const data = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
