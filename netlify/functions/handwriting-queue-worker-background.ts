@@ -18,6 +18,29 @@ async function db(path: string, init: RequestInit = {}) {
   if (!response.ok) throw new Error('Queue database request failed with HTTP ' + response.status);
   return data;
 }
+async function analyzeIncident(message: string, status: number, attempts: number) {
+  const key = (process.env.GROQ_API_KEY || '').trim();
+  if (!key) return { analysis: null, recommendation: 'Check provider quota, API credentials, Netlify function logs, and Supabase queue status.', repairStatus: 'needs_admin', action: 'admin_review' };
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'openai/gpt-oss-120b',
+        messages: [
+          { role: 'system', content: 'You are a production incident triage assistant for ROCKCRAFT. Analyze sanitized error metadata only. Never request or reveal secrets. You cannot edit source code or database schema. Recommend safe operational actions only: retry transient errors, use an already configured fallback model, inspect provider quota/configuration, or escalate to a human. Return strict JSON with analysis (max 500 chars), recommendation (max 500 chars), and safe_action exactly one of retry, fallback_model, admin_review, none.' },
+          { role: 'user', content: JSON.stringify({ component: 'handwriting_scan_worker', http_status: status || null, attempts, error: message.slice(0, 800) }) },
+        ], temperature: 0.1, response_format: { type: 'json_object' } }),
+    });
+    const data: any = await response.json();
+    if (!response.ok) throw new Error('Incident analysis provider returned ' + response.status);
+    const parsed = JSON.parse(data?.choices?.[0]?.message?.content || '{}');
+    const action = ['retry','fallback_model','admin_review','none'].includes(parsed.safe_action) ? parsed.safe_action : 'admin_review';
+    return { analysis: String(parsed.analysis || 'Automated analysis returned no details.').slice(0,500), recommendation: String(parsed.recommendation || 'Review provider and queue diagnostics.').slice(0,500), repairStatus: action === 'none' ? 'analyzed' : action === 'retry' ? 'auto_retried' : 'needs_admin', action };
+  } catch (error) {
+    console.error('Incident AI analysis unavailable', error);
+    return { analysis: 'Automated incident analysis was unavailable.', recommendation: 'Review the sanitized error, provider quota and Netlify logs manually.', repairStatus: 'needs_admin', action: 'admin_review' };
+  }
+}
+
 async function wakeNext(origin: string) {
   try { await fetch(origin + '/.netlify/functions/handwriting-queue-worker-background', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); }
   catch (error) { console.error('Could not wake next handwriting scan worker', error); }
@@ -109,12 +132,17 @@ Keep source order; do not infer correct_option unless explicitly marked in sourc
         }) });
       } catch (dbError) { console.error('Could not persist handwriting scan failure', dbError); }
       try {
-        const safeMessage = message.replace(/(?:Bearer\s+)[A-Za-z0-9._-]+/gi, 'Bearer [redacted]').slice(0,1000);
+        const safeMessage = message.replace(/(?:Bearer\s+)[A-Za-z0-9._-]+/gi, 'Bearer [redacted]').replace(/(?:api[_ -]?key|authorization)\s*[:=]\s*[^\s,;]+/gi, '[credential redacted]').slice(0,1000);
+        const triage = await analyzeIncident(safeMessage, status, attempts);
         await db('ai_operation_issues', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({
           request_id: job.id, school_id: job.school_id, operation: 'handwriting_scan', stage: retryable ? 'queue_retry' : 'queue_worker',
           provider: 'gemini', model: null, http_status: status || null, error_code: retryable ? 'retryable_provider_failure' : 'handwriting_scan_failed',
-          error_message: safeMessage, attempt_count: Number(job.attempts || 1), duration_ms: null,
+          error_message: safeMessage, attempt_count: attempts, duration_ms: null,
           metadata: { page_count: Array.isArray(job.request_payload?.pages) ? job.request_payload.pages.length : null, retryable, will_retry: willRetry },
+          ai_analysis: triage.analysis, ai_recommendation: triage.recommendation,
+          repair_status: willRetry ? 'auto_retried' : triage.repairStatus,
+          repair_attempted_at: new Date().toISOString(),
+          repair_metadata: { executed_action: willRetry ? 'retry' : 'admin_review', ai_suggested_action: triage.action },
         }) });
       } catch (logError) { console.error('Could not log handwriting scan issue', logError); }
     }
