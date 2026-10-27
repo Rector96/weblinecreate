@@ -61,7 +61,7 @@ export default async function handwritingQueueWorker(req: Request) {
     const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
     const imageParts = pages.map((page: any) => ({ inlineData: { mimeType: page.mimeType, data: page.data } }));
     const prompt = `Read every attached handwritten examination page in exact order. Preserve every visible word, subpart, option, formula, unit, table and diagram label. Never invent missing text or answers. Do not solve questions. Classify multiple choice as section A and theory as section B. For every diagram, include a concise description in question_text as [Diagram: description] AND return a diagram_regions entry with page_index (zero-based) and normalized bounding box x,y,width,height between 0 and 1, enclosing only the diagram and its labels. Bounding boxes must be based on the original page image, not a guessed position; if uncertain, omit the region and add a review note. Return JSON only:
-{"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"","option_b":"","option_c":"","option_d":"","marks":1,"confidence":"medium","review_notes":[]}],"diagram_regions":[{"question_number":1,"page_index":0,"x":0.1,"y":0.2,"width":0.4,"height":0.3,"description":"labelled circuit"}],"page_notes":[]}
+{"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"","option_b":"","option_c":"","option_d":"","marks":1,"confidence":"medium","review_notes":[]}],"diagram_regions":[{"section":"A","question_number":1,"page_index":0,"x":0.1,"y":0.2,"width":0.4,"height":0.3,"description":"labelled circuit"}],"page_notes":[]}
 Keep source order; do not infer correct_option unless explicitly marked in source. If no diagram is present, return an empty diagram_regions array.`;
     let response: any = null;
     let lastError: any = null;
@@ -104,7 +104,7 @@ Keep source order; do not infer correct_option unless explicitly marked in sourc
     }));
     if (!questions.length) throw new Error('No questions could be confidently extracted from these pages.');
     const diagrams = (Array.isArray(parsed.diagram_regions) ? parsed.diagram_regions : []).filter((d: any) =>
-      Number.isInteger(d.page_index) && d.page_index >= 0 && d.page_index < pages.length &&
+      ['A','B'].includes(d.section) && Number.isInteger(d.page_index) && d.page_index >= 0 && d.page_index < pages.length &&
       Number.isFinite(d.x) && Number.isFinite(d.y) && Number.isFinite(d.width) && Number.isFinite(d.height) &&
       d.x >= 0 && d.y >= 0 && d.width > 0 && d.height > 0 && d.x + d.width <= 1.001 && d.y + d.height <= 1.001
     ).slice(0,30);
