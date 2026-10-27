@@ -65,7 +65,8 @@ export default async function handwritingQueueWorker(req: Request) {
 Keep source order; do not infer correct_option unless explicitly marked in source. If no diagram is present, return an empty diagram_regions array.`;
     let response: any = null;
     let lastError: any = null;
-    const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
+    // Use one fast, stable vision model rather than waiting through multiple fallback models.
+    const models = ['gemini-2.5-flash'];
     for (const model of models) {
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
