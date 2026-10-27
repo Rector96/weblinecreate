@@ -91,7 +91,7 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
           bitmap?.close();
           throw new Error('The selected photo is empty or unreadable. Please choose a clear JPG or PNG photo.');
         }
-        const maxSide = 1800;
+        const maxSide = 1400;
         const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(sourceWidth * scale));
@@ -102,7 +102,7 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
         context.fillRect(0, 0, canvas.width, canvas.height);
         context.drawImage(imageSource, 0, 0, canvas.width, canvas.height);
         bitmap?.close();
-        const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Could not prepare an image for scanning.')), 'image/jpeg', 0.78));
+        const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Could not prepare an image for scanning.')), 'image/jpeg', 0.68));
         const data = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => {
