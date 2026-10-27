@@ -142,18 +142,19 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
           const width = Math.min(image.naturalWidth - left, Math.ceil(region.width * image.naturalWidth));
           const height = Math.min(image.naturalHeight - top, Math.ceil(region.height * image.naturalHeight));
           if (width < 2 || height < 2) return null;
+          const scale = Math.min(1, 1000 / Math.max(width, height));
           const canvas = document.createElement('canvas');
-          canvas.width = width; canvas.height = height;
+          canvas.width = Math.max(1, Math.round(width * scale)); canvas.height = Math.max(1, Math.round(height * scale));
           const ctx = canvas.getContext('2d');
           if (!ctx) return null;
           ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
-          ctx.drawImage(image, left, top, width, height, 0, 0, width, height);
-          return canvas.toDataURL('image/jpeg', 0.88);
+          ctx.drawImage(image, left, top, width, height, 0, 0, canvas.width, canvas.height);
+          return canvas.toDataURL('image/jpeg', 0.78);
         } catch { return null; }
       };
       const crops = await Promise.all(diagramRegions.map(async (region: any) => ({ region, image: await cropDiagram(region) })));
       const withDiagrams = extracted.map((question: ExtractedQuestion) => {
-        const match = crops.find(({ region, image }) => image && Number(region.question_number) === Number(question.question_number));
+        const match = crops.find(({ region, image }) => image && region.section === question.section && Number(region.question_number) === Number(question.question_number));
         return match?.image ? { ...question, diagram_image: match.image } : question;
       });
       setQuestions(withDiagrams);
