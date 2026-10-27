@@ -265,7 +265,7 @@ export async function publishExamWithQuota(
     // The database accepts only A/B/C/D. Handwritten extraction or AI output can
     // occasionally return values such as "Option B", "B.", or an empty string.
     const rawCorrectOption = String(objective?.correct_option ?? '').trim().toUpperCase();
-    const match = rawCorrectOption.match(/\\b([ABCD])\\b/);
+    const match = rawCorrectOption.match(/\b([ABCD])\b/);
     const correctOption = /^[ABCD]$/.test(rawCorrectOption)
       ? rawCorrectOption
       : match?.[1] || 'A';
