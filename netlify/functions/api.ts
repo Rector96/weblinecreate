@@ -94,7 +94,17 @@ async function supabaseAdminRequest(path: string, init: RequestInit = {}) {
   const raw = await response.text();
   const data = raw ? JSON.parse(raw) : null;
   if (!response.ok) {
-    console.error('Supabase server request failed', response.status, data);
+    // Log only the configured project hostname (never keys or request payloads).
+    // This makes wrong-project environment variables diagnosable from Netlify logs.
+    let supabaseProjectHost = 'invalid-or-missing-url';
+    try { supabaseProjectHost = new URL(SUPABASE_URL).host; } catch { /* keep safe fallback */ }
+    console.error('Supabase server request failed', {
+      status: response.status,
+      projectHost: supabaseProjectHost,
+      endpoint: path.split('?')[0].slice(0, 120),
+      code: data?.code || null,
+      message: typeof data?.message === 'string' ? data.message.slice(0, 240) : 'Unknown Supabase API error',
+    });
     if (data?.code === '23505' && typeof data?.message === 'string' && data.message.toLowerCase().includes('already has an exam for this subject')) {
       throw new Error(data.message);
     }
