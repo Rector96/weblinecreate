@@ -7,7 +7,7 @@ type Issue = {
   severity: string; status: string; school_id: string | null; provider: string; model: string | null;
   http_status: number | null; error_code: string | null; error_message: string;
   attempt_count: number; duration_ms: number | null; metadata: Record<string, unknown>;
-  resolution_notes: string | null;
+  resolution_notes: string | null; ai_analysis?: string | null; ai_recommendation?: string | null; repair_status?: string; repair_metadata?: Record<string, unknown>;
 };
 const fmt = (value: string) => new Date(value).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -71,6 +71,13 @@ export const AiIssuesAdminPanel: React.FC = () => {
         </button>
         {expanded === row.id && <div className="space-y-3 border-t border-slate-100 bg-slate-50/70 p-4 text-xs">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div><strong className="text-slate-500">School ID</strong><p className="mt-1 break-all text-slate-800">{row.school_id || 'Not available'}</p></div><div><strong className="text-slate-500">Request ID</strong><p className="mt-1 break-all text-slate-800">{row.request_id}</p></div><div><strong className="text-slate-500">Operation / stage</strong><p className="mt-1 text-slate-800">{row.operation} / {row.stage}</p></div><div><strong className="text-slate-500">Timing / attempts</strong><p className="mt-1 text-slate-800">{row.duration_ms == null ? 'Unknown duration' : row.duration_ms + ' ms'} · {row.attempt_count} attempt(s)</p></div><div><strong className="text-slate-500">Provider response</strong><p className="mt-1 text-slate-800">HTTP {row.http_status || 'unknown'} · {row.error_code || 'unclassified'}</p></div><div><strong className="text-slate-500">Safe metadata</strong><pre className="mt-1 whitespace-pre-wrap break-words text-slate-600">{JSON.stringify(row.metadata || {}, null, 2)}</pre></div></div>
+          <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+            <strong className="text-xs text-blue-950">AI incident analysis</strong>
+            <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">{row.ai_analysis || 'No AI analysis was recorded for this issue. Check the provider logs and retry history.'}</p>
+            <strong className="mt-3 block text-xs text-blue-950">Recommended next step</strong>
+            <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">{row.ai_recommendation || 'Inspect the error category and verify provider quota/configuration.'}</p>
+            <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-blue-700">Repair status: {row.repair_status || 'not_run'}</p>
+          </div>
           <button type="button" disabled={saving === row.id} onClick={() => void resolve(row)} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2.5 text-xs font-bold text-white disabled:opacity-50">{saving === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}{row.status === 'resolved' ? 'Reopen issue' : 'Mark resolved'}</button>
         </div>}
       </article>)}</div>}
