@@ -41,7 +41,7 @@ const ai: any = groqApiKey
 // Groq uses one configured model; Gemini retains its model fallback list.
 const MODELS = groqApiKey
   ? ['openai/gpt-oss-120b']
-  : ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+  : ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim().replace(/\/$/, '');
 // Prefer the legacy service-role JWT when configured. Supabase's newer sb_secret_
@@ -569,7 +569,7 @@ Keep source order and question numbering where readable; renumber only when numb
       let lastModelError: any = null;
       // Vision/model availability can vary by Google API project. Try the preferred
       // Flash model first, then compatible fallbacks before reporting a scan failure.
-      for (const model of ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest']) {
+      for (const model of ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest']) {
         try {
           response = await geminiAi.models.generateContent({
             model,
