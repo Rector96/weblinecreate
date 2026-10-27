@@ -676,6 +676,20 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       return;
     }
     if (isSubmitting) return;
+
+    // The database requires an A/B/C/D answer key. Handwriting extraction
+    // leaves this blank when the source does not mark the correct answer.
+    // Ask the teacher to verify it rather than silently inventing an answer.
+    const objectiveWithoutAnswer = questions.find((question) =>
+      question.section === 'A' &&
+      question.objective_data &&
+      !['A', 'B', 'C', 'D'].includes(String(question.objective_data.correct_option || '').trim().toUpperCase())
+    );
+    if (objectiveWithoutAnswer) {
+      alert(`Please select the correct answer (A, B, C or D) for objective question ${objectiveWithoutAnswer.question_number} before publishing. In the review preview, tap the correct option label [A], [B], [C] or [D].`);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
