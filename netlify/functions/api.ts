@@ -582,6 +582,7 @@ export default async (req: Request) => {
     const requestId = crypto.randomUUID();
     const scanStartedAt = Date.now();
     let scanSchoolId: string | null = null;
+    let scanPageCount = 0;
     let activeModel: string | null = null;
     try {
       const rawLength = Number(req.headers.get('content-length') || 0);
@@ -595,6 +596,7 @@ export default async (req: Request) => {
       if (!Array.isArray(body.pages) || body.pages.length < 1 || body.pages.length > 8) {
         return jsonResponse({ success: false, error: 'Upload between 1 and 8 page photos per scan.' }, 400, corsHeaders);
       }
+      scanPageCount = body.pages.length;
       const allowedMime = new Set(['image/jpeg', 'image/png', 'image/webp']);
       let totalBytes = 0;
       const imageParts = body.pages.map((page: any, index: number) => {
@@ -616,25 +618,33 @@ Keep source order and question numbering where readable; renumber only when numb
       // Flash model first, then compatible fallbacks before reporting a scan failure.
       for (const model of ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest']) {
         activeModel = model;
-        try {
-          response = await geminiAi.models.generateContent({
-            model,
-            contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
-            config: { responseMimeType: 'application/json', temperature: 0.1 },
-          });
-          if (response?.text) break;
-          lastModelError = new Error(`Gemini model ${model} returned an empty response.`);
-        } catch (modelError: any) {
-          lastModelError = modelError;
-          const message = String(modelError?.message || '');
-          const status = Number(modelError?.status || modelError?.code || 0);
-          // Authentication and quota errors are project-wide; retrying other models
-          // will not help and can consume additional quota.
-          if (/API key|authentication|unauthorized|permission denied|quota|rate.?limit/i.test(message) || status === 401 || status === 403 || status === 429) {
-            throw modelError;
+        let modelSucceeded = false;
+        for (let attempt = 1; attempt <= 2; attempt += 1) {
+          try {
+            response = await geminiAi.models.generateContent({
+              model,
+              contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
+              config: { responseMimeType: 'application/json', temperature: 0.1 },
+            });
+            if (response?.text) { modelSucceeded = true; break; }
+            lastModelError = new Error(`Gemini model ${model} returned an empty response.`);
+          } catch (modelError: any) {
+            lastModelError = modelError;
+            const message = String(modelError?.message || '');
+            const status = Number(modelError?.status || modelError?.code || 0);
+            const transient = status === 429 || status >= 500 || /temporarily unavailable|timeout|timed out|rate.?limit|resource_exhausted/i.test(message);
+            // Retry transient provider/network failures once, with a small backoff. Do not retry auth/configuration errors.
+            if (transient && attempt === 1) {
+              await new Promise(resolve => setTimeout(resolve, status === 429 ? 1200 : 500));
+              continue;
+            }
+            if (/API key|authentication|unauthorized|permission denied|quota|rate.?limit/i.test(message) || status === 401 || status === 403 || status === 429) {
+              throw modelError;
+            }
+            console.warn(`Gemini handwriting scan model ${model} failed:`, message.slice(0, 400));
           }
-          console.warn(`Gemini handwriting scan model ${model} failed:`, message.slice(0, 400));
         }
+        if (modelSucceeded) break;
       }
       if (!response?.text) {
         throw lastModelError || new Error('Gemini returned no text for the uploaded images.');
@@ -676,7 +686,7 @@ Keep source order and question numbering where readable; renumber only when numb
         requestId, schoolId: scanSchoolId, operation: 'handwriting_scan', stage: category,
         provider: 'gemini', model: activeModel, status: status || null, code: category,
         message: diagnostic, durationMs: Date.now() - scanStartedAt,
-        metadata: { pages: 'request received', retryable: status === 429 || status >= 500 || status === 0 },
+        metadata: { page_count: scanPageCount, retryable: status === 429 || status >= 500 || status === 0 },
       });
       const userMessage = /API key|authentication|unauthorized/i.test(diagnostic) || status === 401
         ? 'Handwriting scanning is temporarily unavailable. The ROCKCRAFT team has been notified. Please try again shortly.'
