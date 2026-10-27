@@ -260,15 +260,25 @@ export async function publishExamWithQuota(
     section_a_marks: examData.section_a_marks,
     section_b_marks: examData.section_b_marks,
   };
-  const questionPayload = questions.map((question, index) => ({
-    section: question.section,
-    question_number: question.question_number || index + 1,
-    question_text: question.question_text,
-    marks: question.marks,
-    image_url: question.image_url || null,
-    objective_data: question.objective_data || null,
-    theory_data: question.theory_data || null,
-  }));
+  const questionPayload = questions.map((question, index) => {
+    const objective = question.objective_data;
+    // The database accepts only A/B/C/D. Handwritten extraction or AI output can
+    // occasionally return values such as "Option B", "B.", or an empty string.
+    const rawCorrectOption = String(objective?.correct_option ?? '').trim().toUpperCase();
+    const match = rawCorrectOption.match(/\\b([ABCD])\\b/);
+    const correctOption = /^[ABCD]$/.test(rawCorrectOption)
+      ? rawCorrectOption
+      : match?.[1] || 'A';
+    return {
+      section: question.section,
+      question_number: question.question_number || index + 1,
+      question_text: question.question_text,
+      marks: question.marks,
+      image_url: question.image_url || null,
+      objective_data: objective ? { ...objective, correct_option: correctOption } : null,
+      theory_data: question.theory_data || null,
+    };
+  });
 
   const { data, error } = await supabase.rpc('publish_exam_with_quota', {
     p_exam: examPayload,
