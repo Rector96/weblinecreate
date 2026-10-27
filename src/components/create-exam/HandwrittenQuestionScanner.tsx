@@ -13,6 +13,7 @@ type ExtractedQuestion = {
   score_breakdown?: string;
   confidence?: 'high' | 'medium' | 'low';
   review_notes?: string[];
+  diagram_image?: string;
 };
 
 type Props = {
@@ -95,24 +96,68 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       const response = await fetch('/api/scan-handwritten-questions', {
         method: 'POST', headers, body: JSON.stringify({ school_id: schoolId, pages }),
       });
-      const responseText = await response.text();
-      let result: any;
-      try {
-        result = JSON.parse(responseText);
-      } catch {
-        // Netlify sometimes returns an HTML timeout/error page. Avoid exposing raw HTML to teachers.
-        throw new Error(response.status === 429
-          ? 'Lots of schools may be scanning right now. Please wait a little and try again.'
-          : 'The scanner service is temporarily busy or restarting. Your photos are still here—please try again in a moment.');
+      const parseResponse = async (res: Response) => {
+        const raw = await res.text();
+        try { return JSON.parse(raw); }
+        catch { throw new Error(res.status === 429
+          ? 'Lots of schools may be scanning right now. Your scan can be retried shortly.'
+          : 'The scanner service is temporarily busy. Your photos are still here—please try again in a moment.'); }
+      };
+      let result: any = await parseResponse(response);
+      if (!response.ok || !result.success) throw new Error(typeof result.error === 'string' ? result.error : 'We could not add your scan to the queue.');
+      if (!result.queued || !result.request_id) throw new Error('The scan was not queued. Your photos are still here—please retry.');
+      const requestId = result.request_id as string;
+      // Poll the durable job; the database retains it even if a function instance restarts.
+      const deadline = Date.now() + 6 * 60 * 1000;
+      let pollCount = 0;
+      while (Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, pollCount < 5 ? 1200 : 2200));
+        pollCount += 1;
+        const pollHeaders = await getAuthHeaders();
+        pollHeaders.set('x-school-id', schoolId);
+        const pollResponse = await fetch('/api/scan-handwritten-questions?id=' + encodeURIComponent(requestId), { method: 'GET', headers: pollHeaders });
+        result = await parseResponse(pollResponse);
+        if (!pollResponse.ok || !result.success) throw new Error(result.error || 'Could not check scan progress.');
+        if (result.status === 'failed') throw new Error(result.error || 'The scan could not be completed. Please retry; your original photos are still available.');
+        if (result.status === 'completed') break;
       }
-      if (!response.ok || !result.success) {
-        const message = typeof result.error === 'string' ? result.error : '';
-        throw new Error(message || (response.status === 429
-          ? 'Lots of schools may be scanning right now. Please wait a little and try again.'
-          : 'We could not finish this scan right now. Please try again in a moment.'));
-      }
-      setQuestions(Array.isArray(result.data) ? result.data : []);
-      if (!result.data?.length) throw new Error('No complete questions were detected. Try brighter, sharper photos with the whole page visible.');
+      if (result.status !== 'completed') throw new Error('Your scan is still in the queue because many schools may be using AI. Your photos are safe on this screen—press Analyse again in a moment.');
+      const extracted = Array.isArray(result.data) ? result.data : [];
+      const diagramRegions = Array.isArray(result.diagram_regions) ? result.diagram_regions : [];
+      // Crop diagrams from the original page images using AI-provided normalized bounding boxes.
+      // Crops remain local to the browser and are attached to the relevant question for review/export.
+      const cropDiagram = async (region: any): Promise<string | null> => {
+        const file = files[region.page_index];
+        if (!file) return null;
+        try {
+          const url = URL.createObjectURL(file);
+          const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+            img.src = url;
+          });
+          const left = Math.max(0, Math.floor(region.x * image.naturalWidth));
+          const top = Math.max(0, Math.floor(region.y * image.naturalHeight));
+          const width = Math.min(image.naturalWidth - left, Math.ceil(region.width * image.naturalWidth));
+          const height = Math.min(image.naturalHeight - top, Math.ceil(region.height * image.naturalHeight));
+          if (width < 2 || height < 2) return null;
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return null;
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(image, left, top, width, height, 0, 0, width, height);
+          return canvas.toDataURL('image/jpeg', 0.88);
+        } catch { return null; }
+      };
+      const crops = await Promise.all(diagramRegions.map(async (region: any) => ({ region, image: await cropDiagram(region) })));
+      const withDiagrams = extracted.map((question: ExtractedQuestion) => {
+        const match = crops.find(({ region, image }) => image && Number(region.question_number) === Number(question.question_number));
+        return match?.image ? { ...question, diagram_image: match.image } : question;
+      });
+      setQuestions(withDiagrams);
+      if (!withDiagrams.length) throw new Error('No questions could be confidently extracted. Try brighter, sharper photos with the whole page visible.');
       clearPhotos();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Scanning failed. Please try again.');
@@ -171,6 +216,7 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       {questions.map((q, i) => <article key={i} className="space-y-2 rounded-xl border border-slate-200 p-3">
         <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-600">Question {i + 1} · {q.section === 'B' ? 'Theory' : 'Objective'}</span><span className={'rounded-full px-2 py-1 text-[10px] font-semibold ' + (q.confidence === 'low' ? 'bg-amber-100 text-amber-800' : q.confidence === 'medium' ? 'bg-blue-50 text-blue-800' : 'bg-emerald-50 text-emerald-800')}>{q.confidence || 'review' } confidence</span></div>
         <textarea aria-label={'Question ' + (i + 1) + ' text'} value={q.question_text} onChange={e => update(i, 'question_text', e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 p-2.5 text-sm leading-6 focus:border-blue-500 focus:outline-none" />
+        {q.diagram_image && <div className="rounded-lg border border-slate-200 bg-slate-50 p-2"><p className="mb-1 text-[10px] font-semibold text-slate-500">Cropped source diagram — check labels</p><img src={q.diagram_image} alt={'Diagram for question ' + (i + 1)} className="max-h-64 max-w-full rounded-md object-contain" /></div>}
         {q.section === 'A' && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{(['option_a','option_b','option_c','option_d'] as const).map((field, optionIndex) => <label key={field} className="text-xs font-semibold text-slate-600">{'Option ' + 'ABCD'[optionIndex]}<textarea rows={2} value={q[field] || ''} onChange={e => update(i, field, e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-sm font-normal text-slate-800 focus:border-blue-500 focus:outline-none" /></label>)}</div>}
         {q.review_notes?.length ? <p className="rounded-lg bg-amber-50 p-2 text-xs leading-5 text-amber-900"><AlertTriangle className="mr-1 inline h-3.5 w-3.5" />Please check: {q.review_notes.join('; ')}</p> : null}
       </article>)}
