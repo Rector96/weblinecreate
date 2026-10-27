@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Camera, Upload, X, Loader2, ScanText, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 type ExtractedQuestion = {
@@ -94,16 +95,29 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       const response = await fetch('/api/scan-handwritten-questions', {
         method: 'POST', headers, body: JSON.stringify({ school_id: schoolId, pages }),
       });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.error || 'Could not read these pages. Try clearer photos.');
+      const responseText = await response.text();
+      let result: any;
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        // Netlify sometimes returns an HTML timeout/error page. Avoid exposing raw HTML to teachers.
+        throw new Error(response.status === 429
+          ? 'Lots of schools may be scanning right now. Please wait a little and try again.'
+          : 'The scanner service is temporarily busy or restarting. Your photos are still here—please try again in a moment.');
+      }
+      if (!response.ok || !result.success) {
+        const message = typeof result.error === 'string' ? result.error : '';
+        throw new Error(message || (response.status === 429
+          ? 'Lots of schools may be scanning right now. Please wait a little and try again.'
+          : 'We could not finish this scan right now. Please try again in a moment.'));
+      }
       setQuestions(Array.isArray(result.data) ? result.data : []);
       if (!result.data?.length) throw new Error('No complete questions were detected. Try brighter, sharper photos with the whole page visible.');
+      clearPhotos();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Scanning failed. Please try again.');
     } finally {
-      // Photos are only needed to submit the scan. Do not retain the original image files
-      // in the scanner once the request has been used, whether it succeeds or fails.
-      clearPhotos();
+      // Keep photos after a failed attempt so the teacher can retry without re-uploading.
       setBusy(false);
     }
   };
@@ -141,6 +155,16 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
     {files.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{files.map((file, index) => <div key={file.name + file.lastModified + index} className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><img src={previews[index] || ''} alt={'Page ' + (index + 1)} className="h-28 w-full object-cover" /><span className="block truncate px-2 py-1 text-[11px] text-slate-600">Page {index + 1}</span><button type="button" onClick={() => setFiles(v => v.filter((_, i) => i !== index))} className="absolute right-1 top-1 rounded-full bg-white/95 p-1 text-slate-700 shadow" aria-label={'Remove page ' + (index + 1)}><X className="h-3.5 w-3.5" /></button></div>)}</div>}
     <p className="text-[11px] text-slate-500">Tips: use bright, even light; keep the page flat and fully inside the frame. Upload pages in reading order. Up to 8 images, 8 MB each. Photos are sent for scanning only and are not saved to your ROCKCRAFT account.</p>
     {error && <p role="alert" className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</p>}
+    {busy && typeof document !== 'undefined' && createPortal(
+      <div role="status" aria-live="polite" className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/90 p-5 text-white">
+        <div className="w-full max-w-sm text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/20"><Loader2 className="h-8 w-8 animate-spin text-blue-300" /></div>
+          <h2 className="mt-5 text-xl font-black">ROCKCRAFT is reading your pages</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">Handwriting can take a little time. We are checking the pages now. Please keep this screen open.</p>
+          <p className="mt-4 text-xs text-slate-400">If many schools are scanning at once, this may take longer than usual.</p>
+        </div>
+      </div>, document.body
+    )}
     <button type="button" disabled={busy || !files.length} onClick={scan} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Analysing all pages…</> : <><ScanText className="h-4 w-4" /> Analyse handwriting with Gemini</>}</button>
     {questions.length > 0 && <div className="space-y-3 border-t border-slate-100 pt-4">
       <div className="flex items-center gap-2 text-sm font-bold text-slate-900"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> {questions.length} questions detected — review before adding</div>
