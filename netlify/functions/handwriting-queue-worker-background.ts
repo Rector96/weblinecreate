@@ -104,7 +104,7 @@ Keep source order; do not infer correct_option unless explicitly marked in sourc
     }));
     if (!questions.length) throw new Error('No questions could be confidently extracted from these pages.');
     const diagrams = (Array.isArray(parsed.diagram_regions) ? parsed.diagram_regions : []).filter((d: any) =>
-      ['A','B'].includes(d.section) && Number.isInteger(d.page_index) && d.page_index >= 0 && d.page_index < pages.length &&
+      ['A','B'].includes(d.section) && ['A','B'].includes(d.section) && Number.isInteger(d.page_index) && d.page_index >= 0 && d.page_index < pages.length &&
       Number.isFinite(d.x) && Number.isFinite(d.y) && Number.isFinite(d.width) && Number.isFinite(d.height) &&
       d.x >= 0 && d.y >= 0 && d.width > 0 && d.height > 0 && d.x + d.width <= 1.001 && d.y + d.height <= 1.001
     ).slice(0,30);
