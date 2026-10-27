@@ -577,129 +577,104 @@ export default async (req: Request) => {
     return await verifyPaystackPayment(req);
   }
 
-  // Vision-based extraction of handwritten exam pages. Uses Gemini independently of the text-generation provider.
+  // Persistent, database-backed handwriting scan queue. Jobs survive function restarts and are polled by request ID.
   if (pathname.endsWith('/scan-handwritten-questions') && req.method === 'POST') {
     const requestId = crypto.randomUUID();
-    const scanStartedAt = Date.now();
-    let scanSchoolId: string | null = null;
-    let scanPageCount = 0;
-    let activeModel: string | null = null;
+    const startedAt = Date.now();
+    let schoolId: string | null = null;
+    let pageCount = 0;
     try {
       const rawLength = Number(req.headers.get('content-length') || 0);
-      if (rawLength > 38_000_000) return jsonResponse({ success: false, error: 'Images are too large. Upload fewer or smaller page photos.' }, 413, corsHeaders);
-      if (!geminiAi || !geminiApiKey) return jsonResponse({ success: false, error: 'Handwriting scanning needs GEMINI_API_KEY in Netlify Functions environment. Add it and redeploy.' }, 503, corsHeaders);
+      if (rawLength > 7_000_000) return jsonResponse({ success: false, error: 'These photos are too large to queue safely. Scan fewer pages at a time.' }, 413, corsHeaders);
       const body = await req.json() as any;
-      const schoolId = body?.school_id || req.headers.get('x-school-id');
-      scanSchoolId = typeof schoolId === 'string' ? schoolId : null;
+      schoolId = typeof body?.school_id === 'string' ? body.school_id : null;
       const authorization = await authorizeAiRequest(req, schoolId);
       if (!authorization.ok) return authorization.response;
-      if (!Array.isArray(body.pages) || body.pages.length < 1 || body.pages.length > 8) {
-        return jsonResponse({ success: false, error: 'Upload between 1 and 8 page photos per scan.' }, 400, corsHeaders);
-      }
-      scanPageCount = body.pages.length;
+      if (!Array.isArray(body.pages) || body.pages.length < 1 || body.pages.length > 8) return jsonResponse({ success: false, error: 'Upload between 1 and 8 page photos per scan.' }, 400, corsHeaders);
+      pageCount = body.pages.length;
       const allowedMime = new Set(['image/jpeg', 'image/png', 'image/webp']);
       let totalBytes = 0;
-      const imageParts = body.pages.map((page: any, index: number) => {
+      for (let i = 0; i < body.pages.length; i++) {
+        const page = body.pages[i];
         if (!page || !allowedMime.has(page.mimeType) || typeof page.data !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(page.data)) {
-          throw new Error('Page ' + (index + 1) + ' is not a valid JPG, PNG, or WebP image.');
+          return jsonResponse({ success: false, error: 'Page ' + (i + 1) + ' is not a valid JPG, PNG, or WebP image.' }, 400, corsHeaders);
         }
-        const estimatedBytes = Math.floor(page.data.length * 3 / 4);
-        totalBytes += estimatedBytes;
-        if (estimatedBytes > 8 * 1024 * 1024) throw new Error('Each page photo must be 8 MB or smaller.');
-        return { inlineData: { mimeType: page.mimeType, data: page.data } };
-      });
-      if (totalBytes > 28 * 1024 * 1024) return jsonResponse({ success: false, error: 'Combined image size is too large. Scan fewer pages at a time.' }, 413, corsHeaders);
-      const prompt = `You are a meticulous document-reading assistant helping a teacher digitize handwritten examination papers. Analyze EVERY attached page in the exact order provided; do not skip page edges, continuation lines, question subparts, answer choices, formulas, units, tables, or diagram labels. Extract only what is actually present; never invent missing text, options, correct answers, marks, or answer keys. Join a question continued across pages into one question. Preserve mathematical notation as readable plain text/LaTeX where appropriate. Classify multiple-choice questions as section A and theory/essay questions as section B. If the page contains a diagram, describe it briefly in question_text using [Diagram: ...] and preserve every legible label. If handwriting or a symbol is uncertain, choose the most plausible reading only when context strongly supports it and add a review_notes entry explaining the uncertainty. Set confidence to low/medium/high based on legibility. Do not solve questions and do not infer correct_option unless the source explicitly marks an answer key. For objective questions extract all four options where present; if an option is absent or unreadable, leave it as an empty string and flag it. Return JSON only with this exact shape:
-{"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"","marks":1,"confidence":"medium","review_notes":["..."]},{"section":"B","question_number":1,"question_text":"...","marks":10,"confidence":"high","review_notes":[]}],"page_notes":["..."]}
-Keep source order and question numbering where readable; renumber only when numbering is absent. Exclude page headers, names, school addresses and unrelated notes unless they form part of a question.`;
-      let response: any;
-      let lastModelError: any = null;
-      // Vision/model availability can vary by Google API project. Try the preferred
-      // Flash model first, then compatible fallbacks before reporting a scan failure.
-      for (const model of ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest']) {
-        activeModel = model;
-        let modelSucceeded = false;
-        for (let attempt = 1; attempt <= 2; attempt += 1) {
-          try {
-            response = await geminiAi.models.generateContent({
-              model,
-              contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
-              config: { responseMimeType: 'application/json', temperature: 0.1 },
-            });
-            if (response?.text) { modelSucceeded = true; break; }
-            lastModelError = new Error(`Gemini model ${model} returned an empty response.`);
-          } catch (modelError: any) {
-            lastModelError = modelError;
-            const message = String(modelError?.message || '');
-            const status = Number(modelError?.status || modelError?.code || 0);
-            const transient = status === 429 || status >= 500 || /temporarily unavailable|timeout|timed out|rate.?limit|resource_exhausted/i.test(message);
-            // Retry transient provider/network failures once, with a small backoff. Do not retry auth/configuration errors.
-            if (transient && attempt === 1) {
-              await new Promise(resolve => setTimeout(resolve, status === 429 ? 1200 : 500));
-              continue;
-            }
-            if (/API key|authentication|unauthorized|permission denied|quota|rate.?limit/i.test(message) || status === 401 || status === 403 || status === 429) {
-              throw modelError;
-            }
-            console.warn(`Gemini handwriting scan model ${model} failed:`, message.slice(0, 400));
-          }
-        }
-        if (modelSucceeded) break;
+        const bytes = Math.floor(page.data.length * 3 / 4);
+        if (bytes > 2 * 1024 * 1024) return jsonResponse({ success: false, error: 'Each compressed page must be 2 MB or smaller. Please upload fewer or clearer compressed photos.' }, 413, corsHeaders);
+        totalBytes += bytes;
       }
-      if (!response?.text) {
-        throw lastModelError || new Error('Gemini returned no text for the uploaded images.');
+      if (totalBytes > 4_500_000) return jsonResponse({ success: false, error: 'Combined compressed images exceed the queue limit. Scan 3–4 pages at a time.' }, 413, corsHeaders);
+      const inviteToken = (req.headers.get('x-school-invite-token') || '').trim().toUpperCase();
+      let requesterTokenHash: string | null = null;
+      if (inviteToken) {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(inviteToken));
+        requesterTokenHash = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
       }
-      let parsed: any;
-      try { parsed = JSON.parse(response.text || '{}'); }
-      catch { throw new Error('Gemini could not return structured questions from these photos. Try clearer images or fewer pages.'); }
-      const questions = (Array.isArray(parsed.questions) ? parsed.questions : []).filter((q: any) =>
-        q && typeof q.question_text === 'string' && q.question_text.trim() &&
-        (q.section === 'A' || q.section === 'B')
-      ).slice(0, 100).map((q: any, i: number) => ({
-        section: q.section,
-        question_number: Number.isInteger(Number(q.question_number)) && Number(q.question_number) > 0 ? Number(q.question_number) : i + 1,
-        question_text: String(q.question_text).slice(0, 5000),
-        ...(q.section === 'A' ? {
-          option_a: typeof q.option_a === 'string' ? q.option_a.slice(0, 2000) : '',
-          option_b: typeof q.option_b === 'string' ? q.option_b.slice(0, 2000) : '',
-          option_c: typeof q.option_c === 'string' ? q.option_c.slice(0, 2000) : '',
-          option_d: typeof q.option_d === 'string' ? q.option_d.slice(0, 2000) : '',
-          ...(typeof q.correct_option === 'string' && ['A','B','C','D'].includes(q.correct_option.toUpperCase()) ? { correct_option: q.correct_option.toUpperCase() } : {}),
-        } : {}),
-        marks: Number.isFinite(Number(q.marks)) && Number(q.marks) > 0 ? Math.min(100, Number(q.marks)) : (q.section === 'A' ? 1 : 10),
-        confidence: ['high','medium','low'].includes(q.confidence) ? q.confidence : 'medium',
-        review_notes: Array.isArray(q.review_notes) ? q.review_notes.filter((n: any) => typeof n === 'string').slice(0, 8).map((n: string) => n.slice(0, 300)) : [],
-      }));
-      if (!questions.length) return jsonResponse({ success: false, error: 'No questions could be confidently extracted. Try brighter, sharper photos with the full page visible.' }, 422, corsHeaders);
-      return jsonResponse({ success: true, data: questions, page_notes: Array.isArray(parsed.page_notes) ? parsed.page_notes.slice(0, 8) : [] }, 200, corsHeaders);
+      const inserted = await supabaseAdminRequest('handwriting_scan_requests', {
+        method: 'POST', headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({
+          id: requestId, school_id: schoolId, teacher_id: authorization.userId,
+          requester_token_hash: requesterTokenHash,
+          request_payload: { pages: body.pages }, status: 'pending',
+        }),
+      }) as any[];
+      if (!inserted?.[0]?.id) throw new Error('Could not persist handwriting scan job.');
+      try {
+        const wake = await fetch(getSiteUrl(req) + '/.netlify/functions/handwriting-queue-worker-background', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+        });
+        if (!wake.ok) console.warn('Handwriting worker wake returned', wake.status, 'job remains in durable queue', requestId);
+      } catch (wakeError) {
+        // The job remains durable and the status endpoint can wake a worker during polling.
+        console.warn('Handwriting worker wake failed; job remains queued', requestId, wakeError);
+      }
+      return jsonResponse({ success: true, queued: true, request_id: requestId, status: 'pending' }, 202, corsHeaders);
     } catch (error: any) {
-      const message = error instanceof Error ? error.message : 'Image analysis failed.';
-      const status = Number(error?.status || (typeof error?.code === 'number' ? error.code : 0)) || 0;
-      const diagnostic = String(error?.message || message);
-      const category = status === 429 || /quota|rate.?limit|resource_exhausted/i.test(diagnostic) ? 'provider_rate_limit'
-        : status === 401 || /api key|authentication|unauthorized/i.test(diagnostic) ? 'provider_auth'
-        : status === 404 || /model.*(not found|unavailable|unsupported)/i.test(diagnostic) ? 'model_unavailable'
-        : /json|structured questions|empty response/i.test(diagnostic) ? 'invalid_model_output'
-        : status === 400 ? 'invalid_request' : 'provider_or_network_error';
-      console.error('Handwritten question scan failed:', { requestId, schoolId: scanSchoolId, category, status: status || null, model: activeModel, durationMs: Date.now() - scanStartedAt, message: message.slice(0, 300) });
-      await recordAiIssue({
-        requestId, schoolId: scanSchoolId, operation: 'handwriting_scan', stage: category,
-        provider: 'gemini', model: activeModel, status: status || null, code: category,
-        message: diagnostic, durationMs: Date.now() - scanStartedAt,
-        metadata: { page_count: scanPageCount, retryable: status === 429 || status >= 500 || status === 0 },
-      });
-      const userMessage = /API key|authentication|unauthorized/i.test(diagnostic) || status === 401
-        ? 'Handwriting scanning is temporarily unavailable. The ROCKCRAFT team has been notified. Please try again shortly.'
-        : /quota|rate.?limit|resource_exhausted/i.test(diagnostic) || status === 429
-          ? 'Oops, many schools may be scanning questions right now, or the AI service has reached a temporary limit. Please wait a little and try again. Your original photos remain on this screen until you retry.'
-          : /not found|model.*(not supported|unavailable)|unsupported.*model/i.test(diagnostic) || status === 404
-            ? 'Handwriting scanning is temporarily unavailable while we check the AI service. Please try again shortly; the issue has been recorded for the ROCKCRAFT team.'
-            : /invalid argument|bad request|unsupported image|payload/i.test(diagnostic) || status === 400
-              ? 'We could not process these photos. Try one or two clear JPG/PNG photos with the whole page visible.'
-              : message.startsWith('Page ') || message.startsWith('Each page')
-                ? message
-                : 'Oops, lots of schools may be using the scanner right now. Please be patient and try again in a moment. The issue has been recorded for the ROCKCRAFT team.';
-      return jsonResponse({ success: false, error: userMessage }, status === 429 ? 429 : status === 400 ? 400 : 503, corsHeaders);
+      const message = String(error?.message || 'Could not queue handwriting scan.');
+      console.error('Could not enqueue handwriting scan', { requestId, schoolId, durationMs: Date.now() - startedAt, message: message.slice(0,240) });
+      await recordAiIssue({ requestId, schoolId, operation: 'handwriting_scan', stage: 'enqueue', code: 'queue_enqueue_failed', message, durationMs: Date.now() - startedAt, metadata: { page_count: pageCount } });
+      return jsonResponse({ success: false, error: 'We could not add your scan to the queue. Your photos are still on this screen—please try again shortly.' }, 503, corsHeaders);
+    }
+  }
+
+  if (pathname.endsWith('/scan-handwritten-questions') && req.method === 'GET') {
+    const requestId = new URL(req.url).searchParams.get('id') || '';
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+      return jsonResponse({ success: false, error: 'A valid scan request ID is required.' }, 400, corsHeaders);
+    }
+    try {
+      const rows = await supabaseAdminRequest('handwriting_scan_requests?id=eq.' + requestId + '&select=id,school_id,teacher_id,requester_token_hash,status,result_data,error_message,updated_at&limit=1') as any[];
+      const job = rows?.[0];
+      if (!job) return jsonResponse({ success: false, error: 'Scan request not found.' }, 404, corsHeaders);
+      const schoolId = (req.headers.get('x-school-id') || '').trim();
+      if (!schoolId || schoolId !== job.school_id) return jsonResponse({ success: false, error: 'You are not allowed to view this scan.' }, 403, corsHeaders);
+      let permitted = false;
+      const inviteToken = (req.headers.get('x-school-invite-token') || '').trim().toUpperCase();
+      if (inviteToken && job.requester_token_hash) {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(inviteToken));
+        const hash = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+        permitted = hash === job.requester_token_hash;
+      } else {
+        const user = await getAuthenticatedUser(req);
+        permitted = Boolean(user?.id && job.teacher_id && user.id === job.teacher_id);
+      }
+      if (!permitted) return jsonResponse({ success: false, error: 'You are not allowed to view this scan.' }, 403, corsHeaders);
+      if (job.status === 'processing' && Date.now() - Date.parse(job.updated_at || '') > 8 * 60 * 1000) {
+        void fetch(getSiteUrl(req) + '/.netlify/functions/handwriting-queue-worker-background', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+      }
+      if (job.status === 'pending') {
+        void fetch(getSiteUrl(req) + '/.netlify/functions/handwriting-queue-worker-background', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+      }
+      return jsonResponse({
+        success: true, request_id: job.id, status: job.status,
+        data: job.status === 'completed' ? (job.result_data?.questions || []) : null,
+        diagram_regions: job.status === 'completed' ? (job.result_data?.diagram_regions || []) : [],
+        page_notes: job.status === 'completed' ? (job.result_data?.page_notes || []) : [],
+        error: job.status === 'failed' ? job.error_message : null,
+      }, 200, corsHeaders);
+    } catch (error) {
+      console.error('Could not read handwriting scan status', error);
+      return jsonResponse({ success: false, error: 'Could not check scan progress. Please try again.' }, 503, corsHeaders);
     }
   }
 
