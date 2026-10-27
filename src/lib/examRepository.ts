@@ -280,7 +280,8 @@ export async function publishExamWithQuota(
     if (error.message?.toLowerCase().includes('already has an exam for this subject')) {
       throw new Error(error.message);
     }
-    throw new Error('Could not publish the exam securely. Please check your connection and try again.');
+    const diagnostic = [error.message, (error as { code?: string }).code ? `Code: ${(error as { code?: string }).code}` : ''].filter(Boolean).join(' — ');
+    throw new Error(`Exam publication failed: ${diagnostic || 'The database rejected the request.'}`);
   }
 
   const result = data as {
