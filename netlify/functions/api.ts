@@ -1,1 +1,1 @@
-export { default, config } from './_shared/apiMain';
+PLACEHOLDER_WILL_NOT_USE
