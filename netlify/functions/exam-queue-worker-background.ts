@@ -79,8 +79,8 @@ export default async function examQueueWorker(req: Request) {
       });
     }
 
-    // Trigger one follow-up invocation after this job finishes. The database claim
-    // function guarantees that only one request is processing at a time.
+    // Fill available parallel slots (claim allows up to 3 processing jobs).
+    await wakeNextWorker(origin);
     await wakeNextWorker(origin);
     return new Response('Exam request processed', { status: 202 });
   } catch (error) {
