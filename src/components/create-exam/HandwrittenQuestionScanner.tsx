@@ -162,24 +162,40 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
             img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
             img.src = url;
           });
-          const left = Math.max(0, Math.floor(region.x * image.naturalWidth));
-          const top = Math.max(0, Math.floor(region.y * image.naturalHeight));
-          const width = Math.min(image.naturalWidth - left, Math.ceil(region.width * image.naturalWidth));
-          const height = Math.min(image.naturalHeight - top, Math.ceil(region.height * image.naturalHeight));
+          // Small padding so labels near the box edge are not clipped.
+          const padX = Math.min(0.03, Math.max(0, region.x) * 0.25);
+          const padY = Math.min(0.03, Math.max(0, region.y) * 0.25);
+          const nx = Math.max(0, region.x - padX);
+          const ny = Math.max(0, region.y - padY);
+          const nw = Math.min(1 - nx, region.width + padX * 2);
+          const nh = Math.min(1 - ny, region.height + padY * 2);
+          const left = Math.max(0, Math.floor(nx * image.naturalWidth));
+          const top = Math.max(0, Math.floor(ny * image.naturalHeight));
+          const width = Math.min(image.naturalWidth - left, Math.ceil(nw * image.naturalWidth));
+          const height = Math.min(image.naturalHeight - top, Math.ceil(nh * image.naturalHeight));
           if (width < 2 || height < 2) return null;
           const scale = Math.min(1, 1000 / Math.max(width, height));
           const canvas = document.createElement('canvas');
-          canvas.width = Math.max(1, Math.round(width * scale)); canvas.height = Math.max(1, Math.round(height * scale));
+          canvas.width = Math.max(1, Math.round(width * scale));
+          canvas.height = Math.max(1, Math.round(height * scale));
           const ctx = canvas.getContext('2d');
           if (!ctx) return null;
-          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(image, left, top, width, height, 0, 0, canvas.width, canvas.height);
-          return canvas.toDataURL('image/jpeg', 0.78);
+          return canvas.toDataURL('image/jpeg', 0.82);
         } catch { return null; }
       };
       const crops = await Promise.all(diagramRegions.map(async (region: any) => ({ region, image: await cropDiagram(region) })));
       const withDiagrams = extracted.map((question: ExtractedQuestion) => {
-        const match = crops.find(({ region, image }) => image && region.section === question.section && Number(region.question_number) === Number(question.question_number));
+        const match = crops.find(({ region, image }) =>
+          image
+          && region.section === question.section
+          && Number(region.question_number) === Number(question.question_number)
+        ) || crops.find(({ region, image }) =>
+          image
+          && Number(region.question_number) === Number(question.question_number)
+        );
         return match?.image ? { ...question, diagram_image: match.image } : question;
       });
       if (!withDiagrams.length) throw new Error('No questions could be confidently extracted. Try brighter, sharper photos with the whole page visible.');
