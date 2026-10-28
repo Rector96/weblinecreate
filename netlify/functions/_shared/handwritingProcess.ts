@@ -40,8 +40,10 @@ Keep original order. Do not infer correct answers. Add a diagram region only whe
   let response: any = null;
   let lastError: any = null;
   let usedModel = '';
-  // Widely available flash models first; keep short list to fail fast if keys/quota are wrong.
-  const models = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
+  // Prefer current vision-capable Flash models. Older 2.5/1.5 model IDs may be unavailable
+  // to newer API projects, so keep them out of the normal fallback path.
+  const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
+  const failures: string[] = [];
 
   for (const model of models) {
     for (let attempt = 1; attempt <= 2; attempt++) {
@@ -51,34 +53,56 @@ Keep original order. Do not infer correct answers. Add a diagram region only whe
           contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
           config: { responseMimeType: 'application/json', temperature: 0.1 },
         });
-        if (response?.text) {
+        if (typeof response?.text === 'string' && response.text.trim()) {
           usedModel = model;
           break;
         }
-        lastError = new Error('AI returned an empty response.');
+        response = null;
+        lastError = new Error('Gemini model returned an empty response.');
+        failures.push(model + ': empty response');
       } catch (error: any) {
+        response = null;
         lastError = error;
         const status = Number(error?.status || error?.code || 0);
-        const message = String(error?.message || '');
-        console.error('Handwriting vision attempt failed', { model, attempt, status, message: message.slice(0, 200) });
-        if ((status === 429 || status >= 500 || /timeout|temporarily unavailable|rate.?limit|resource_exhausted/i.test(message)) && attempt === 1) {
-          await sleep(status === 429 ? 1800 : 700);
+        const message = String(error?.message || 'Unknown Gemini error');
+        failures.push(model + ': ' + (status ? status + ' ' : '') + message.slice(0, 180));
+        console.error('Handwriting vision attempt failed', {
+          model,
+          attempt,
+          status: status || null,
+          message: message.slice(0, 240),
+        });
+
+        if (status === 401 || status === 403 || /API key|authentication|permission denied|unauthorized|invalid api key/i.test(message)) {
+          throw error;
+        }
+        // Retry transient errors once, then continue to the next model. Quota errors
+        // can be project-wide, but trying another enabled model may still succeed.
+        const transient = status === 429 || status >= 500 ||
+          /timeout|temporarily unavailable|rate.?limit|resource_exhausted|overloaded|high demand/i.test(message);
+        if (transient && attempt === 1) {
+          await sleep(status === 429 ? 1800 : 900);
           continue;
         }
-        if (status === 401 || status === 403 || /API key|authentication|permission denied/i.test(message)) throw error;
         if (status === 404 || /not found|not supported|invalid model/i.test(message)) break;
       }
     }
-    if (response?.text) break;
+    if (response?.text && usedModel) break;
   }
 
-  if (!response?.text) throw lastError || new Error('AI returned no structured output.');
+  if (!response?.text || !usedModel) {
+    const summary = failures.length ? failures.join(' | ') : String(lastError?.message || 'No model returned a response.');
+    const finalError: any = new Error('Gemini could not process the scan with the available vision models. ' + summary);
+    finalError.status = Number(lastError?.status || lastError?.code || 0) || 503;
+    finalError.modelFailures = failures;
+    throw finalError;
+  }
 
   let parsed: any;
   try {
     parsed = JSON.parse(response.text);
   } catch {
-    throw new Error('AI returned invalid structured output.');
+    throw new Error('Gemini returned a response, but it was not valid structured JSON. Retry with a clearer photo or fewer pages.');
   }
 
   const questions = (Array.isArray(parsed.questions) ? parsed.questions : [])
