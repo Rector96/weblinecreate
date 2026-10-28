@@ -547,7 +547,7 @@ export default async (req: Request) => {
       if (!geminiAi || !geminiApiKey) {
         return jsonResponse({ success: false, configured: false, provider: 'Gemini', message: 'Gemini is not configured on this deployment. Add GEMINI_API_KEY to Netlify Functions environment variables and redeploy.' }, 503, corsHeaders);
       }
-      const candidates = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+      const candidates = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
       const failures: string[] = [];
       for (const model of candidates) {
         try {
@@ -570,6 +570,8 @@ export default async (req: Request) => {
       const authFailure = failures.some(item => /401|403|invalid api key|permission denied|unauthorized/i.test(item));
       return jsonResponse({ success: false, configured: true, provider: 'Gemini', message: authFailure
         ? 'Gemini key was rejected or lacks permission. Verify the key in Google AI Studio and Netlify Functions, then redeploy.'
+        : failures.some(item => /503|UNAVAILABLE|high demand|overloaded/i.test(item))
+        ? 'Gemini is configured, but available models are temporarily overloaded. Retry shortly; the scanner now tries the current Flash models first.'
         : 'Gemini is configured, but none of the tested models responded successfully. Check model availability, quota and billing in Google AI Studio.',
         diagnostics: failures, checked_at: new Date().toISOString() }, authFailure ? 401 : 503, corsHeaders);
     } catch (error: any) {
@@ -606,7 +608,7 @@ export default async (req: Request) => {
       const prompt = `You are a meticulous document-reading assistant helping a teacher digitize handwritten examination papers. Analyze EVERY attached page in the exact order provided; do not skip page edges, continuation lines, question subparts, answer choices, formulas, units, tables, or diagram labels. Extract only what is actually present; never invent missing text, options, correct answers, marks, or answer keys. Join a question continued across pages into one question. Preserve mathematical notation as readable plain text/LaTeX where appropriate. Classify multiple-choice questions as section A and theory/essay questions as section B. If the page contains a diagram, describe it briefly in question_text using [Diagram: ...] and preserve every legible label. If handwriting or a symbol is uncertain, choose the most plausible reading only when context strongly supports it and add a review_notes entry explaining the uncertainty. Set confidence to low/medium/high based on legibility. Do not solve questions and do not infer correct_option unless the source explicitly marks an answer key. For objective questions extract all four options where present; if an option is absent or unreadable, leave it as an empty string and flag it. Return JSON only with this exact shape:
 {"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"","marks":1,"confidence":"medium","review_notes":["..."]},{"section":"B","question_number":1,"question_text":"...","marks":10,"confidence":"high","review_notes":[]}],"page_notes":["..."]}
 Keep source order and question numbering where readable; renumber only when numbering is absent. Exclude page headers, names, school addresses and unrelated notes unless they form part of a question.`;
-      const candidates = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+      const candidates = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
       let response: any = null;
       let activeModel = '';
       const modelFailures: string[] = [];
@@ -671,7 +673,9 @@ Keep source order and question numbering where readable; renumber only when numb
               ? message
               : /valid JSON/i.test(message)
                 ? message
-                : 'Gemini could not finish analysing these images. Check the Gemini connection test below; if it passes, retry with fewer pages or clearer photos.';
+                : status === 503 || /UNAVAILABLE|high demand|overloaded/i.test(message)
+                  ? 'Gemini is temporarily busy or unavailable. Wait briefly and retry the scan; if it continues, check the Gemini connection test and Netlify function logs.'
+                  : 'Gemini could not finish analysing these images. Check the Gemini connection test below; if it passes, retry with fewer pages or clearer photos.';
       return jsonResponse({ success: false, provider: 'Gemini', error: userMessage, diagnostics: modelFailures }, status === 429 ? 429 : status === 401 || status === 403 ? status : 503, corsHeaders);
     }
   }
