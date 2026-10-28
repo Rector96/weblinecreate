@@ -119,14 +119,28 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       const response = await fetch('/api/scan-handwritten-questions', {
         method: 'POST', headers, body: JSON.stringify({ school_id: schoolId, pages }),
       });
-      const parseResponse = async (res: Response) => {
+      const parseResponse = async (res: Response, stage: 'submit' | 'poll') => {
         const raw = await res.text();
         try { return JSON.parse(raw); }
-        catch { throw new Error(res.status === 429
-          ? 'Lots of schools may be scanning right now. Your scan can be retried shortly.'
-          : 'The scanner service is temporarily busy. Your photos are still here—please try again in a moment.'); }
+        catch {
+          const contentType = res.headers.get('content-type') || 'unknown';
+          // Preserve enough diagnostics to distinguish a Netlify routing/deployment
+          // response from a JSON error returned by the scanner API.
+          console.error('ROCKCRAFT handwriting scan received a non-JSON response', {
+            stage,
+            status: res.status,
+            contentType,
+            bodyPreview: raw.replace(/\\s+/g, ' ').slice(0, 240),
+          });
+          if (res.status === 429) {
+            throw new Error('Lots of schools may be scanning right now. Your scan can be retried shortly.');
+          }
+          throw new Error(
+            `The scanner returned an unexpected response (HTTP ${res.status}, ${contentType}). Your photos are still here. Refresh and try again; if this repeats, check the Netlify scanner deployment and function logs.`
+          );
+        }
       };
-      let result: any = await parseResponse(response);
+      let result: any = await parseResponse(response, 'submit');
       if (!response.ok || !result.success) throw new Error(typeof result.error === 'string' ? result.error : 'We could not add your scan to the queue.');
       if (!result.queued || !result.request_id) throw new Error('The scan was not queued. Your photos are still here—please retry.');
       const requestId = result.request_id as string;
@@ -142,7 +156,7 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
         const pollHeaders = await getAuthHeaders();
         pollHeaders.set('x-school-id', schoolId);
         const pollResponse = await fetch('/api/scan-handwritten-questions?id=' + encodeURIComponent(requestId), { method: 'GET', headers: pollHeaders });
-        result = await parseResponse(pollResponse);
+        result = await parseResponse(pollResponse, 'poll');
         if (!pollResponse.ok || !result.success) throw new Error(result.error || 'Could not check scan progress.');
         if (result.status === 'failed') throw new Error(result.error || 'The scan could not be completed. Please retry; your original photos are still available.');
         if (result.status === 'completed') break;
