@@ -28,7 +28,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { Exam, School } from './types';
 
 type ToastKind = 'success' | 'error' | 'info' | 'warning';
-type ToastMessage = { id: number; message: string; kind: ToastKind };
+type ToastMessage = { id: number; message: string; kind: ToastKind; exiting?: boolean };
 
 function ToastViewport() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -40,6 +40,7 @@ function ToastViewport() {
       const id = Date.now() + Math.floor(Math.random() * 1000);
       const toast: ToastMessage = { id, message: detail.message, kind: detail.kind || 'info' };
       setToasts((current) => [...current.slice(-2), toast]);
+      window.setTimeout(() => setToasts((current) => current.map((item) => item.id === id ? { ...item, exiting: true } : item)), 3900);
       window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4200);
     };
     const handleConfirm = (event: Event) => {
@@ -60,7 +61,7 @@ function ToastViewport() {
   <div className="rockcraft-global-toast-viewport" aria-label="Notifications" aria-live="polite">
     {toasts.map((toast) => {
       const Icon = toast.kind === 'success' ? CheckCircle2 : toast.kind === 'error' ? AlertCircle : Info;
-      return <div key={toast.id} role={toast.kind === 'error' || toast.kind === 'warning' ? 'alert' : 'status'} className={`rockcraft-global-toast rockcraft-global-toast-${toast.kind}`}>
+      return <div key={toast.id} role={toast.kind === 'error' || toast.kind === 'warning' ? 'alert' : 'status'} className={`rockcraft-global-toast rockcraft-global-toast-${toast.kind} ${toast.exiting ? "rockcraft-global-toast-exit" : ""}`}>
         <Icon className="mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden="true" />
         <p className="min-w-0 flex-1 text-sm leading-5">{toast.message}</p>
         <button type="button" onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))} className="-mr-1 -mt-1 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Dismiss notification"><X className="h-4 w-4" /></button>
