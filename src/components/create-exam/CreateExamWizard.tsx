@@ -98,7 +98,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   // Dynamic regeneration and adding states
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [isAddingMore, setIsAddingMore] = useState<boolean>(false);
-  const [notification, setNotification] = useState<string | null>(null);
   const [additionalObjectiveCount, setAdditionalObjectiveCount] = useState(5);
   const [additionalTheoryCount, setAdditionalTheoryCount] = useState(2);
   const [additionalQuestionSection, setAdditionalQuestionSection] = useState<'A' | 'B'>('A');
@@ -139,7 +138,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   const [activeManualSection, setActiveManualSection] = useState<'A' | 'B'>('A');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
-  const [errorToast, setErrorToast] = useState<string | null>(null);
 
   // Keep the review step visible after AI generation, especially on mobile
   // where the browser may retain the scroll position of the generator form.
@@ -226,37 +224,23 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   };
 
   const showNotification = (msg: string) => {
-    setNotification(msg);
+    window.dispatchEvent(new CustomEvent('rockcraft:notify', { detail: { message: msg, kind: 'success' } }));
   };
 
   const showErrorNotification = (msg: string) => {
-    setErrorToast(msg);
+    window.dispatchEvent(new CustomEvent('rockcraft:notify', { detail: { message: msg, kind: 'error' } }));
   };
 
+  // Step validation stays inline; asynchronous AI failures use the shared top-right notification.
   useEffect(() => {
-    if (!errorToast) return;
-    const timer = window.setTimeout(() => setErrorToast(null), 4800);
-    return () => window.clearTimeout(timer);
-  }, [errorToast]);
-
-  // Route validation and AI errors through one consistent right-side toast.
-  useEffect(() => {
-    // Step validation errors are shown inline beside Continue; toast only async/AI errors to avoid duplicates.
     const nextError = aiError;
     if (!nextError) return;
-    setErrorToast(nextError);
+    window.dispatchEvent(new CustomEvent('rockcraft:notify', { detail: { message: nextError, kind: 'error' } }));
     const timer = window.setTimeout(() => {
-      setErrorToast(null);
       setAiError((current) => current === nextError ? null : current);
     }, 4800);
     return () => window.clearTimeout(timer);
-  }, [stepError, aiError]);
-
-  useEffect(() => {
-    if (!notification) return;
-    const timer = window.setTimeout(() => setNotification(null), 4200);
-    return () => window.clearTimeout(timer);
-  }, [notification]);
+  }, [aiError]);
 
   // Step 1 Validation
   const handleStep1Next = async () => {
@@ -891,17 +875,6 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
   return (
     <div className="max-w-2xl mx-auto space-y-3 sm:space-y-4 text-left pb-28 sm:pb-10">
-      {/* Consistent right-side toast notifications for errors and success messages */}
-      <div className="pointer-events-none fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-3 sm:bottom-6 sm:right-6 z-[100] w-[calc(100%-1.5rem)] max-w-sm" aria-live="polite" aria-atomic="true">
-        <div className={`rockcraft-toast ${errorToast ? 'rockcraft-toast-visible rockcraft-toast-error' : notification ? 'rockcraft-toast-visible rockcraft-toast-success' : 'rockcraft-toast-hidden'}`}>
-          {(errorToast || notification) && <div role={errorToast ? 'alert' : 'status'} className="pointer-events-auto flex max-h-28 items-start gap-2.5 overflow-y-auto rounded-xl border bg-white p-3 shadow-xl backdrop-blur-md sm:max-h-32">
-            {errorToast ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-700" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />}
-            <span className="min-w-0 flex-1 break-words text-xs font-semibold leading-5 text-slate-900 sm:text-sm">{errorToast || notification}</span>
-            <button type="button" onClick={() => { setErrorToast(null); setAiError(null); setNotification(null); }} className="rounded-md px-1 text-lg leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Dismiss notification">×</button>
-          </div>}
-        </div>
-      </div>
-
       {/* Wizard Progress Stepper */}
       <div className="sticky top-0 z-20 -mx-1 sm:mx-0 rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-xs backdrop-blur-md sm:p-3.5">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-1">
