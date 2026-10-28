@@ -45,7 +45,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      window.alert('Please allow pop-ups for this site, then choose Print / Save PDF again.');
+      window.dispatchEvent(new CustomEvent('rockcraft:notify', { detail: { message: 'Please allow pop-ups for ROCKCRAFT, then choose Print / Save PDF again.', kind: 'warning' } }));
       return;
     }
 
