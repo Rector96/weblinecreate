@@ -213,7 +213,7 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
     <div className="flex items-start justify-between gap-3">
       <div className="flex gap-3">
         <div className="rounded-xl bg-blue-50 p-2.5 text-blue-700"><ScanText className="h-5 w-5" /></div>
-        <div><h3 className="font-bold text-slate-900">Scan handwritten questions</h3><p className="mt-1 text-xs leading-5 text-slate-500">Upload up to 8 page photos. Gemini reads each page in order and flags uncertain handwriting for review.</p></div>
+        <div><h3 className="font-bold text-slate-900">Scan handwritten questions</h3><p className="mt-1 text-xs leading-5 text-slate-500">Upload up to 8 page photos. Gemini separates objective and theory questions, suggests objective answers when confident, and flags anything uncertain for your review.</p></div>
       </div>
       <button type="button" onClick={() => { clearPhotos(); onClose(); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Close scanner"><X className="h-4 w-4" /></button>
     </div>
