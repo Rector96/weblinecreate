@@ -113,6 +113,8 @@ export interface Question {
   image_url?: string;
   objective_data?: ObjectiveAnswer;
   theory_data?: TheoryMarkingScheme;
+  /** Unconfirmed AI answer suggestion from handwriting OCR; never used as the saved answer key. */
+  suggested_correct_option?: 'A' | 'B' | 'C' | 'D';
   created_at?: string;
 }
 
