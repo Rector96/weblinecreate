@@ -1142,16 +1142,20 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                   const imported: Question[] = items.map((item: any, index: number) => ({
                     id: `q_scan_${stamp}_${index}`,
                     section: item.section,
-                    question_number: index + 1,
+                    question_number: Number(item.question_number) || index + 1,
                     question_text: item.question_text,
                     image_url: item.diagram_image || undefined,
                     marks: Number(item.marks) || (item.section === 'A' ? 1 : 10),
+                    suggested_correct_option: item.section === 'A' && ['A', 'B', 'C', 'D'].includes(String(item.correct_option || '').toUpperCase())
+                      ? String(item.correct_option).toUpperCase() as 'A' | 'B' | 'C' | 'D'
+                      : undefined,
                     objective_data: item.section === 'A' ? {
                       option_a: item.option_a || '',
                       option_b: item.option_b || '',
                       option_c: item.option_c || '',
                       option_d: item.option_d || '',
-                      correct_option: item.correct_option || '',
+                      // AI answers remain suggestions until the teacher taps an option to confirm.
+                      correct_option: '',
                     } : undefined,
                     theory_data: item.section === 'B' ? {
                       model_answer: item.model_answer || '',
@@ -1426,12 +1430,19 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
                 {/* Section A: Options A, B, C, D */}
                 {q.section === 'A' && q.objective_data && (
+                  <>
+                  {q.suggested_correct_option && !q.objective_data.correct_option && (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-900">
+                      AI suggests <strong>option {q.suggested_correct_option}</strong>. Tap that option to confirm, or select a different answer. Please verify it before publishing.
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                     {(['A', 'B', 'C', 'D'] as const).map((opt) => {
                       const optKey = `option_${opt.toLowerCase()}` as keyof ObjectiveAnswer;
                       const isCorrect = q.objective_data?.correct_option === opt;
+                      const isSuggested = !isCorrect && !q.objective_data?.correct_option && q.suggested_correct_option === opt;
                       return (
-                        <div key={opt} className="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200">
+                        <div key={opt} className={`flex items-center gap-2 bg-white p-2 rounded-xl border ${isSuggested ? 'border-amber-300 bg-amber-50/60' : 'border-slate-200'}`}>
                           <button
                             type="button"
                             onClick={() =>
@@ -1440,14 +1451,17 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                                   ...q.objective_data!,
                                   correct_option: opt,
                                 },
+                                suggested_correct_option: undefined,
                               })
                             }
                             className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 transition-colors ${
                               isCorrect
                                 ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                : isSuggested
+                                  ? 'bg-amber-500 text-white'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
-                            title="Mark as correct answer"
+                            title={isSuggested ? 'Confirm AI-suggested answer' : 'Mark as correct answer'}
                           >
                             {opt}
                           </button>
@@ -1469,6 +1483,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                       );
                     })}
                   </div>
+                  </>
                 )}
 
                 {/* Section B: Model Answer & Scoring Rubric */}
