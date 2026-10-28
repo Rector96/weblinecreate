@@ -10,6 +10,10 @@ import {
   CalendarDays, ShieldCheck, Power, Download, Activity, Globe2,
 } from 'lucide-react';
 
+const requestRockcraftConfirmation = (message: string) => new Promise<boolean>((resolve) => {
+  window.dispatchEvent(new CustomEvent('rockcraft:confirm', { detail: { message, resolve } }));
+});
+
 type AdminSchool = School & {
   account_status: 'active' | 'suspended';
   generation_enabled: boolean;
@@ -115,7 +119,7 @@ export const PlatformAdminPage: React.FC = () => {
   }, [loadData]);
 
   const updateSchool = async (school: AdminSchool, updates: Record<string, unknown>, confirmation: string, successMessage: string) => {
-    if (!confirm(confirmation)) return;
+    if (!(await requestRockcraftConfirmation(confirmation))) return;
     setBusySchoolId(school.id); setErrorMessage(null); setNotice(null);
     const { error } = await supabase.from('schools').update(updates).eq('id', school.id);
     setBusySchoolId(null);
