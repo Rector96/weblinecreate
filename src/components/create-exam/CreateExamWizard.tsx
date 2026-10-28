@@ -229,6 +229,16 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
     setNotification(msg);
   };
 
+  const showErrorNotification = (msg: string) => {
+    setErrorToast(msg);
+  };
+
+  useEffect(() => {
+    if (!errorToast) return;
+    const timer = window.setTimeout(() => setErrorToast(null), 4800);
+    return () => window.clearTimeout(timer);
+  }, [errorToast]);
+
   // Route validation and AI errors through one consistent right-side toast.
   useEffect(() => {
     // Step validation errors are shown inline beside Continue; toast only async/AI errors to avoid duplicates.
@@ -672,7 +682,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
   // Step 5: Save the exam and all related questions to Supabase.
   const handleSubmitExam = async () => {
     if (!school || (!user?.id && !isGuestTeacher)) {
-      alert('A valid school invitation or school account is required before publishing an exam.');
+      showErrorNotification('A valid school invitation or school account is required before publishing an exam.');
       return;
     }
     if (isSubmitting) return;
@@ -686,7 +696,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       !['A', 'B', 'C', 'D'].includes(String(question.objective_data.correct_option || '').trim().toUpperCase())
     );
     if (objectiveWithoutAnswer) {
-      alert(`Please select the correct answer (A, B, C or D) for objective question ${objectiveWithoutAnswer.question_number} before publishing. In the review preview, tap the correct option label [A], [B], [C] or [D].`);
+      showErrorNotification(`Please select the correct answer (A, B, C or D) for objective question ${objectiveWithoutAnswer.question_number} before publishing. In the review preview, tap the correct option label [A], [B], [C] or [D].`);
       return;
     }
 
@@ -766,7 +776,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
           setCurrentStep(1);
           return;
         }
-        alert(publishResult.message || 'Your exam could not be published.');
+        showErrorNotification(publishResult.message || 'Your exam could not be published.');
         if (publishResult.code === 'quota_exceeded') {
           if (role === 'teacher') showNotification('The school exam limit has been reached. Please ask your school admin to upgrade the plan.');
           else onOpenPaystack();
@@ -800,7 +810,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         setStepError(message);
         setCurrentStep(1);
       } else {
-        alert(`The exam was not published: ${message}`);
+        showErrorNotification(`The exam was not published: ${message}`);
       }
     } finally {
       setIsSubmitting(false);
