@@ -38,8 +38,9 @@ const PROVIDERS = [
   ...(geminiAi ? [{ name: 'Gemini', client: geminiAi, models: ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'] }] : []),
 ];
 const configuredBatchDelay = Number(process.env.GROQ_BATCH_DELAY_MS);
+// Default 15s between queued batches (was 40s). Override with GROQ_BATCH_DELAY_MS when needed.
 const BATCH_DELAY_MS = groqApiKey && process.env.EXAM_QUEUE_ENABLED === 'true'
-  ? (Number.isFinite(configuredBatchDelay) && configuredBatchDelay >= 0 ? configuredBatchDelay : 40000)
+  ? (Number.isFinite(configuredBatchDelay) && configuredBatchDelay >= 0 ? configuredBatchDelay : 15000)
   : 0;
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -78,7 +79,7 @@ async function generateSection(prompt: string, sectionName: string) {
           console.error(provider.name + ' AI ' + sectionName + ' batch failed', error?.status || error?.code || 'unknown status', errorText.slice(0, 200));
 
           // Keep queued work paced to respect provider limits. In synchronous fallback mode,
-          // use short retries so the function does not spend 40 seconds sleeping on each try.
+          // use short retries so the function does not spend long sleeps on each try.
           // A 429 means this model's quota is exhausted for now. Do not retry
           // the same model in the same minute; immediately try the next model/provider.
           if (limited) break;
