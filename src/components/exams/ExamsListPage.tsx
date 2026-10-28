@@ -19,6 +19,10 @@ import {
   Loader2
 } from 'lucide-react';
 
+const requestRockcraftConfirmation = (message: string) => new Promise<boolean>((resolve) => {
+  window.dispatchEvent(new CustomEvent('rockcraft:confirm', { detail: { message, resolve } }));
+});
+
 interface ExamsListPageProps {
   navigate: (route: string) => void;
   onPreviewExam: (exam: Exam) => void;
@@ -110,7 +114,7 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
 
   const handleDelete = async (id: string, title: string) => {
     if (!school || deletingId) return;
-    if (!confirm(`Are you sure you want to permanently delete "${title}"?`)) return;
+    if (!(await requestRockcraftConfirmation(`Are you sure you want to permanently delete "${title}"?`))) return;
     setDeletingId(id);
     setError(null);
     try {
