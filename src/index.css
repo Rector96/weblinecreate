@@ -201,20 +201,38 @@ button:active:not(:disabled) {
 @media (prefers-reduced-motion:reduce) { .rockcraft-loader-brand,.rockcraft-loader-logo,.rockcraft-loader-wordmark { animation:none!important; } .rockcraft-loader-wordmark { opacity:1; } }
 
 
-/* Shared right-side notifications: slide in, remain readable, then fade out. */
+/* ChatGPT-inspired notifications: compact, top-right, smooth entrance and quiet dismissal. */
 @keyframes rockcraftToastIn {
-  from { opacity: 0; transform: translate3d(1.25rem, 0, 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
+  from { opacity: 0; transform: translate3d(1rem, -0.65rem, 0) scale(.985); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
 }
 @keyframes rockcraftToastOut {
-  from { opacity: 1; transform: translate3d(0, 0, 0); }
-  to { opacity: 0; transform: translate3d(1rem, 0, 0); }
+  from { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  to { opacity: 0; transform: translate3d(.5rem, -.35rem, 0) scale(.99); }
 }
 .rockcraft-toast { will-change: opacity, transform; }
-.rockcraft-toast-visible { animation: rockcraftToastIn 320ms cubic-bezier(.2,.8,.2,1) both; }
-.rockcraft-toast-hidden { opacity: 0; transform: translate3d(1rem,0,0); pointer-events: none; }
-.rockcraft-toast-error > div { border-color: #fda4af; border-left: 4px solid #be123c; background: #fff1f2; }
-.rockcraft-toast-success > div { border-color: #6ee7b7; border-left: 4px solid #047857; background: #ecfdf5; }
+.rockcraft-toast-visible { animation: rockcraftToastIn 280ms cubic-bezier(.2,.8,.2,1) both; }
+.rockcraft-toast-hidden { opacity: 0; transform: translate3d(.5rem,-.35rem,0); pointer-events: none; }
+.rockcraft-toast-error > div { border-color: #fecaca; border-left: 3px solid #dc2626; background: #fff; }
+.rockcraft-toast-success > div { border-color: #bbf7d0; border-left: 3px solid #16a34a; background: #fff; }
+.rockcraft-global-toast-viewport {
+  position: fixed; z-index: 2147483646; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right));
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px; width: min(380px, calc(100vw - 24px)); pointer-events: none;
+}
+.rockcraft-global-toast {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 13px 14px;
+  border: 1px solid #e2e8f0; border-radius: 14px; background: rgba(255,255,255,.97); color: #0f172a;
+  box-shadow: 0 10px 30px rgba(15,23,42,.12), 0 2px 7px rgba(15,23,42,.05); backdrop-filter: blur(14px);
+  pointer-events: auto; animation: rockcraftToastIn 280ms cubic-bezier(.2,.8,.2,1) both;
+}
+.rockcraft-global-toast-success > svg:first-child { color: #16a34a; }
+.rockcraft-global-toast-error > svg:first-child { color: #dc2626; }
+.rockcraft-global-toast-warning > svg:first-child { color: #d97706; }
+.rockcraft-global-toast-info > svg:first-child { color: #2563eb; }
+@media (max-width: 480px) {
+  .rockcraft-global-toast-viewport { top: max(10px, env(safe-area-inset-top)); right: 10px; width: calc(100vw - 20px); }
+  .rockcraft-global-toast { padding: 12px; border-radius: 12px; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .rockcraft-toast-visible { animation: none; }
+  .rockcraft-toast-visible, .rockcraft-global-toast { animation: none; }
 }
