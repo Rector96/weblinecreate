@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './lib/auth';
 import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
@@ -25,6 +26,37 @@ import { PageLoader } from './components/common/PageLoader';
 import { PWAInstallBanner } from './components/common/PWAInstallBanner';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { Exam, School } from './types';
+
+type ToastKind = 'success' | 'error' | 'info' | 'warning';
+type ToastMessage = { id: number; message: string; kind: ToastKind };
+
+function ToastViewport() {
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  useEffect(() => {
+    const handleToast = (event: Event) => {
+      const detail = (event as CustomEvent<{ message?: string; kind?: ToastKind }>).detail;
+      if (!detail?.message) return;
+      const id = Date.now() + Math.floor(Math.random() * 1000);
+      const toast: ToastMessage = { id, message: detail.message, kind: detail.kind || 'info' };
+      setToasts((current) => [...current.slice(-2), toast]);
+      window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4200);
+    };
+    window.addEventListener('rockcraft:notify', handleToast);
+    return () => window.removeEventListener('rockcraft:notify', handleToast);
+  }, []);
+
+  if (!toasts.length) return null;
+  return <div className="rockcraft-global-toast-viewport" aria-label="Notifications" aria-live="polite">
+    {toasts.map((toast) => {
+      const Icon = toast.kind === 'success' ? CheckCircle2 : toast.kind === 'error' ? AlertCircle : Info;
+      return <div key={toast.id} role={toast.kind === 'error' || toast.kind === 'warning' ? 'alert' : 'status'} className={`rockcraft-global-toast rockcraft-global-toast-${toast.kind}`}>
+        <Icon className="mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+        <p className="min-w-0 flex-1 text-sm leading-5">{toast.message}</p>
+        <button type="button" onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))} className="-mr-1 -mt-1 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Dismiss notification"><X className="h-4 w-4" /></button>
+      </div>;
+    })}
+  </div>;
+}
 
 function AppContent() {
   const { isAuthenticated, school, role, isLoading } = useAuth();
@@ -336,6 +368,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppContent />
+      <ToastViewport />
       <PWAInstallBanner />
     </AuthProvider>
   );
