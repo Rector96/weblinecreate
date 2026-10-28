@@ -32,6 +32,7 @@ type ToastMessage = { id: number; message: string; kind: ToastKind };
 
 function ToastViewport() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [confirmation, setConfirmation] = useState<{ message: string; resolve: (confirmed: boolean) => void } | null>(null);
   useEffect(() => {
     const handleToast = (event: Event) => {
       const detail = (event as CustomEvent<{ message?: string; kind?: ToastKind }>).detail;
@@ -41,12 +42,22 @@ function ToastViewport() {
       setToasts((current) => [...current.slice(-2), toast]);
       window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4200);
     };
+    const handleConfirm = (event: Event) => {
+      const detail = (event as CustomEvent<{ message?: string; resolve?: (confirmed: boolean) => void }>).detail;
+      if (!detail?.message || typeof detail.resolve !== 'function') return;
+      setConfirmation({ message: detail.message, resolve: detail.resolve });
+    };
     window.addEventListener('rockcraft:notify', handleToast);
-    return () => window.removeEventListener('rockcraft:notify', handleToast);
+    window.addEventListener('rockcraft:confirm', handleConfirm);
+    return () => {
+      window.removeEventListener('rockcraft:notify', handleToast);
+      window.removeEventListener('rockcraft:confirm', handleConfirm);
+    };
   }, []);
 
-  if (!toasts.length) return null;
-  return <div className="rockcraft-global-toast-viewport" aria-label="Notifications" aria-live="polite">
+  if (!toasts.length && !confirmation) return null;
+  return <>
+  <div className="rockcraft-global-toast-viewport" aria-label="Notifications" aria-live="polite">
     {toasts.map((toast) => {
       const Icon = toast.kind === 'success' ? CheckCircle2 : toast.kind === 'error' ? AlertCircle : Info;
       return <div key={toast.id} role={toast.kind === 'error' || toast.kind === 'warning' ? 'alert' : 'status'} className={`rockcraft-global-toast rockcraft-global-toast-${toast.kind}`}>
@@ -55,7 +66,20 @@ function ToastViewport() {
         <button type="button" onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))} className="-mr-1 -mt-1 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Dismiss notification"><X className="h-4 w-4" /></button>
       </div>;
     })}
-  </div>;
+  </div>
+  {confirmation && <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-950/30 p-4 backdrop-blur-[2px]" role="presentation">
+    <section role="alertdialog" aria-modal="true" aria-labelledby="rockcraft-confirm-title" className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700"><Info className="h-5 w-5" /></div>
+        <div className="min-w-0"><h2 id="rockcraft-confirm-title" className="text-sm font-bold text-slate-900">Please confirm</h2><p className="mt-1.5 whitespace-pre-line text-sm leading-5 text-slate-600">{confirmation.message}</p></div>
+      </div>
+      <div className="mt-5 flex justify-end gap-2">
+        <button type="button" onClick={() => { confirmation.resolve(false); setConfirmation(null); }} className="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Cancel</button>
+        <button type="button" onClick={() => { confirmation.resolve(true); setConfirmation(null); }} className="min-h-10 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800">Confirm</button>
+      </div>
+    </section>
+  </div>}
+  </>;
 }
 
 function AppContent() {
