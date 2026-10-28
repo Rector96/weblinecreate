@@ -62,11 +62,11 @@ export default async function handwritingQueueWorker(req: Request) {
     const imageParts = pages.map((page: any) => ({ inlineData: { mimeType: page.mimeType, data: page.data } }));
     const prompt = `Transcribe the handwritten exam pages in order. Preserve visible question wording, subparts, options A-D, formulas, units, tables, and diagram labels. Do not solve questions or invent unreadable text. Classify multiple-choice as section A and theory as section B. Include a short [Diagram: ...] description when a diagram appears. Return valid JSON only, matching this structure:
 {"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"","option_b":"","option_c":"","option_d":"","marks":1,"confidence":"medium","review_notes":[]}],"diagram_regions":[{"section":"A","question_number":1,"page_index":0,"x":0.1,"y":0.2,"width":0.4,"height":0.3,"description":"labelled diagram"}],"page_notes":[]}
-Keep original order. Do not infer correct answers. Add a diagram region only when its location is clear; otherwise leave it out. Use an empty diagram_regions array when there are no diagrams.`;
+Keep original order. Do not infer correct answers. Add a diagram region only when its location is clear; otherwise leave it out. Use an empty diagram_regions array when there are no diagrams. Bounding boxes must be normalized 0-1 relative to the full page image.`;
     let response: any = null;
     let lastError: any = null;
-    // Use one fast, stable vision model rather than waiting through multiple fallback models.
-    const models = ['gemini-3.8-flash'];
+    // Prefer models that match the rest of ROCKCRAFT (exam generation). Avoid unknown model ids that only burn retries.
+    const models = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
     for (const model of models) {
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
@@ -85,6 +85,8 @@ Keep original order. Do not infer correct answers. Add a diagram region only whe
             await sleep(status === 429 ? 1500 : 500); continue;
           }
           if (status === 401 || status === 403 || /API key|authentication|permission denied/i.test(message)) throw error;
+          // Model not found / unsupported → try next model immediately.
+          if (status === 404 || /not found|not supported|invalid model/i.test(message)) break;
         }
       }
       if (response?.text) break;
