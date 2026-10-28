@@ -33,9 +33,13 @@ export async function processHandwritingPages(
     inlineData: { mimeType: page.mimeType, data: page.data },
   }));
 
-  const prompt = `Transcribe the handwritten exam pages in order. Preserve visible question wording, subparts, options A-D, formulas, units, tables, and diagram labels. Do not solve questions or invent unreadable text. Classify multiple-choice as section A and theory as section B. Include a short [Diagram: ...] description when a diagram appears. Return valid JSON only, matching this structure:
-{"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"","option_b":"","option_c":"","option_d":"","marks":1,"confidence":"medium","review_notes":[]}],"diagram_regions":[{"section":"A","question_number":1,"page_index":0,"x":0.1,"y":0.2,"width":0.4,"height":0.3,"description":"labelled diagram"}],"page_notes":[]}
-Keep original order. Do not infer correct answers. Add a diagram region only when its location is clear; otherwise leave it out. Use an empty diagram_regions array when there are no diagrams. Bounding boxes must be normalized 0-1 relative to the full page image.`;
+  const prompt = `Transcribe the handwritten exam pages in order. Preserve visible question wording, subparts, options A-D, formulas, units, tables, marks, and diagram labels. Classify every question: use section "A" only for multiple-choice/objective questions with options, and section "B" for theory, structured, essay, calculation, or written-response questions. A scan may contain both sections; separate them correctly while preserving page reading order and original question numbering. Never invent missing text or options. Include a short [Diagram: ...] description when a diagram appears.
+
+For objective questions only, independently solve the question and suggest "correct_option" as "A", "B", "C", or "D" only when the question and all necessary options are readable and you are confident. If uncertain, omit it or return an empty string. Never guess just to fill an answer. This is an AI suggestion for teacher review, not a confirmed answer key. Do not generate theory answers or marking schemes unless they are visibly present in the scanned source; theory scans should preserve the questions and subparts only. Keep uncertainty in "review_notes".
+
+Return valid JSON only, matching this structure:
+{"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"","option_b":"","option_c":"","option_d":"","correct_option":"","marks":1,"confidence":"medium","review_notes":[]}],"diagram_regions":[{"section":"A","question_number":1,"page_index":0,"x":0.1,"y":0.2,"width":0.4,"height":0.3,"description":"labelled diagram"}],"page_notes":[]}
+Keep all questions in original reading order, with numbering as visible. Add a diagram region only when its location is clear; otherwise leave it out. Use an empty diagram_regions array when there are no diagrams. Bounding boxes must be normalized 0-1 relative to the full page image.`;
 
   let response: any = null;
   let lastError: any = null;
@@ -118,6 +122,9 @@ Keep original order. Do not infer correct answers. Add a diagram region only whe
             option_b: String(q.option_b || '').slice(0, 2000),
             option_c: String(q.option_c || '').slice(0, 2000),
             option_d: String(q.option_d || '').slice(0, 2000),
+            ...( ['A', 'B', 'C', 'D'].includes(String(q.correct_option || '').trim().toUpperCase())
+              ? { correct_option: String(q.correct_option).trim().toUpperCase() }
+              : {}),
           }
         : {}),
       marks: Number.isFinite(Number(q.marks)) && Number(q.marks) > 0 ? Math.min(100, Number(q.marks)) : q.section === 'A' ? 1 : 10,
