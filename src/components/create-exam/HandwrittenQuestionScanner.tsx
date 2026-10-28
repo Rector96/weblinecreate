@@ -28,10 +28,9 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
   const [previews, setPreviews] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [statusLine, setStatusLine] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Keep one preview URL per selected file and revoke every URL when files are removed,
-  // scanning finishes, the scanner closes, or the component unmounts.
   useEffect(() => {
     const urls = files.map(file => URL.createObjectURL(file));
     setPreviews(urls);
@@ -55,11 +54,9 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
 
   const scan = async () => {
     if (!files.length) { setError('Take a photo or upload at least one page.'); return; }
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setStatusLine('Preparing clear photos…');
     try {
-      // Netlify synchronous function payloads are limited; resize/compress on-device before upload.
       const pages = await Promise.all(files.map(async (file) => {
-        // Decode with createImageBitmap first for better compatibility with mobile camera files.
         let imageSource: CanvasImageSource;
         let sourceWidth = 0;
         let sourceHeight = 0;
@@ -116,6 +113,7 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       }));
       const totalEncodedSize = pages.reduce((sum, page) => sum + page.data.length, 0);
       if (totalEncodedSize > 5_000_000) throw new Error('These pages are still too large to send safely. Try scanning 3–4 pages at a time.');
+      setStatusLine('Sending pages securely…');
       const headers = await getAuthHeaders();
       headers.set('Content-Type', 'application/json');
       const response = await fetch('/api/scan-handwritten-questions', {
@@ -132,12 +130,15 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
       if (!response.ok || !result.success) throw new Error(typeof result.error === 'string' ? result.error : 'We could not add your scan to the queue.');
       if (!result.queued || !result.request_id) throw new Error('The scan was not queued. Your photos are still here—please retry.');
       const requestId = result.request_id as string;
-      // Poll the durable job; the database retains it even if a function instance restarts.
       const deadline = Date.now() + 6 * 60 * 1000;
       let pollCount = 0;
+      setStatusLine('In the school queue…');
       while (Date.now() < deadline) {
         await new Promise(resolve => setTimeout(resolve, pollCount < 5 ? 1200 : 2200));
         pollCount += 1;
+        if (pollCount === 3) setStatusLine('Reading handwriting with AI…');
+        else if (pollCount === 8) setStatusLine('Matching diagrams to questions…');
+        else if (pollCount === 15) setStatusLine('Still working — please keep this screen open…');
         const pollHeaders = await getAuthHeaders();
         pollHeaders.set('x-school-id', schoolId);
         const pollResponse = await fetch('/api/scan-handwritten-questions?id=' + encodeURIComponent(requestId), { method: 'GET', headers: pollHeaders });
@@ -147,10 +148,9 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
         if (result.status === 'completed') break;
       }
       if (result.status !== 'completed') throw new Error('Your scan is still in the queue because many schools may be using AI. Your photos are safe on this screen—press Analyse again in a moment.');
+      setStatusLine('Attaching diagrams…');
       const extracted = Array.isArray(result.data) ? result.data : [];
       const diagramRegions = Array.isArray(result.diagram_regions) ? result.diagram_regions : [];
-      // Crop diagrams from the original page images using AI-provided normalized bounding boxes.
-      // Crops remain local to the browser and are attached to the relevant question for review/export.
       const cropDiagram = async (region: any): Promise<string | null> => {
         const file = files[region.page_index];
         if (!file) return null;
@@ -162,7 +162,6 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
             img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
             img.src = url;
           });
-          // Small padding so labels near the box edge are not clipped.
           const padX = Math.min(0.03, Math.max(0, region.x) * 0.25);
           const padY = Math.min(0.03, Math.max(0, region.y) * 0.25);
           const nx = Math.max(0, region.x - padX);
@@ -199,16 +198,14 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
         return match?.image ? { ...question, diagram_image: match.image } : question;
       });
       if (!withDiagrams.length) throw new Error('No questions could be confidently extracted. Try brighter, sharper photos with the whole page visible.');
-      // Send extracted questions straight into the wizard's existing Step 4 review page.
-      // Do not render a second, separate preview inside this scanner.
       onQuestionsExtracted(withDiagrams);
       clearPhotos();
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Scanning failed. Please try again.');
     } finally {
-      // Keep photos after a failed attempt so the teacher can retry without re-uploading.
       setBusy(false);
+      setStatusLine('');
     }
   };
 
@@ -233,8 +230,8 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
         <div className="w-full max-w-sm text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/20"><Loader2 className="h-8 w-8 animate-spin text-blue-300" /></div>
           <h2 className="mt-5 text-xl font-black">ROCKCRAFT is reading your pages</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-300">Handwriting can take a little time. We are checking the pages now. Please keep this screen open.</p>
-          <p className="mt-4 text-xs text-slate-400">If many schools are scanning at once, this may take longer than usual.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{statusLine || 'Handwriting can take a little time. We are checking the pages now.'}</p>
+          <p className="mt-4 text-xs text-slate-400">Please keep this screen open. Your photos stay on this device until the scan finishes.</p>
         </div>
       </div>, document.body
     )}
