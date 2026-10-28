@@ -219,6 +219,7 @@ button:active:not(:disabled) {
   position: fixed; z-index: 2147483646; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right));
   display: flex; flex-direction: column; align-items: flex-end; gap: 8px; width: min(380px, calc(100vw - 24px)); pointer-events: none;
 }
+.rockcraft-global-toast-exit { animation: rockcraftToastOut 220ms ease-in both; pointer-events: none; }
 .rockcraft-global-toast {
   display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 13px 14px;
   border: 1px solid #e2e8f0; border-radius: 14px; background: rgba(255,255,255,.97); color: #0f172a;
