@@ -367,7 +367,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                           type="button"
                           onClick={async () => {
                             const result = await resetPassword(loginEmail);
-                            if (result.success) alert('Password reset email sent. Check your inbox.');
+                            if (result.success) window.dispatchEvent(new CustomEvent('rockcraft:notify', { detail: { message: 'Password reset email sent. Check your inbox.', kind: 'success' } }));
                             else setErrorMessage(result.error || 'Unable to send password reset email.');
                           }}
                           className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
