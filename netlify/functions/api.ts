@@ -1,21 +1,16 @@
-/**
- * ROCKCRAFT full API restored. Handler is gzip-compressed across chunk modules.
- */
-import { gunzipSync } from 'node:zlib';
-import { c0 } from './_shared/apiChunks/c0';
-import { c1 } from './_shared/apiChunks/c1';
-import { c2 } from './_shared/apiChunks/c2';
-import { c3 } from './_shared/apiChunks/c3';
-import { c4 } from './_shared/apiChunks/c4';
-import { c5 } from './_shared/apiChunks/c5';
+import { GoogleGenAI } from '@google/genai';
+import { generateExamDraft } from './_shared/examGeneration';
 
-const code = gunzipSync(Buffer.from([c0, c1, c2, c3, c4, c5].join(''), 'base64')).toString('utf8');
-const moduleObj: { exports: any } = { exports: {} };
-const fn = new Function(
-  'module', 'exports', 'require', 'process', 'Buffer', 'console', 'URL', 'Response', 'fetch', 'crypto', 'Headers', 'TextEncoder', 'TextDecoder',
-  code,
-);
-fn(moduleObj, moduleObj.exports, require, process, Buffer, console, URL, Response, fetch, crypto, Headers, TextEncoder, TextDecoder);
-const exported = moduleObj.exports;
-export default exported.default;
-export const config = exported.config;
+// This file is being restored. Temporary minimal surface so Netlify can deploy.
+// Full body will follow in next commit from artifacts/api_FINAL_RESTORE.ts
+
+const geminiApiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
+
+export default async function handler(req: Request) {
+  return new Response(JSON.stringify({ success: false, error: 'API restore in progress' }), {
+    status: 503,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+export const config = { path: ['/api/*'] };
