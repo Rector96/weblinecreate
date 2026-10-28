@@ -27,8 +27,6 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
 
   const sectionAQuestions = (exam.questions || []).filter((q) => q.section === 'A');
   const sectionBQuestions = (exam.questions || []).filter((q) => q.section === 'B');
-  // Estimate the objective section's footprint so a page break is only forced when it
-  // is likely to fit on page one. Longer papers flow naturally across pages instead.
   const estimatedObjectiveLength = sectionAQuestions.reduce((total, q) => {
     const options = q.objective_data
       ? [q.objective_data.option_a, q.objective_data.option_b, q.objective_data.option_c, q.objective_data.option_d].join(' ')
@@ -42,8 +40,6 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
   const useTwoObjectiveColumns = sectionAQuestions.length >= 20 && estimatedObjectiveLength / Math.max(sectionAQuestions.length, 1) < 180;
 
   const handlePrint = () => {
-    // Print only the exam paper in a clean document. Printing the whole app with
-    // visibility:hidden leaves hidden app content in the layout and creates blank pages.
     const paper = document.querySelector<HTMLElement>('.exam-paper-print');
     if (!paper) return;
 
@@ -85,9 +81,11 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
     .exam-paper-print h1 { font-size:17pt!important; line-height:1.15!important; }
     .exam-paper-print h2 { font-size:11pt!important; line-height:1.2!important; }
     .exam-paper-print h3 { font-size:10pt!important; line-height:1.2!important; }
-    .exam-paper-print img { max-height:68px!important; width:auto!important; }
+    .exam-paper-print img.school-logo { max-height:68px!important; width:auto!important; }
+    .exam-paper-print .exam-diagram { display:block!important; margin:.35rem 0 .55rem 1.1rem!important; max-width:72%!important; max-height:2.6in!important; width:auto!important; height:auto!important; object-fit:contain!important; border:1px solid #e2e8f0!important; border-radius:4px!important; page-break-inside:avoid!important; break-inside:avoid!important; }
+    .exam-paper-print .exam-diagram-caption { margin:0 0 .45rem 1.1rem!important; font-size:8.5pt!important; font-style:italic!important; color:#64748b!important; }
     .exam-theory-new-page { break-before:auto!important; page-break-before:auto!important; }
-    .exam-objective-list > div, .exam-theory-section > div > div, .exam-paper-print table, .exam-paper-print img { break-inside:avoid!important; page-break-inside:avoid!important; }
+    .exam-objective-list > div, .exam-theory-section > div > div, .exam-paper-print table, .exam-paper-print .exam-diagram { break-inside:avoid!important; page-break-inside:avoid!important; }
     .exam-objective-list, .exam-theory-section { break-inside:auto!important; page-break-inside:auto!important; }
     h1,h2,h3 { break-after:avoid!important; page-break-after:avoid!important; }
     * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
@@ -108,7 +106,6 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
   return (
     <div className="exam-preview-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in">
       <div className="exam-preview-dialog w-full max-w-4xl max-h-[95vh] bg-slate-100 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-left border border-slate-300">
-        {/* Top Control Toolbar */}
         <div className="exam-preview-toolbar bg-white px-5 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
@@ -165,16 +162,14 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
           </div>
         </div>
 
-        {/* Paper Container (Scrollable) */}
         <div className="exam-preview-scroll flex-1 overflow-y-auto p-4 sm:p-8">
           <div data-watermark={school?.name || "SCHOOL NAME"} className="exam-paper-print bg-white max-w-3xl mx-auto p-6 sm:p-10 rounded-2xl shadow-sm border border-slate-200 font-serif text-slate-900 leading-relaxed text-left">
             {activeTab === 'paper' ? (
               <div className="space-y-6">
-                {/* Official Header */}
                 <div className="text-center space-y-1 pb-4 border-b-2 border-slate-800">
                   <div className="flex items-center justify-start gap-3 text-left">
                     {school?.logo_url && (
-                      <img src={school.logo_url} alt={`${school.name || 'School'} logo`} className="h-16 w-16 shrink-0 object-contain" />
+                      <img src={school.logo_url} alt={`${school.name || 'School'} logo`} className="school-logo h-16 w-16 shrink-0 object-contain" />
                     )}
                     <div className="min-w-0 flex-1">
                       <h1 className="text-xl sm:text-2xl font-bold uppercase tracking-tight">{school?.name || 'SCHOOL NAME'}</h1>
@@ -198,13 +193,11 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                     </div>
                   </div>
 
-
                   <div className="text-xs italic text-left pt-2 text-slate-700">
                     <strong>GENERAL INSTRUCTIONS:</strong> {exam.instructions}
                   </div>
                 </div>
 
-                {/* Section A: Objectives */}
                 {sectionAQuestions.length > 0 && (
                   <div className="space-y-4">
                     <div className="text-center">
@@ -222,6 +215,12 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                           <p className="font-medium">
                             <strong className="font-bold">{idx + 1}.</strong> <FormattedExamText text={q.question_text} />
                           </p>
+                          {q.image_url && (
+                            <figure className="pl-3">
+                              <img src={q.image_url} alt={`Diagram for objective ${idx + 1}`} className="exam-diagram max-h-56 max-w-[85%] rounded border border-slate-200 object-contain" />
+                              <figcaption className="exam-diagram-caption text-[11px] italic text-slate-500">Diagram</figcaption>
+                            </figure>
+                          )}
                           {q.objective_data && (
                             <div className="flex flex-wrap gap-x-4 gap-y-1 pl-4 text-slate-800">
                               <span>[A] <FormattedExamText text={q.objective_data.option_a} /></span>
@@ -236,7 +235,6 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                   </div>
                 )}
 
-                {/* Section B: Theory */}
                 {sectionBQuestions.length > 0 && (
                   <div className={`exam-theory-section space-y-3 pt-3 border-t border-slate-300 ${shouldStartTheoryOnNewPage ? "exam-theory-new-page" : ""}`}>
                     <div className="text-center">
@@ -256,6 +254,12 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                               <strong className="font-bold">{idx + 1}.</strong> <FormattedExamText text={q.question_text} />
                             </p>
                           </div>
+                          {q.image_url && (
+                            <figure className="pl-3">
+                              <img src={q.image_url} alt={`Diagram for theory ${idx + 1}`} className="exam-diagram max-h-56 max-w-[85%] rounded border border-slate-200 object-contain" />
+                              <figcaption className="exam-diagram-caption text-[11px] italic text-slate-500">Diagram</figcaption>
+                            </figure>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -264,7 +268,6 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Confidential Marking Scheme Header */}
                 <div className="text-center space-y-1 pb-4 border-b-2 border-rose-800 text-rose-900">
                   <span className="text-xs font-bold uppercase tracking-widest bg-rose-50 text-rose-700 px-3 py-1 rounded-full border border-rose-200">
                     Strictly Confidential · Teachers Only
@@ -280,7 +283,6 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                   </p>
                 </div>
 
-                {/* Section A Key */}
                 {sectionAQuestions.length > 0 && (
                   <div className="space-y-3 font-sans">
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
@@ -299,7 +301,6 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
                   </div>
                 )}
 
-                {/* Section B Detailed Rubrics */}
                 {sectionBQuestions.length > 0 && (
                   <div className="space-y-5 pt-4 border-t border-slate-200 font-sans">
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
