@@ -13,6 +13,10 @@ import {
   Layers
 } from 'lucide-react';
 
+const requestRockcraftConfirmation = (message: string) => new Promise<boolean>((resolve) => {
+  window.dispatchEvent(new CustomEvent('rockcraft:confirm', { detail: { message, resolve } }));
+});
+
 export const ClassesPage: React.FC = () => {
   const { school, role } = useAuth();
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -112,7 +116,7 @@ export const ClassesPage: React.FC = () => {
   };
 
   const handleRemoveSubject = async (id: string, name: string) => {
-    if (!school || !confirm(`Remove ${name} from the available subject list? Past exams will be kept.`)) return;
+    if (!school || !(await requestRockcraftConfirmation(`Remove ${name} from the available subject list? Past exams will be kept.`))) return;
     const { error: updateError } = await supabase
       .from('school_subjects')
       .update({ is_active: false })
@@ -178,7 +182,7 @@ export const ClassesPage: React.FC = () => {
   };
 
   const handleDeleteClass = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to remove ${name}?`)) return;
+    if (!(await requestRockcraftConfirmation(`Are you sure you want to remove ${name}?`))) return;
     if (!isSupabaseConfigured()) {
       setError('Supabase is not configured. The class was not deleted.');
       return;
