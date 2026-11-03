@@ -14,6 +14,9 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  FileText,
+  GraduationCap,
+  Sparkles,
   MapPin,
 } from 'lucide-react';
 
@@ -142,66 +145,87 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
     else setErrorMessage(res.error || 'Registration failed.');
   };
 
-  const heroImages = [
-    { src: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1800&q=85', alt: 'Students learning in a classroom' },
-    { src: 'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?auto=format&fit=crop&w=1800&q=85', alt: 'Teacher supporting students in class' },
-    { src: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1800&q=85', alt: 'Students studying together' },
-    { src: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1800&q=85', alt: 'Students celebrating academic success' },
-  ];
-  const [activeHeroImage, setActiveHeroImage] = useState(0);
-  const touchStartX = React.useRef<number | null>(null);
+  const heroTitle =
+    mode === 'login'
+      ? 'Create Nigerian exam papers with AI'
+      : regStep === 1
+      ? 'Create your school workspace'
+      : regStep === 2
+      ? 'Who will manage the account?'
+      : 'Secure your school portal';
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setActiveHeroImage((current) => (current + 1) % heroImages.length);
-    }, 4800);
-    return () => window.clearInterval(timer);
-  }, []);
+  const heroSubtitle =
+    mode === 'login'
+      ? 'Sign in to generate objective and theory questions, create marking schemes, and export DOCX exam papers.'
+      : regStep === 1
+      ? 'Tell us about your school to get started.'
+      : regStep === 2
+      ? 'Admin contact details for login and support.'
+      : 'Choose a password you will use to sign in.';
 
   return (
     <div className="relative flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[#eef4fb]">
-      {/* Full-width, text-free photo carousel. Auth forms below remain unchanged. */}
-      <section
-        className="relative h-[34dvh] min-h-[220px] max-h-[360px] w-full shrink-0 overflow-hidden bg-slate-900 sm:h-[38dvh] sm:max-h-[420px]"
-        aria-label="ROCKCRAFT photo carousel"
-        onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX ?? null; }}
-        onTouchEnd={(event) => {
-          if (touchStartX.current === null) return;
-          const delta = event.changedTouches[0].clientX - touchStartX.current;
-          if (Math.abs(delta) > 45) {
-            setActiveHeroImage((current) => (current + (delta < 0 ? 1 : -1) + heroImages.length) % heroImages.length);
-          }
-          touchStartX.current = null;
-        }}
+      {/* Top band — shorter on register so more form space */}
+      <div
+        className={`relative shrink-0 overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-600 px-5 text-white transition-all ${
+          mode === 'register'
+            ? 'pb-12 pt-[max(0.85rem,env(safe-area-inset-top))]'
+            : 'pb-16 pt-[max(1.25rem,env(safe-area-inset-top))]'
+        }`}
       >
-        {heroImages.map((image, index) => (
-          <img
-            key={image.src}
-            src={image.src}
-            alt={image.alt}
-            aria-hidden={index !== activeHeroImage}
-            draggable={false}
-            loading={index === 0 ? 'eager' : 'lazy'}
-            className={`absolute inset-0 h-full w-full select-none object-cover object-center transition-opacity duration-1000 ease-in-out ${index === activeHeroImage ? 'z-[1] opacity-100' : 'z-0 opacity-0'}`}
-          />
-        ))}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-20 bg-gradient-to-t from-slate-950/35 to-transparent" />
-        <div className="absolute bottom-4 left-1/2 z-[3] flex -translate-x-1/2 items-center gap-2.5" aria-label={`Slide ${activeHeroImage + 1} of ${heroImages.length}`}>
-          {heroImages.map((image, index) => (
-            <button
-              key={image.src}
-              type="button"
-              onClick={() => setActiveHeroImage(index)}
-              aria-label={`Show picture ${index + 1}`}
-              aria-current={index === activeHeroImage ? 'true' : undefined}
-              className={`h-2.5 rounded-full transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${index === activeHeroImage ? 'w-7 bg-white' : 'w-2.5 bg-white/55 hover:bg-white/85'}`}
-            />
-          ))}
+        <div className="pointer-events-none absolute -right-10 -top-8 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-16 left-1/4 h-36 w-36 rounded-full bg-indigo-400/30 blur-2xl" />
+        <div className="pointer-events-none absolute right-6 top-8 opacity-[0.12]">
+          <FileText className="h-20 w-20 sm:h-24 sm:w-24" strokeWidth={1} />
         </div>
-      </section>
+        <div className="pointer-events-none absolute bottom-6 left-4 opacity-[0.1]">
+          <GraduationCap className="h-14 w-14" strokeWidth={1} />
+        </div>
+
+        <div className="relative mx-auto w-full max-w-md">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-sm font-black tracking-tight shadow-sm ring-1 ring-white/25 backdrop-blur-sm sm:h-10 sm:w-10">
+              RC
+            </div>
+            <span className="text-sm font-extrabold tracking-tight sm:text-base">ROCKCRAFT</span>
+          </div>
+
+          <h1
+            className={`mt-3 max-w-[19rem] font-extrabold leading-snug tracking-tight ${
+              mode === 'register' ? 'text-lg sm:text-xl' : 'text-[1.35rem] sm:text-2xl mt-5'
+            }`}
+          >
+            {heroTitle}
+          </h1>
+          <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-blue-100 sm:text-[13px]">{heroSubtitle}</p>
+
+          {mode === 'login' && (
+            <div className="mt-5 flex items-end gap-2 opacity-90">
+              <div className="h-14 w-20 rounded-xl border border-white/20 bg-white/10 p-2 backdrop-blur-sm">
+                <div className="mb-1 h-1.5 w-10 rounded bg-white/50" />
+                <div className="h-1.5 w-14 rounded bg-white/30" />
+                <div className="mt-2">
+                  <Sparkles className="h-3.5 w-3.5 text-white/70" />
+                </div>
+              </div>
+              <div className="h-20 w-24 rounded-xl border border-white/25 bg-white/15 p-2 shadow-lg shadow-blue-950/10 backdrop-blur-sm">
+                <div className="mb-1.5 h-1.5 w-12 rounded bg-white/60" />
+                <div className="space-y-1">
+                  <div className="h-1.5 w-full rounded bg-white/25" />
+                  <div className="h-1.5 w-[80%] rounded bg-white/20" />
+                  <div className="h-1.5 w-[60%] rounded bg-white/15" />
+                </div>
+              </div>
+              <div className="h-12 w-16 rounded-xl border border-white/15 bg-white/10 p-2 backdrop-blur-sm">
+                <div className="h-1.5 w-8 rounded bg-white/40" />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Bottom sheet */}
-      <div className="relative z-10 -mt-5 flex min-h-0 flex-1 flex-col">
+      <div className="relative z-10 -mt-10 flex min-h-0 flex-1 flex-col">
         <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden rounded-t-[1.75rem] border border-slate-200/60 bg-white shadow-[0_-8px_40px_rgba(15,23,42,0.08)]">
           <div className="flex min-h-0 flex-1 flex-col px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5">
             {/* Mode switch */}
