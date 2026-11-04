@@ -435,6 +435,46 @@ export default async (req: Request) => {
     }
   }
 
+  // Public, exam-specific share page. Only published paper content is returned; answer keys and marking schemes stay private.
+  if (pathname.endsWith('/exam-share') && req.method === 'GET') {
+    const code = (url.searchParams.get('code') || '').trim().slice(0, 80);
+    const escapeHtml = (value: unknown) => String(value ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const unavailable = (message: string, status = 404) => new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ROCKCRAFT Exam</title></head><body style="font-family:system-ui;background:#f3f6fb;padding:32px;color:#172554"><main style="max-width:560px;margin:8vh auto;background:white;padding:28px;border-radius:20px"><b>ROCKCRAFT</b><h1>Exam link unavailable</h1><p>${escapeHtml(message)}</p></main></body></html>`, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
+    if (!code || code.length > 80) return unavailable('This exam link is invalid.');
+    try {
+      const exams = await supabaseAdminRequest(`exams?exam_code=eq.${encodeURIComponent(code)}&status=eq.published&select=id,school_id,exam_code,title,subject,class_name,term,session,duration_minutes,instructions,total_marks,section_a_marks,section_b_marks&limit=1`) as Array<any>;
+      const exam = exams[0];
+      if (!exam) return unavailable('This examination is unavailable or is no longer published.');
+      const [schools, questions] = await Promise.all([
+        supabaseAdminRequest(`schools?id=eq.${encodeURIComponent(exam.school_id)}&select=name,logo_url,motto,address&limit=1`) as Promise<Array<any>>,
+        supabaseAdminRequest(`questions?exam_id=eq.${encodeURIComponent(exam.id)}&select=id,section,question_number,question_text,marks,image_url&order=question_number.asc`) as Promise<Array<any>>,
+      ]);
+      const school = schools[0];
+      if (!school?.name) return unavailable('The school details for this exam are unavailable.', 404);
+      const questionIds = questions.map((q: any) => q.id);
+      const options = questionIds.length
+        ? await supabaseAdminRequest(`objective_answers?question_id=in.(${questionIds.map((id: string) => encodeURIComponent(id)).join(',')})&select=question_id,option_a,option_b,option_c,option_d`) as Array<any>
+        : [];
+      const title = `${exam.subject} — ${exam.class_name} | ${school.name}`;
+      const description = `${exam.title}. ${exam.term}, ${exam.session}. Examination paper shared with ROCKCRAFT.`;
+      const origin = url.origin;
+      const image = typeof school.logo_url === 'string' && /^https:\/\//i.test(school.logo_url) ? school.logo_url : `${origin}/rockcraft-logo.png?v=4`;
+      const questionHtml = questions.map((q: any) => {
+        const answer = options.find((item: any) => item.question_id === q.id);
+        const choices = answer ? `<div class="options">A. ${escapeHtml(answer.option_a)}　 B. ${escapeHtml(answer.option_b)}<br>C. ${escapeHtml(answer.option_c)}　 D. ${escapeHtml(answer.option_d)}</div>` : '';
+        const diagram = typeof q.image_url === 'string' && /^https:\/\//i.test(q.image_url) ? `<img class="diagram" src="${escapeHtml(q.image_url)}" alt="Question diagram">` : '';
+        return `<article><b>${Number(q.question_number) || ''}.</b> ${escapeHtml(q.question_text)} ${diagram}${choices}</article>`;
+      }).join('');
+      const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta property="og:type" content="website"><meta property="og:site_name" content="ROCKCRAFT"><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${escapeHtml(origin + '/api/exam-share?code=' + encodeURIComponent(code))}"><meta property="og:image" content="${escapeHtml(image)}"><meta property="og:image:alt" content="${escapeHtml(school.name + ' examination paper')}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escapeHtml(title)}"><meta name="twitter:description" content="${escapeHtml(description)}"><meta name="twitter:image" content="${escapeHtml(image)}"><style>body{margin:0;background:#f3f6fb;color:#172033;font:15px/1.6 system-ui,sans-serif}.wrap{max-width:850px;margin:24px auto;padding:16px}.paper{background:#fff;padding:clamp(20px,5vw,48px);border:1px solid #e2e8f0;border-radius:18px}.brand{color:#2563eb;font-weight:800;letter-spacing:.15em;font-size:12px}.school{text-align:center;border-bottom:2px solid #172033;padding:12px 0 18px}.logo{max-width:80px;max-height:70px;object-fit:contain}.meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px}.instructions{font-size:13px}.section{text-align:center;margin:24px 0 12px;font-weight:800;text-decoration:underline}article{margin:12px 0;break-inside:avoid}.options{padding:5px 0 0 16px;font-size:13px}.diagram{display:block;max-width:75%;max-height:220px;object-fit:contain;margin:8px}.notice{font-size:12px;color:#64748b;text-align:center;margin:18px}</style></head><body><main class="wrap"><div class="paper"><div class="brand">ROCKCRAFT</div><header class="school">${school.logo_url ? `<img class="logo" src="${escapeHtml(school.logo_url)}" alt="">` : ''}<h1>${escapeHtml(school.name)}</h1>${school.motto ? `<p>${escapeHtml(school.motto)}</p>` : ''}<h2>${escapeHtml(exam.term)} EXAMINATION — ${escapeHtml(exam.session)}</h2></header><p class="meta"><span><b>CLASS:</b> ${escapeHtml(exam.class_name)}<br><b>SUBJECT:</b> ${escapeHtml(exam.subject)}</span><span><b>TIME:</b> ${escapeHtml(exam.duration_minutes)} minutes<br><b>TOTAL:</b> ${escapeHtml(exam.total_marks)} marks</span></p><p class="instructions"><b>INSTRUCTIONS:</b> ${escapeHtml(exam.instructions)}</p>${questions.some((q:any)=>q.section==='A') ? '<h3 class="section">SECTION A: OBJECTIVE</h3>' : ''}${questions.filter((q:any)=>q.section==='A').map((q:any)=>questionHtml[questions.indexOf(q)]).join('')}${questions.some((q:any)=>q.section==='B') ? '<h3 class="section">SECTION B: THEORY</h3>' : ''}${questions.filter((q:any)=>q.section==='B').map((q:any)=>questionHtml[questions.indexOf(q)]).join('')}<p class="notice">Shared examination paper • Powered by ROCKCRAFT</p></div></main></body></html>`;
+      return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60, s-maxage=300', 'X-Content-Type-Options': 'nosniff' } });
+    } catch (error) {
+      console.error('Public exam share failed', error);
+      return unavailable('This exam could not be opened right now. Please try the link again.', 503);
+    }
+  }
+
   // Server-rendered social preview for a public teacher invite. Social crawlers
   // receive Open Graph metadata; real browsers are forwarded to the existing
   // /join/:token application route. This endpoint exposes only public school branding.
