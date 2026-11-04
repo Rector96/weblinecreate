@@ -810,7 +810,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
 
     return createPortal(
       <div
-        className="fixed inset-0 z-[2147483647] flex h-[100dvh] min-h-[100vh] w-screen flex-col items-center justify-center overflow-hidden bg-[#06122a] px-6 text-center text-white"
+        className="fixed inset-0 z-[2147483647] flex h-[100dvh] min-h-[100vh] w-screen flex-col items-center justify-center overflow-hidden bg-[#06122a] px-5 py-5 text-center text-white"
         role="status"
         aria-live="polite"
         aria-label={finishing ? 'Exam ready' : 'Generating exam'}
@@ -818,45 +818,77 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
       >
         <div className="pointer-events-none absolute -left-16 top-10 h-56 w-56 rounded-full bg-blue-500/30 blur-3xl" />
         <div className="pointer-events-none absolute -right-12 bottom-16 h-64 w-64 rounded-full bg-indigo-500/25 blur-3xl" />
+        <style>{`
+          @keyframes rockcraft-waiting-photo {
+            0%, 27% { opacity: 1; transform: scale(1); }
+            33%, 94% { opacity: 0; transform: scale(1.035); }
+            100% { opacity: 1; transform: scale(1); }
+          }
+          .rockcraft-waiting-photo {
+            animation: rockcraft-waiting-photo 12s ease-in-out infinite;
+          }
+          .rockcraft-waiting-photo:nth-child(2) { animation-delay: 4s; }
+          .rockcraft-waiting-photo:nth-child(3) { animation-delay: 8s; }
+          @media (prefers-reduced-motion: reduce) {
+            .rockcraft-waiting-photo { animation: none; }
+            .rockcraft-waiting-photo:nth-child(1) { opacity: 1; }
+            .rockcraft-waiting-photo:nth-child(2),
+            .rockcraft-waiting-photo:nth-child(3) { opacity: 0; }
+          }
+        `}</style>
 
-        <div className="relative z-10 flex w-full max-w-xs flex-col items-center sm:max-w-sm">
-          <div className="mb-6 flex h-36 w-36 items-center justify-center sm:h-40 sm:w-40">
+        <div className="relative z-10 flex w-full max-w-sm flex-col items-center">
+          <div className="relative mb-5 flex aspect-[4/5] max-h-[58dvh] w-full max-w-[min(86vw,520px)] items-center justify-center overflow-hidden rounded-3xl border border-white/15 bg-[#0b1933] shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
             {finishing ? (
-              <div className="flex h-28 w-28 items-center justify-center rounded-full bg-emerald-500/20 ring-4 ring-emerald-400/40 animate-in zoom-in duration-500">
-                <CheckCircle2 className="h-14 w-14 text-emerald-300" strokeWidth={2.25} />
+              <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-gradient-to-br from-emerald-500/20 to-emerald-900/40">
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500/20 ring-4 ring-emerald-400/40 animate-in zoom-in duration-500">
+                  <CheckCircle2 className="h-14 w-14 text-emerald-300" strokeWidth={2.25} />
+                </div>
+                <span className="text-2xl font-extrabold tracking-[0.22em] text-emerald-200">DONE</span>
               </div>
             ) : (
-              <div className="relative">
-                <div className="flex h-36 w-36 flex-col items-center justify-center rounded-[1.75rem] border border-white/15 bg-gradient-to-b from-white/15 to-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm sm:h-40 sm:w-40">
-                  <div className="mb-1 text-5xl leading-none sm:text-6xl" aria-hidden="true">🎓</div>
-                  <div className="mt-1 flex items-center gap-1.5 rounded-full bg-blue-500/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-100">
-                    <Sparkles className="h-3 w-3 animate-pulse" />
-                    AI
-                  </div>
-                </div>
-                <div className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 shadow-lg shadow-blue-600/40 ring-4 ring-[#06122a]">
-                  <Loader2 className="h-5 w-5 animate-spin text-white" />
-                </div>
-              </div>
+              <>
+                <img
+                  src="/c891e5ff-f266-42b6-85f2-dcb682456043.jpeg"
+                  alt="Student preparing for learning"
+                  className="rockcraft-waiting-photo absolute inset-0 h-full w-full object-contain object-center"
+                  fetchPriority="high"
+                />
+                <img
+                  src="/b250e388-6934-4652-bd45-314973d8099c.jpeg"
+                  alt="Teacher teaching students in a classroom"
+                  className="rockcraft-waiting-photo absolute inset-0 h-full w-full object-contain object-center"
+                />
+                <img
+                  src="/cccb6c66-34d1-4785-a34b-34b478f168dd.jpeg"
+                  alt="Student holding school books"
+                  className="rockcraft-waiting-photo absolute inset-0 h-full w-full object-contain object-center"
+                />
+              </>
             )}
           </div>
 
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-            {finishing ? 'Exam ready' : 'Generating your exam'}
+            {finishing ? 'Your exam is ready' : 'Your colleague is preparing your exam'}
           </h1>
           <p className="mt-1.5 text-sm text-slate-300">
             {subject} · {className}
           </p>
 
           {!finishing && (
-            <div className="mt-5 flex items-center gap-2 text-xs font-medium text-slate-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
-              <span>{generationStage === 'queued' ? 'In queue' : 'Writing questions'}</span>
-              <span className="font-mono tabular-nums text-slate-500">{elapsedLabel}</span>
-            </div>
+            <>
+              <p className="mt-3 max-w-xs text-xs leading-relaxed text-slate-300">
+                Great work takes preparation. Your questions are being carefully put together.
+              </p>
+              <div className="mt-5 flex items-center gap-2 text-xs font-medium text-slate-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
+                <span>{generationStage === 'queued' ? 'In queue' : 'Writing questions'}</span>
+                <span className="font-mono tabular-nums text-slate-500">{elapsedLabel}</span>
+              </div>
+            </>
           )}
 
-          <div className="mt-7 h-1 w-36 overflow-hidden rounded-full bg-white/10 sm:w-44">
+          <div className="mt-6 h-1 w-36 overflow-hidden rounded-full bg-white/10 sm:w-44">
             <div
               className={`h-full rounded-full bg-gradient-to-r from-sky-300 to-blue-400 transition-all duration-700 ${
                 finishing ? 'w-full' : 'w-2/5 animate-[rockcraft-loading-sweep_1.8s_ease-in-out_infinite]'
@@ -864,8 +896,8 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
             />
           </div>
 
-          <p className="mt-5 text-[11px] text-slate-500">
-            {finishing ? 'Opening review…' : 'Keep this page open'}
+          <p className="mt-4 text-[11px] text-slate-500">
+            {finishing ? 'Opening your questions…' : 'Keep this page open'}
           </p>
         </div>
       </div>,
