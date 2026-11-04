@@ -16,8 +16,7 @@ import {
   Clock,
   CheckCircle2,
   Lock,
-  Loader2,
-  Share2
+  Loader2
 } from 'lucide-react';
 
 const requestRockcraftConfirmation = (message: string) => new Promise<boolean>((resolve) => {
@@ -84,26 +83,6 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
     const matchesTerm = selectedTerm === 'All' || e.term === selectedTerm;
     return matchesSearch && matchesSubject && matchesClass && matchesTerm;
   });
-
-  const handleShareExam = async (exam: Exam) => {
-    const shareUrl = `${window.location.origin}/api/exam-share?code=${encodeURIComponent(exam.exam_code)}`;
-    const shareTitle = `${exam.subject} — ${exam.class_name} | ROCKCRAFT`;
-    const shareText = `${exam.title} • ${exam.term} • ${exam.session} • ${school?.name || 'ROCKCRAFT'}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: shareTitle, text: shareText, url: shareUrl });
-      } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-        window.dispatchEvent(new CustomEvent('rockcraft:notify', { detail: { message: 'Exam link copied. You can now share it with your teacher.', kind: 'success' } }));
-      } else {
-        window.prompt('Copy this exam link', shareUrl);
-      }
-    } catch (shareError) {
-      if (shareError instanceof Error && shareError.name === 'AbortError') return;
-      console.error('Exam sharing failed', shareError);
-      window.dispatchEvent(new CustomEvent('rockcraft:notify', { detail: { message: 'Could not share this exam. Please try again.', kind: 'error' } }));
-    }
-  };
 
   const handleDownloadDocx = async (exam: Exam) => {
     setActionId(`docx_${exam.id}`);
@@ -329,15 +308,7 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
 
                 <div className="flex items-center justify-between pt-1">
                   <button
-                    onClick={() => void handleShareExam(exam)}
-                    className="text-xs font-semibold text-emerald-700 hover:underline flex items-center gap-1"
-                    title="Share this exam paper"
-                  >
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>Share Exam</span>
-                  </button>
-                  <button
-                    onClick={() => onPreviewExam(exam)
+                    onClick={() => onPreviewExam(exam)}
                     className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1"
                   >
                     <Eye className="w-3.5 h-3.5" />

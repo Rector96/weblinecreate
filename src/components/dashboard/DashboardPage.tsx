@@ -113,9 +113,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return () => { cancelled = true; };
   }, [school?.id, role, user?.id]);
 
-  // Share a server-rendered preview URL so WhatsApp/social crawlers can read
-  // school-specific Open Graph metadata before the browser opens the SPA invite.
-  const getInviteUrl = () => inviteToken ? `${window.location.origin}/api/share-preview?token=${encodeURIComponent(inviteToken)}` : '';
+  // Use the direct SPA invitation route so teachers can open the link reliably.
+  const getInviteUrl = () => inviteToken ? `${window.location.origin}/join/${encodeURIComponent(inviteToken)}` : '';
 
   const copyInvite = async () => {
     const inviteUrl = getInviteUrl();
