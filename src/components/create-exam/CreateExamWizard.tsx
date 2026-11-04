@@ -838,7 +838,7 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
         `}</style>
 
         <div className="relative z-10 flex w-full max-w-sm flex-col items-center">
-          <div className="relative mb-5 flex aspect-[4/5] max-h-[43dvh] w-full max-w-[min(72vw,280px)] items-center justify-center overflow-hidden rounded-3xl border border-white/15 bg-white/5 shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
+          <div className="relative mb-5 flex aspect-[4/5] max-h-[58dvh] w-full max-w-[min(86vw,520px)] items-center justify-center overflow-hidden rounded-3xl border border-white/15 bg-[#0b1933] shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
             {finishing ? (
               <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-gradient-to-br from-emerald-500/20 to-emerald-900/40">
                 <div className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500/20 ring-4 ring-emerald-400/40 animate-in zoom-in duration-500">
@@ -851,18 +851,18 @@ export const CreateExamWizard: React.FC<CreateExamWizardProps> = ({
                 <img
                   src="/c891e5ff-f266-42b6-85f2-dcb682456043.jpeg"
                   alt="Student preparing for learning"
-                  className="rockcraft-waiting-photo absolute inset-0 h-full w-full object-cover object-center"
+                  className="rockcraft-waiting-photo absolute inset-0 h-full w-full object-contain object-center"
                   fetchPriority="high"
                 />
                 <img
                   src="/b250e388-6934-4652-bd45-314973d8099c.jpeg"
                   alt="Teacher teaching students in a classroom"
-                  className="rockcraft-waiting-photo absolute inset-0 h-full w-full object-cover object-center"
+                  className="rockcraft-waiting-photo absolute inset-0 h-full w-full object-contain object-center"
                 />
                 <img
                   src="/cccb6c66-34d1-4785-a34b-34b478f168dd.jpeg"
                   alt="Student holding school books"
-                  className="rockcraft-waiting-photo absolute inset-0 h-full w-full object-cover object-center"
+                  className="rockcraft-waiting-photo absolute inset-0 h-full w-full object-contain object-center"
                 />
               </>
             )}
