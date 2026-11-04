@@ -435,6 +435,71 @@ export default async (req: Request) => {
     }
   }
 
+  // Server-rendered social preview for a public teacher invite. Social crawlers
+  // receive Open Graph metadata; real browsers are forwarded to the existing
+  // /join/:token application route. This endpoint exposes only public school branding.
+  if (pathname.endsWith('/share-preview') && req.method === 'GET') {
+    const token = (url.searchParams.get('token') || '').trim().toUpperCase();
+    const origin = url.origin;
+    const fallbackImage = `${origin}/rockcraft-logo.png?v=4`;
+    const escapeHtml = (value: unknown) => String(value ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const unavailableHtml = (message: string) => new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>ROCKCRAFT school invitation</title></head><body><main><h1>ROCKCRAFT</h1><p>${escapeHtml(message)}</p></main></body></html>`, {
+      status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+    });
+
+    if (!/^[A-Z2-9]{6}$/.test(token)) return unavailableHtml('This school invitation is invalid or expired.');
+    try {
+      const invitations = await supabaseAdminRequest(
+        `school_invitations?token=eq.${encodeURIComponent(token)}&role=eq.teacher&is_active=eq.true&select=school_id,expires_at&limit=1`,
+      ) as Array<{ school_id: string; expires_at: string | null }>;
+      const invitation = invitations[0];
+      if (!invitation?.school_id || (invitation.expires_at && new Date(invitation.expires_at).getTime() <= Date.now())) {
+        return unavailableHtml('This school invitation is invalid or expired.');
+      }
+      const schools = await supabaseAdminRequest(
+        `schools?id=eq.${encodeURIComponent(invitation.school_id)}&select=name,logo_url&limit=1`,
+      ) as Array<{ name: string; logo_url?: string | null }>;
+      const school = schools[0];
+      if (!school?.name) return unavailableHtml('This school invitation is unavailable.');
+
+      const schoolName = school.name.trim().slice(0, 140);
+      const title = `${schoolName} | Teacher Exam Workspace`;
+      const description = `Create examination papers for ${schoolName} using its secure ROCKCRAFT teacher workspace.`;
+      let imageUrl = fallbackImage;
+      if (typeof school.logo_url === 'string' && school.logo_url.trim()) {
+        try {
+          const candidate = new URL(school.logo_url.trim());
+          if (candidate.protocol === 'https:') imageUrl = candidate.toString();
+        } catch { /* Use the ROCKCRAFT brand image when the school logo URL is invalid. */ }
+      }
+      const destination = `/join/${encodeURIComponent(token)}`;
+      const canonical = `${origin}/api/share-preview?token=${encodeURIComponent(token)}`;
+      const safeTitle = escapeHtml(title);
+      const safeDescription = escapeHtml(description);
+      const safeImage = escapeHtml(imageUrl);
+      const safeCanonical = escapeHtml(canonical);
+      const safeDestination = escapeHtml(destination);
+      const document = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${safeTitle}</title><meta name="description" content="${safeDescription}"><meta name="robots" content="noindex,follow">
+<link rel="canonical" href="${safeCanonical}">
+<meta property="og:type" content="website"><meta property="og:site_name" content="ROCKCRAFT"><meta property="og:locale" content="en_NG">
+<meta property="og:title" content="${safeTitle}"><meta property="og:description" content="${safeDescription}"><meta property="og:url" content="${safeCanonical}"><meta property="og:image" content="${safeImage}"><meta property="og:image:alt" content="${escapeHtml(`${schoolName} — powered by ROCKCRAFT`)}">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${safeTitle}"><meta name="twitter:description" content="${safeDescription}"><meta name="twitter:image" content="${safeImage}">
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box;background:#f3f6fb;color:#10213b;font-family:system-ui,sans-serif}.card{width:100%;max-width:460px;padding:32px;border:1px solid #e1e8f2;border-radius:24px;background:white;text-align:center;box-shadow:0 18px 55px #10213b12}.brand{font-size:13px;font-weight:800;letter-spacing:.18em;color:#2563eb}.school{font-size:25px;font-weight:800;margin:18px 0 8px}.copy{color:#53647d;line-height:1.6}.button{display:inline-block;margin-top:18px;padding:13px 22px;border-radius:12px;background:#1d4ed8;color:white;text-decoration:none;font-weight:700}</style>
+</head><body><main class="card"><div class="brand">ROCKCRAFT</div><h1 class="school">${escapeHtml(schoolName)}</h1><p class="copy">Your school's secure teacher examination workspace.</p><a class="button" href="${safeDestination}">Continue to teacher workspace</a><p class="copy" style="font-size:12px">Powered by ROCKCRAFT</p></main>
+<script>window.location.replace(${JSON.stringify(destination)});</script></body></html>`;
+      return new Response(document, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
+    } catch (error) {
+      console.error('School share preview failed', error);
+      return new Response('<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ROCKCRAFT</title></head><body><h1>ROCKCRAFT</h1><p>This school invitation is temporarily unavailable. Please open the original school link.</p></body></html>', {
+        status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+      });
+    }
+  }
+
   // Public invite preview: reveal school branding and curriculum options for a valid, active share link.
   if (pathname.endsWith('/school-invite') && req.method === 'GET') {
     try {
