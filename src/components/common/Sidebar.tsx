@@ -33,7 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRoute, navigate, onOpen
   }
 
   return (
-    <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-white border-r border-slate-200/90 h-screen sticky top-0 shrink-0 p-5 overflow-y-auto">
+    <aside className="hidden lg:flex flex-col w-64 xl:w-72 bg-white border-r border-slate-200/90 h-screen sticky top-0 shrink-0 p-5 overflow-y-auto">
       {/* Brand Header */}
       <div className="flex items-center gap-3 pb-6 border-b border-slate-100">
         <img src="/rockcraft-logo.png?v=4" alt="ROCKCRAFT logo" className="w-10 h-10 object-contain shrink-0" />
