@@ -14,7 +14,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentRoute, navigate }) 
     `flex flex-col items-center justify-center min-w-[42px] min-h-[48px] px-1 py-1 rounded-xl transition-all ${currentRoute === route ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-800'}`;
 
   return (
-    <nav className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-40 px-2 pb-safe pt-2">
+    <nav className="mobile-bottom-nav lg:hidden fixed bottom-0 left-0 right-0 z-40 px-2 pb-safe pt-2">
       <div className="bg-white/90 backdrop-blur-2xl border border-slate-200/80 shadow-[0_-6px_30px_rgba(15,23,42,0.06)] rounded-[1.4rem] px-1 py-1.5 flex items-center justify-around max-w-xl mx-auto">
         <button onClick={() => navigate('dashboard')} className={itemClass('dashboard')}>
           <LayoutDashboard className="w-5 h-5" />
