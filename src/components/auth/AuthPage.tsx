@@ -164,10 +164,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
       : 'Choose a password you will use to sign in.';
 
   return (
-    <div className="relative flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[#eef4fb]">
+    <div className="relative grid h-[100dvh] max-h-[100dvh] grid-cols-1 overflow-hidden bg-[#eef4fb] lg:grid-cols-[minmax(0,1.05fr)_minmax(440px,0.95fr)] lg:bg-[#f4f7fb]">
       {/* Top band — shorter on register so more form space */}
       <div
-        className={`relative shrink-0 overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-600 px-5 text-white transition-all ${
+        className={`relative flex shrink-0 flex-col justify-center overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-600 px-5 text-white transition-all lg:px-12 xl:px-16 ${
           mode === 'register'
             ? 'pb-12 pt-[max(0.85rem,env(safe-area-inset-top))]'
             : 'pb-16 pt-[max(1.25rem,env(safe-area-inset-top))]'
@@ -182,7 +182,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
           <GraduationCap className="h-14 w-14" strokeWidth={1} />
         </div>
 
-        <div className="relative mx-auto w-full max-w-md">
+        <div className="relative mx-auto w-full max-w-md lg:max-w-xl">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-sm font-black tracking-tight shadow-sm ring-1 ring-white/25 backdrop-blur-sm sm:h-10 sm:w-10">
               RC
@@ -200,7 +200,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
           <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-blue-100 sm:text-[13px]">{heroSubtitle}</p>
 
           {mode === 'login' && (
-            <div className="mt-5 flex items-end gap-2 opacity-90">
+            <div className="mt-5 flex items-end gap-2 opacity-90 lg:mt-10 lg:scale-125 lg:origin-left">
               <div className="h-14 w-20 rounded-xl border border-white/20 bg-white/10 p-2 backdrop-blur-sm">
                 <div className="mb-1 h-1.5 w-10 rounded bg-white/50" />
                 <div className="h-1.5 w-14 rounded bg-white/30" />
@@ -225,9 +225,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
       </div>
 
       {/* Bottom sheet */}
-      <div className="relative z-10 -mt-10 flex min-h-0 flex-1 flex-col">
-        <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden rounded-t-[1.75rem] border border-slate-200/60 bg-white shadow-[0_-8px_40px_rgba(15,23,42,0.08)]">
-          <div className="flex min-h-0 flex-1 flex-col px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5">
+      <div className="relative z-10 -mt-10 flex min-h-0 flex-1 flex-col lg:mt-0 lg:justify-center lg:px-8 lg:py-8 xl:px-12">
+        <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden rounded-t-[1.75rem] border border-slate-200/60 bg-white shadow-[0_-8px_40px_rgba(15,23,42,0.08)] lg:h-auto lg:max-h-[calc(100dvh-4rem)] lg:min-h-[min(720px,calc(100dvh-4rem))] lg:max-w-xl lg:rounded-[2rem] lg:border-slate-200 lg:shadow-[0_24px_80px_rgba(15,23,42,0.10)]
+          <div className="flex min-h-0 flex-1 flex-col px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 lg:px-10 lg:py-8 xl:px-12">
             {/* Mode switch */}
             <div className="mb-3 grid shrink-0 grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
               <button
