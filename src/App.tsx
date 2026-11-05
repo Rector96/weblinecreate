@@ -291,7 +291,7 @@ function AppContent() {
   const isProfileIncomplete = !school?.id;
 
   return (
-    <div className="app-shell min-h-screen bg-[#f5f7fb] flex flex-col md:flex-row text-slate-900 font-sans antialiased">
+    <div className="app-shell min-h-screen bg-[#f5f7fb] flex flex-col lg:flex-row text-slate-900 font-sans antialiased">
       <OfflineBanner />
 
       {/* Desktop/Tablet Left Sidebar */}
