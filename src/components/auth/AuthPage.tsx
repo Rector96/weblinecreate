@@ -164,7 +164,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
       : 'Choose a password you will use to sign in.';
 
   return (
-    <div className="relative grid h-[100dvh] max-h-[100dvh] grid-cols-1 overflow-hidden bg-[#eef4fb] lg:grid-cols-[minmax(0,1.05fr)_minmax(440px,0.95fr)] lg:bg-[#f4f7fb]">
+    <div className="relative grid h-[100dvh] max-h-[100dvh] grid-cols-1 overflow-hidden bg-[#eef4fb] lg:grid-cols-[minmax(0,1.05fr)_minmax(440px,0.95fr)] lg:grid-rows-1 lg:bg-[#f4f7fb]">
       {/* Top band — shorter on register so more form space */}
       <div
         className={`relative flex shrink-0 flex-col justify-center overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-600 px-5 text-white transition-all lg:px-12 xl:px-16 ${
@@ -226,7 +226,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
 
       {/* Bottom sheet */}
       <div className="relative z-10 -mt-10 flex min-h-0 flex-1 flex-col lg:mt-0 lg:justify-center lg:px-8 lg:py-8 xl:px-12">
-        <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden rounded-t-[1.75rem] border border-slate-200/60 bg-white shadow-[0_-8px_40px_rgba(15,23,42,0.08)] lg:h-auto lg:max-h-[calc(100dvh-4rem)] lg:min-h-[min(720px,calc(100dvh-4rem))] lg:max-w-xl lg:rounded-[2rem] lg:border-slate-200 lg:shadow-[0_24px_80px_rgba(15,23,42,0.10)]
+        <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden rounded-t-[1.75rem] border border-slate-200/60 bg-white shadow-[0_-8px_40px_rgba(15,23,42,0.08)] lg:h-auto lg:max-h-[calc(100dvh-4rem)] lg:min-h-[min(720px,calc(100dvh-4rem))] lg:max-w-xl lg:rounded-[2rem] lg:border-slate-200 lg:shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
           <div className="flex min-h-0 flex-1 flex-col px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 lg:px-10 lg:py-8 xl:px-12">
             {/* Mode switch */}
             <div className="mb-3 grid shrink-0 grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
