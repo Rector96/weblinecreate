@@ -16,6 +16,7 @@ import {
   Clock,
   ChevronRight,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -34,6 +35,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [inviteToken, setInviteToken] = useState<string>('');
   const [classesCount, setClassesCount] = useState(0);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
@@ -45,48 +48,62 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         setExams([]);
         setClassesCount(0);
         setInviteToken('');
+        setDataError(null);
+        setIsRefreshing(false);
         return;
       }
       if (!isSupabaseConfigured()) {
-        setDataError('Supabase is not configured. Dashboard records cannot be loaded.');
-        setExams([]);
-        setClassesCount(0);
-        setInviteToken('');
+        setDataError('The school database is not configured. Please contact support.');
+        setIsRefreshing(false);
         return;
       }
 
+      setIsRefreshing(true);
       setDataError(null);
-      try {
-        const nowIso = new Date().toISOString();
-        const [schoolExams, classesResult, inviteResult] = await Promise.all([
-          listSchoolExams(school.id),
-          supabase.from('school_classes').select('id', { count: 'exact', head: true }).eq('school_id', school.id),
-          // Only reuse a current teacher invitation. Older links can remain active in
-          // the table after their expiry time, and admin-role invites must never be
-          // handed to teachers.
-          supabase.from('school_invitations').select('id, token, role, is_active, expires_at, created_at')
-            .eq('school_id', school.id)
-            .eq('role', 'teacher')
-            .eq('is_active', true)
-            .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
-            .order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        ]);
-        if (classesResult.error) throw classesResult.error;
-        if (inviteResult.error) throw inviteResult.error;
-        if (cancelled) return;
+      const failures: string[] = [];
+      const nowIso = new Date().toISOString();
 
-        setExams(schoolExams);
-        setClassesCount(classesResult.count || 0);
-        let token = inviteResult.data?.token || '';
+      // Load each dashboard resource independently. A permissions or network error
+      // in one request must not prevent the other school records from appearing.
+      const examsTask = listSchoolExams(school.id)
+        .then((rows) => { if (!cancelled) setExams(rows); })
+        .catch((error) => {
+          console.error('[Dashboard] Exams failed to load:', error);
+          failures.push('saved papers');
+        });
 
-        // Only school admins may issue invitation tokens. Tokens are persisted in Supabase.
+      const classesTask = supabase.from('school_classes')
+        .select('id', { count: 'exact', head: true })
+        .eq('school_id', school.id)
+        .then(({ count, error }) => {
+          if (error) throw error;
+          if (!cancelled) setClassesCount(count || 0);
+        })
+        .catch((error) => {
+          console.error('[Dashboard] Classes failed to load:', error);
+          failures.push('classes');
+        });
+
+      const inviteTask = (async () => {
+        const { data, error } = await supabase.from('school_invitations')
+          .select('id, token, role, is_active, expires_at, created_at')
+          .eq('school_id', school.id)
+          .eq('role', 'teacher')
+          .eq('is_active', true)
+          .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+
+        let token = data?.token || '';
         if (!token && role === 'school_admin' && user?.user_id) {
           const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
           for (let attempt = 0; attempt < 3 && !token; attempt += 1) {
             const bytes = new Uint8Array(6);
             window.crypto.getRandomValues(bytes);
             const candidate = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
-            const { data, error } = await supabase.from('school_invitations')
+            const { data: created, error: insertError } = await supabase.from('school_invitations')
               .insert({
                 school_id: school.id,
                 token: candidate,
@@ -95,23 +112,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 is_active: true,
                 expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
               })
-              .select('token').single();
-            if (!error && data) token = data.token;
-            else if (attempt === 2) throw error || new Error('Could not create a teacher invitation.');
+              .select('token')
+              .single();
+            if (!insertError && created) token = created.token;
+            else if (attempt === 2) throw insertError || new Error('Could not create a teacher invitation.');
           }
         }
         if (!cancelled) setInviteToken(token);
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Dashboard data load failed', error);
-          setDataError('Could not load the latest school data. Please refresh and try again.');
-        }
+      })().catch((error) => {
+        console.error('[Dashboard] Teacher invitation failed to load:', error);
+        failures.push('teacher invitation');
+      });
+
+      await Promise.all([examsTask, classesTask, inviteTask]);
+      if (!cancelled) {
+        setDataError(failures.length
+          ? `Some school information could not be loaded (${failures.join(', ')}). Tap refresh to try again.`
+          : null);
+        setIsRefreshing(false);
       }
     };
 
     void loadData();
     return () => { cancelled = true; };
-  }, [school?.id, role, user?.id]);
+  }, [school?.id, role, user?.id, refreshKey]);
 
   // Use the direct SPA invitation route so teachers can open the link reliably.
   const getInviteUrl = () => inviteToken ? `${window.location.origin}/join/${encodeURIComponent(inviteToken)}` : '';
@@ -227,8 +251,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   return (
     <div className="space-y-5 text-left max-w-3xl mx-auto">
       {dataError && (
-        <div role="alert" className="rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-          {dataError}
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+          <span className="min-w-0">{dataError}</span>
+          <button
+            type="button"
+            onClick={() => setRefreshKey((value) => value + 1)}
+            disabled={isRefreshing}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-white px-3 py-2 font-semibold text-amber-900 shadow-sm disabled:opacity-60"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing' : 'Refresh'}
+          </button>
         </div>
       )}
 
