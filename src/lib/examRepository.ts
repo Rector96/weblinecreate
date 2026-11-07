@@ -28,6 +28,24 @@ const ensureConfigured = () => {
   }
 };
 
+const SUPABASE_PAGE_SIZE = 500;
+
+/**
+ * Supabase applies a maximum row limit to each REST response. Read every page
+ * explicitly so large schools never silently lose older exams or questions
+ * from the dashboard view.
+ */
+async function fetchAllRows<T>(buildQuery: () => any): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await buildQuery().range(from, from + SUPABASE_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data || []) as T[];
+    rows.push(...page);
+    if (page.length < SUPABASE_PAGE_SIZE) return rows;
+  }
+}
+
 function safeImageUrlForDatabase(url?: string | null): string | null {
   if (!url) return null;
   // Large diagram data-URLs break RPC and guest publish body limits; DOCX still uses in-memory questions.
@@ -37,21 +55,26 @@ function safeImageUrlForDatabase(url?: string | null): string | null {
 
 export async function listSchoolExams(schoolId: string): Promise<Exam[]> {
   ensureConfigured();
-  const { data: examRows, error: examError } = await supabase
-    .from('exams')
-    .select('*')
-    .eq('school_id', schoolId)
-    .order('created_at', { ascending: false });
-  if (examError) throw examError;
-  if (!examRows?.length) return [];
+  const examRows = await fetchAllRows<ExamRow>(() =>
+    supabase
+      .from('exams')
+      .select('*')
+      .eq('school_id', schoolId)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+  );
+  if (!examRows.length) return [];
 
   const examIds = examRows.map((row) => row.id);
-  const { data: questionRows, error: questionError } = await supabase
-    .from('questions')
-    .select('*')
-    .in('exam_id', examIds)
-    .order('question_number', { ascending: true });
-  if (questionError) throw questionError;
+  const questionRows = await fetchAllRows<any>(() =>
+    supabase
+      .from('questions')
+      .select('*')
+      .in('exam_id', examIds)
+      .order('exam_id', { ascending: true })
+      .order('question_number', { ascending: true })
+      .order('id', { ascending: true })
+  );
 
   const questions = questionRows || [];
   const questionIds = questions.map((row) => row.id);
@@ -60,20 +83,24 @@ export async function listSchoolExams(schoolId: string): Promise<Exam[]> {
 
   if (questionIds.length) {
     const [objectives, theories] = await Promise.all([
-      supabase.from('objective_answers').select('*').in('question_id', questionIds),
-      supabase.from('theory_marking_schemes').select('*').in('question_id', questionIds),
+      fetchAllRows<any>(() =>
+        supabase.from('objective_answers').select('*').in('question_id', questionIds).order('id', { ascending: true })
+      ).then((data) => ({ data, error: null })).catch((error) => ({ data: [], error })),
+      fetchAllRows<any>(() =>
+        supabase.from('theory_marking_schemes').select('*').in('question_id', questionIds).order('id', { ascending: true })
+      ).then((data) => ({ data, error: null })).catch((error) => ({ data: [], error })),
     ]);
     // Exam and question rows are the primary paper content. A failure to load
     // optional answer/scheme metadata must not hide otherwise-saved questions.
     if (objectives.error) {
       console.error('Could not load objective answer metadata; keeping exam questions visible.', objectives.error);
     } else {
-      objectiveRows = objectives.data || [];
+      objectiveRows = objectives.data;
     }
     if (theories.error) {
       console.error('Could not load theory marking-scheme metadata; keeping exam questions visible.', theories.error);
     } else {
-      theoryRows = theories.data || [];
+      theoryRows = theories.data;
     }
   }
 
