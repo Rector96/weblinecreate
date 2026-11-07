@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../lib/auth';
 import { listSchoolExams, deleteExamFromSupabase } from '../../lib/examRepository';
 import { Exam } from '../../types';
@@ -40,30 +40,43 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
   const [selectedTerm, setSelectedTerm] = useState('All');
   const [isExportingZip, setIsExportingZip] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const loadRequestId = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const loadExams = async () => {
+  const loadExams = async (clearExisting = false) => {
+    const requestId = ++loadRequestId.current;
     if (!school) {
       setExams([]);
+      setIsLoading(false);
+      setError(null);
       return;
     }
+    if (clearExisting) setExams([]);
     setIsLoading(true);
     setError(null);
     try {
-      setExams(await listSchoolExams(school.id));
+      const rows = await listSchoolExams(school.id);
+      if (requestId === loadRequestId.current) setExams(rows);
     } catch (loadError) {
-      console.error('Failed to load exams from Supabase', loadError);
-      setExams([]);
-      setError(loadError instanceof Error ? loadError.message : 'Could not load exams from the database.');
+      console.error('Failed to load saved exams', loadError);
+      // Keep the last successful result visible if a refresh fails; never turn a
+      // temporary network/RLS error into an empty-school display.
+      if (requestId === loadRequestId.current) {
+        setError(loadError instanceof Error ? loadError.message : 'Could not load your saved exams. Please try again.');
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === loadRequestId.current) setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    void loadExams();
+    void loadExams(true);
+    return () => {
+      // Ignore late responses from a previous school or an unmounted page.
+      loadRequestId.current += 1;
+    };
   }, [school?.id]);
 
   // Unique lists for filters
@@ -242,7 +255,7 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
 
       {/* Exams Grid */}
       {isLoading ? (
-        <div className="bg-white rounded-3xl p-10 border border-slate-200 text-center text-sm text-slate-500">Loading exams and questions from Supabase...</div>
+        <div className="bg-white rounded-3xl border border-slate-200 px-6 py-10 text-center" role="status" aria-live="polite"><Loader2 className="mx-auto mb-3 h-7 w-7 animate-spin text-blue-600" /><p className="text-sm font-semibold text-slate-800">Be patient, your exams are loading.</p><p className="mt-1 text-xs text-slate-500">We’re getting your saved papers and questions ready.</p></div>
       ) : filteredExams.length === 0 ? (
         <div className="bg-white rounded-3xl p-10 border border-slate-200 text-center">
           <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
