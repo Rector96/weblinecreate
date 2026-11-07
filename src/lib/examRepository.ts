@@ -63,10 +63,18 @@ export async function listSchoolExams(schoolId: string): Promise<Exam[]> {
       supabase.from('objective_answers').select('*').in('question_id', questionIds),
       supabase.from('theory_marking_schemes').select('*').in('question_id', questionIds),
     ]);
-    if (objectives.error) throw objectives.error;
-    if (theories.error) throw theories.error;
-    objectiveRows = objectives.data || [];
-    theoryRows = theories.data || [];
+    // Exam and question rows are the primary paper content. A failure to load
+    // optional answer/scheme metadata must not hide otherwise-saved questions.
+    if (objectives.error) {
+      console.error('Could not load objective answer metadata; keeping exam questions visible.', objectives.error);
+    } else {
+      objectiveRows = objectives.data || [];
+    }
+    if (theories.error) {
+      console.error('Could not load theory marking-scheme metadata; keeping exam questions visible.', theories.error);
+    } else {
+      theoryRows = theories.data || [];
+    }
   }
 
   return (examRows as ExamRow[]).map((row) => ({
