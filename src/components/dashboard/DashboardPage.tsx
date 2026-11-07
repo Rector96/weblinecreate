@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Sparkles,
   RefreshCw,
+  Loader2,
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -36,6 +37,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [classesCount, setClassesCount] = useState(0);
   const [dataError, setDataError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingExams, setIsLoadingExams] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -46,6 +48,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     const loadData = async () => {
       if (!school) {
         setExams([]);
+        setIsLoadingExams(false);
         setClassesCount(0);
         setInviteToken('');
         setDataError(null);
@@ -54,11 +57,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       }
       if (!isSupabaseConfigured()) {
         setDataError('The school database is not configured. Please contact support.');
+        setIsLoadingExams(false);
         setIsRefreshing(false);
         return;
       }
 
       setIsRefreshing(true);
+      setIsLoadingExams(true);
       setDataError(null);
       const failures: string[] = [];
       const nowIso = new Date().toISOString();
@@ -70,7 +75,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         .catch((error) => {
           console.error('[Dashboard] Exams failed to load:', error);
           failures.push('saved papers');
-        });
+        })
+        .finally(() => { if (!cancelled) setIsLoadingExams(false); });
 
       const classesTask = supabase.from('school_classes')
         .select('id', { count: 'exact', head: true })
@@ -222,7 +228,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     {
       key: 'papers',
       label: 'Papers',
-      hint: `${exams.length} saved`,
+      hint: isLoadingExams ? 'Loading…' : `${exams.length} saved`,
       icon: FileText,
       onClick: () => navigate('exams'),
       tone: 'neutral' as const,
@@ -276,7 +282,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           {greeting}, {firstName}
         </h2>
         <p className="mt-0.5 text-sm text-slate-500">
-          {exams.length === 0
+          {isLoadingExams
+            ? 'Getting your saved papers ready.'
+            : exams.length === 0
             ? 'Your first paper is one tap away.'
             : 'Ready to set the next paper?'}
         </p>
@@ -426,7 +434,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </button>
         </div>
 
-        {exams.length === 0 ? (
+        {isLoadingExams ? (
+          <div className="rounded-[1.35rem] border border-slate-200 bg-white px-6 py-10 text-center shadow-xs" role="status" aria-live="polite">
+            <Loader2 className="mx-auto h-7 w-7 animate-spin text-blue-600" />
+            <h4 className="mt-3 text-sm font-bold text-slate-900">Be patient, your exams are loading.</h4>
+            <p className="mt-1 text-xs text-slate-500">We’re getting your saved papers and questions ready.</p>
+          </div>
+        ) : exams.length === 0 ? (
           <div className="rounded-[1.35rem] border border-dashed border-slate-200 bg-white px-6 py-10 text-center shadow-xs">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
               <FileText className="h-7 w-7" />
