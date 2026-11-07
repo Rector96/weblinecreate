@@ -46,6 +46,22 @@ async function fetchAllRows<T>(buildQuery: () => any): Promise<T[]> {
   }
 }
 
+/** Keep large IN filters below URL/request limits while preserving every row. */
+async function fetchRowsForIds<T>(
+  ids: string[],
+  buildQuery: (batch: string[]) => any,
+): Promise<T[]> {
+  if (!ids.length) return [];
+  const batches: string[][] = [];
+  for (let index = 0; index < ids.length; index += SUPABASE_PAGE_SIZE) {
+    batches.push(ids.slice(index, index + SUPABASE_PAGE_SIZE));
+  }
+  const pages = await Promise.all(
+    batches.map((batch) => fetchAllRows<T>(() => buildQuery(batch))),
+  );
+  return pages.flat();
+}
+
 function safeImageUrlForDatabase(url?: string | null): string | null {
   if (!url) return null;
   // Large diagram data-URLs break RPC and guest publish body limits; DOCX still uses in-memory questions.
@@ -66,11 +82,11 @@ export async function listSchoolExams(schoolId: string): Promise<Exam[]> {
   if (!examRows.length) return [];
 
   const examIds = examRows.map((row) => row.id);
-  const questionRows = await fetchAllRows<any>(() =>
+  const questionRows = await fetchRowsForIds<any>(examIds, (batch) =>
     supabase
       .from('questions')
       .select('*')
-      .in('exam_id', examIds)
+      .in('exam_id', batch)
       .order('exam_id', { ascending: true })
       .order('question_number', { ascending: true })
       .order('id', { ascending: true })
@@ -83,15 +99,13 @@ export async function listSchoolExams(schoolId: string): Promise<Exam[]> {
 
   if (questionIds.length) {
     const [objectives, theories] = await Promise.all([
-      fetchAllRows<any>(() =>
-        supabase.from('objective_answers').select('*').in('question_id', questionIds).order('id', { ascending: true })
+      fetchRowsForIds<any>(questionIds, (batch) =>
+        supabase.from('objective_answers').select('*').in('question_id', batch).order('id', { ascending: true })
       ).then((data) => ({ data, error: null })).catch((error) => ({ data: [], error })),
-      fetchAllRows<any>(() =>
-        supabase.from('theory_marking_schemes').select('*').in('question_id', questionIds).order('id', { ascending: true })
+      fetchRowsForIds<any>(questionIds, (batch) =>
+        supabase.from('theory_marking_schemes').select('*').in('question_id', batch).order('id', { ascending: true })
       ).then((data) => ({ data, error: null })).catch((error) => ({ data: [], error })),
     ]);
-    // Exam and question rows are the primary paper content. A failure to load
-    // optional answer/scheme metadata must not hide otherwise-saved questions.
     if (objectives.error) {
       console.error('Could not load objective answer metadata; keeping exam questions visible.', objectives.error);
     } else {
@@ -104,7 +118,17 @@ export async function listSchoolExams(schoolId: string): Promise<Exam[]> {
     }
   }
 
-  return (examRows as ExamRow[]).map((row) => ({
+  // Index rows once instead of repeatedly filtering/scanning every question for every exam.
+  const questionsByExam = new Map<string, any[]>();
+  for (const question of questions) {
+    const group = questionsByExam.get(question.exam_id) || [];
+    group.push(question);
+    questionsByExam.set(question.exam_id, group);
+  }
+  const objectiveByQuestion = new Map(objectiveRows.map((row) => [row.question_id, row]));
+  const theoryByQuestion = new Map(theoryRows.map((row) => [row.question_id, row]));
+
+  return examRows.map((row) => ({
     id: row.id,
     school_id: row.school_id,
     created_by: row.created_by || '',
@@ -123,40 +147,38 @@ export async function listSchoolExams(schoolId: string): Promise<Exam[]> {
     section_b_marks: row.section_b_marks,
     status: row.status,
     created_at: row.created_at,
-    questions: questions
-      .filter((question) => question.exam_id === row.id)
-      .map((question) => {
-        const objective = objectiveRows.find((item) => item.question_id === question.id);
-        const theory = theoryRows.find((item) => item.question_id === question.id);
-        const objectiveData: ObjectiveAnswer | undefined = objective ? {
-          id: objective.id,
-          question_id: objective.question_id,
-          option_a: objective.option_a,
-          option_b: objective.option_b,
-          option_c: objective.option_c,
-          option_d: objective.option_d,
-          correct_option: objective.correct_option,
-        } : undefined;
-        const theoryData: TheoryMarkingScheme | undefined = theory ? {
-          id: theory.id,
-          question_id: theory.question_id,
-          model_answer: theory.model_answer,
-          score_breakdown: theory.score_breakdown,
-          max_score: Number(theory.max_score),
-        } : undefined;
-        return {
-          id: question.id,
-          exam_id: question.exam_id,
-          section: question.section,
-          question_number: question.question_number,
-          question_text: question.question_text,
-          marks: Number(question.marks),
-          image_url: question.image_url || undefined,
-          created_at: question.created_at,
-          objective_data: objectiveData,
-          theory_data: theoryData,
-        } as Question;
-      }),
+    questions: (questionsByExam.get(row.id) || []).map((question) => {
+      const objective = objectiveByQuestion.get(question.id);
+      const theory = theoryByQuestion.get(question.id);
+      const objectiveData: ObjectiveAnswer | undefined = objective ? {
+        id: objective.id,
+        question_id: objective.question_id,
+        option_a: objective.option_a,
+        option_b: objective.option_b,
+        option_c: objective.option_c,
+        option_d: objective.option_d,
+        correct_option: objective.correct_option,
+      } : undefined;
+      const theoryData: TheoryMarkingScheme | undefined = theory ? {
+        id: theory.id,
+        question_id: theory.question_id,
+        model_answer: theory.model_answer,
+        score_breakdown: theory.score_breakdown,
+        max_score: Number(theory.max_score),
+      } : undefined;
+      return {
+        id: question.id,
+        exam_id: question.exam_id,
+        section: question.section,
+        question_number: question.question_number,
+        question_text: question.question_text,
+        marks: Number(question.marks),
+        image_url: question.image_url || undefined,
+        created_at: question.created_at,
+        objective_data: objectiveData,
+        theory_data: theoryData,
+      } as Question;
+    }),
   }));
 }
 
