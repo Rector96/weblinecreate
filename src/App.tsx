@@ -14,6 +14,7 @@ import { WhatsAppButton } from './components/common/WhatsAppButton';
 import { PaystackModal } from './components/common/PaystackModal';
 import { WelcomeModal } from './components/common/WelcomeModal';
 import { AuthPage } from './components/auth/AuthPage';
+import { PublicInfoPage } from './components/public/PublicInfoPage';
 import { DashboardPage } from './components/dashboard/DashboardPage';
 import { CreateExamWizard } from './components/create-exam/CreateExamWizard';
 import { ExamSuccessPage } from './components/create-exam/ExamSuccessPage';
@@ -202,6 +203,9 @@ function AppContent() {
     setRouteParam(param || null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const publicPath = window.location.pathname.replace(/\/+$/, '')|| '/';
+  if (publicPath === '/about' || publicPath === '/contact') return <PublicInfoPage page={publicPath.slice(1) as 'about' | 'contact'} />;
 
   // One shared loader covers startup, authentication, and invitation validation.
   if (isLoading || isInitialLoading || (Boolean(initialJoinToken) && !isAuthenticated && guestInviteLoading)) {

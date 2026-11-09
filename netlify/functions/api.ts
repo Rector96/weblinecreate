@@ -402,7 +402,7 @@ export default async (req: Request) => {
 
   if (pathname.endsWith('/sitemap.xml') && req.method === 'GET') {
     const origin = getSiteUrl(req).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${origin}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n</urlset>`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${origin}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n  <url><loc>${origin}/about</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>\n  <url><loc>${origin}/contact</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>\n</urlset>`;
     return new Response(xml, { status: 200, headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
   }
 

@@ -26,6 +26,7 @@ interface ProfilePageProps {
 export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
   const { school, user, refreshSchool, role, isPlatformAdmin } = useAuth();
   const canEdit = role === 'school_admin' || isPlatformAdmin;
+  const canEditSchoolDetails = isPlatformAdmin;
 
   const [name, setName] = useState(school?.name || '');
   const [adminName, setAdminName] = useState(school?.admin_name || '');
@@ -76,6 +77,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
     const file = e.currentTarget.files?.[0];
     e.currentTarget.value = '';
     if (!file) return;
+    if (!canEdit) {
+      setMessage('Only school administrators can update the school logo.');
+      return;
+    }
     const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       setMessage('Please upload your school logo as PNG, JPG or WebP.');
@@ -150,17 +155,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
     }
     setIsSaving(true);
 
+    if (!canEditSchoolDetails) {
+      setIsSaving(false);
+      setMessage('School details are managed by ROCKCRAFT support. You can update your school logo above.');
+      return;
+    }
+
     const { error } = await supabase.from('schools').update({
-      name,
-      admin_name: adminName,
-      email,
-      phone,
-      state,
-      lga,
-      institution_type: institutionType,
-      motto,
-      address,
-      logo_url: logoUrl,
+      name, admin_name: adminName, email, phone, state, lga,
+      institution_type: institutionType, motto, address, logo_url: logoUrl,
     }).eq('id', school.id);
 
     setIsSaving(false);
@@ -175,13 +178,38 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-5 text-left px-0.5 sm:px-2 pb-6">
+    <div className="w-full max-w-5xl mx-auto space-y-4 sm:space-y-5 text-left px-0.5 sm:px-2 pb-8">
+      <section className="relative isolate overflow-hidden rounded-[1.75rem] bg-[#071b3b] px-5 py-6 text-white shadow-xl shadow-blue-950/10 sm:px-8 sm:py-8">
+        <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-blue-500/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/20 bg-white p-2 shadow-lg sm:h-20 sm:w-20">
+              {school?.logo_url ? <img src={school.logo_url} alt="School logo" className="h-full w-full object-contain" /> : <Building className="h-8 w-8 text-slate-400" />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-blue-200">School identity</p>
+              <h1 className="mt-1 break-words text-xl font-black tracking-tight sm:text-2xl">{school?.name || 'School profile'}</h1>
+              <p className="mt-1 text-xs text-blue-100">{school?.state || 'Location not set'}{school?.lga ? ` · ${school.lga}` : ''}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-semibold text-blue-50"><ShieldCheck className="h-4 w-4" /> School workspace</span>
+            {canEdit && <span className="rounded-full bg-cyan-300/15 px-3 py-2 text-[11px] font-semibold text-cyan-100">Logo management enabled</span>}
+          </div>
+        </div>
+        <div className="relative mt-7 grid grid-cols-2 gap-3 border-t border-white/15 pt-5 sm:grid-cols-3">
+          <div><p className="text-[10px] uppercase tracking-wider text-blue-200">Account</p><p className="mt-1 text-sm font-bold">School workspace</p></div>
+          <div><p className="text-[10px] uppercase tracking-wider text-blue-200">Institution</p><p className="mt-1 text-sm font-bold">{school?.institution_type || 'Education'}</p></div>
+          <div className="col-span-2 sm:col-span-1"><p className="text-[10px] uppercase tracking-wider text-blue-200">Profile access</p><p className="mt-1 text-sm font-bold">{isPlatformAdmin ? 'Platform administrator' : canEdit ? 'Logo updates only' : 'View only'}</p></div>
+        </div>
+      </section>
       <div>
         <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
           School Profile & Identity
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          School details and subscription.
+          Your school identity, logo and subscription.
         </p>
       </div>
 
@@ -253,7 +281,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
         {/* School Logo Section */}
         {!logoUrl && canEdit && (
           <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
-            <strong>Action needed: add your school logo.</strong> Upload your official crest here and save your profile. ROCKCRAFT will use it in the header of your exam paper previews, print/PDF output and new DOCX exports.
+            <strong>Action needed: add your school logo.</strong> Upload your official crest here. It is saved automatically and ROCKCRAFT will use it in the header of your exam paper previews, print/PDF output and new DOCX exports.
           </div>
         )}
         <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center gap-3 sm:gap-4 pb-4 sm:pb-5 border-b border-slate-100 min-w-0">
@@ -272,7 +300,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               <Camera className="w-5 h-5 text-white" />
               <input
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg,image/webp"
                 onChange={handleLogoUpload}
                 className="hidden"
               />
@@ -307,7 +335,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -321,7 +349,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={adminName}
               onChange={(e) => setAdminName(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -337,7 +365,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -351,7 +379,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -363,7 +391,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <select
               value={state}
               onChange={(e) => setState(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
             >
               {NIGERIAN_STATES.map((s) => (
@@ -379,7 +407,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <select
               value={lga}
               onChange={(e) => setLga(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
             >
               {(NIGERIAN_STATES_LGAS[state] || []).map((l) => (
@@ -397,7 +425,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <select
               value={institutionType}
               onChange={(e) => setInstitutionType(e.target.value as any)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
             >
               <option value="Secondary">Secondary School</option>
@@ -419,7 +447,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             placeholder="e.g. Floreat Collegium (Let the College Flourish)"
             value={motto}
             onChange={(e) => setMotto(e.target.value)}
-            disabled={!canEdit}
+            disabled={!canEditSchoolDetails}
             className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
           />
         </div>
@@ -433,12 +461,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="e.g. 3 Catholic Mission Street, Lagos Island, Lagos"
-            disabled={!canEdit}
+            disabled={!canEditSchoolDetails}
             className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
           />
         </div>
 
-        {canEdit ? (
+        {canEditSchoolDetails ? (
           <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <button
               type="submit"
@@ -454,7 +482,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           </div>
         ) : (
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] sm:text-xs text-slate-600">
-            You are currently viewing as a Subject Teacher.
+            School details are managed by ROCKCRAFT. You can replace the school logo using the upload control above.
           </div>
         )}
       </form>
