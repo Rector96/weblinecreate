@@ -1,29 +1,29 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-NG">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>ROCKCRAFT | Create Nigerian School Exam Papers with AI</title>
-    <meta name="description" content="ROCKCRAFT helps Nigerian schools create, edit and prepare objective and theory examination papers with AI-assisted tools and marking schemes." />
+    <title>ROCKCRAFT | AI Exam Question & Paper Generator for Nigerian Schools</title>
+    <meta name="description" content="Create objective and theory exam questions, examination papers and marking schemes with ROCKCRAFT's AI-assisted tools for Nigerian primary and secondary schools." />
     <link rel="canonical" href="https://rockcraft.netlify.app/" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="author" content="ROCKCRAFT" />
     <meta name="theme-color" content="#1d4ed8" />
-    <meta property="og:title" content="ROCKCRAFT | AI Exam Paper Generator for Nigerian Schools" />
-    <meta property="og:description" content="Create objective and theory exam papers, marking schemes, and DOCX downloads for Nigerian secondary schools." />
+    <meta property="og:title" content="ROCKCRAFT | AI Exam Question & Paper Generator for Nigerian Schools" />
+    <meta property="og:description" content="Prepare objective and theory exam questions, school examination papers and marking schemes with AI-assisted tools built for Nigerian primary and secondary schools." />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="en_NG" />
     <meta property="og:site_name" content="ROCKCRAFT" />
+    <meta property="og:url" content="https://rockcraft.netlify.app/" />
     <meta property="og:image" content="https://rockcraft.netlify.app/rockcraft-logo.png?v=4" />
-    <meta property="og:image:alt" content="ROCKCRAFT — AI-powered examination preparation for schools" />
+    <meta property="og:image:alt" content="ROCKCRAFT logo — AI-assisted examination preparation for Nigerian schools" />
     <meta property="og:image:type" content="image/png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ROCKCRAFT | AI Exam Paper Generator" />
-    <meta name="twitter:description" content="Create, edit and prepare examination papers for your school with AI-assisted tools." />
+    <meta name="twitter:title" content="ROCKCRAFT | AI Exam Tools for Nigerian Schools" />
+    <meta name="twitter:description" content="Create, edit and prepare objective and theory examination papers and marking schemes with AI-assisted tools." />
     <meta name="twitter:image" content="https://rockcraft.netlify.app/rockcraft-logo.png?v=4" />
-    <meta name="twitter:image:alt" content="ROCKCRAFT — AI-powered examination preparation for schools" />
-    
-    <!-- PWA & Mobile Web App Meta -->
+    <meta name="twitter:image:alt" content="ROCKCRAFT logo" />
+
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -35,22 +35,43 @@
     <link rel="apple-touch-icon" href="/rockcraft-logo.png?v=4" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
-    <!-- Google Fonts: Plus Jakarta Sans -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "ROCKCRAFT",
+        "url": "https://rockcraft.netlify.app/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rockcraft.netlify.app/rockcraft-logo.png"
+        },
+        "description": "ROCKCRAFT provides AI-assisted examination question, exam paper and marking-scheme creation tools for Nigerian schools."
+      }
+    </script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "ROCKCRAFT",
         "url": "https://rockcraft.netlify.app/",
+        "image": "https://rockcraft.netlify.app/rockcraft-logo.png",
         "applicationCategory": "EducationalApplication",
         "operatingSystem": "Web",
-        "description": "AI-powered exam paper and marking scheme generator for Nigerian secondary schools.",
-        "featureList": "AI exam question generation, objective questions, theory questions, marking schemes, DOCX exam exports",
-        "browserRequirements": "Requires JavaScript and a modern web browser",
-        "offers": {
-          "@type": "Offer",
-          "availability": "https://schema.org/InStock"
-        }
+        "description": "AI-assisted exam question and examination paper creator for Nigerian primary and secondary schools, with objective and theory questions and marking schemes.",
+        "featureList": [
+          "AI-assisted exam question generation",
+          "Objective and theory examination questions",
+          "Examination paper preparation and editing",
+          "Marking scheme creation",
+          "Handwritten lesson-note scanning and question extraction",
+          "Downloadable examination documents"
+        ],
+        "publisher": {
+          "@type": "Organization",
+          "name": "ROCKCRAFT",
+          "url": "https://rockcraft.netlify.app/"
+        },
+        "browserRequirements": "Requires JavaScript and a modern web browser"
       }
     </script>
     <script type="application/ld+json">
@@ -59,7 +80,8 @@
         "@type": "WebSite",
         "name": "ROCKCRAFT",
         "url": "https://rockcraft.netlify.app/",
-        "description": "Nigerian school exam paper generator with AI-assisted question and marking scheme creation."
+        "inLanguage": "en-NG",
+        "description": "AI-assisted examination question, paper and marking-scheme creation for Nigerian primary and secondary schools."
       }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -67,15 +89,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   </head>
   <body class="bg-[#f0f4f9] text-slate-900 font-sans antialiased selection:bg-blue-100 selection:text-blue-900 min-h-screen">
-    <div id="root"></div>
-    <noscript>
-      <main style="max-width: 720px; margin: 0 auto; padding: 48px 20px; font-family: system-ui, sans-serif; color: #0f172a">
-        <h1>ROCKCRAFT AI Exam Paper Generator</h1>
-        <p>Create Nigerian secondary school exam papers, objective and theory questions, marking schemes, and DOCX downloads. Sign in to your ROCKCRAFT school account to generate examination papers.</p>
-        <p>JavaScript is required to sign in and use the exam creator.</p>
+    <div id="root">
+      <main style="max-width: 860px; margin: 0 auto; padding: 48px 20px; font-family: system-ui, sans-serif; color: #0f172a">
+        <h1>ROCKCRAFT — AI Exam Question and Paper Generator for Nigerian Schools</h1>
+        <p>ROCKCRAFT helps Nigerian primary and secondary schools prepare examination questions, objective and theory exam papers, and marking schemes using AI-assisted tools.</p>
+        <h2>Create and prepare school examinations</h2>
+        <p>Teachers and school administrators can generate and edit subject questions, prepare objective and theory sections, create marking schemes, and produce examination documents. ROCKCRAFT also supports scanning handwritten lesson notes to help extract content for question preparation.</p>
+        <p>ROCKCRAFT is an online examination preparation tool designed for Nigerian schools.</p>
       </main>
+    </div>
+    <noscript>
+      <p>JavaScript is required to sign in and use the ROCKCRAFT exam creator.</p>
     </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
