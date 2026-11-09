@@ -26,6 +26,7 @@ interface ProfilePageProps {
 export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
   const { school, user, refreshSchool, role, isPlatformAdmin } = useAuth();
   const canEdit = role === 'school_admin' || isPlatformAdmin;
+  const canEditSchoolDetails = isPlatformAdmin;
 
   const [name, setName] = useState(school?.name || '');
   const [adminName, setAdminName] = useState(school?.admin_name || '');
@@ -150,17 +151,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
     }
     setIsSaving(true);
 
+    if (!canEditSchoolDetails) {
+      setIsSaving(false);
+      setMessage('School details are managed by ROCKCRAFT support. You can update your school logo above.');
+      return;
+    }
+
     const { error } = await supabase.from('schools').update({
-      name,
-      admin_name: adminName,
-      email,
-      phone,
-      state,
-      lga,
-      institution_type: institutionType,
-      motto,
-      address,
-      logo_url: logoUrl,
+      name, admin_name: adminName, email, phone, state, lga,
+      institution_type: institutionType, motto, address, logo_url: logoUrl,
     }).eq('id', school.id);
 
     setIsSaving(false);
@@ -181,7 +180,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           School Profile & Identity
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          School details and subscription.
+          Your school identity, logo and subscription.
         </p>
       </div>
 
@@ -307,7 +306,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -438,7 +437,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           />
         </div>
 
-        {canEdit ? (
+        {canEditSchoolDetails ? (
           <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <button
               type="submit"
@@ -454,7 +453,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
           </div>
         ) : (
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] sm:text-xs text-slate-600">
-            You are currently viewing as a Subject Teacher.
+            School details are managed by ROCKCRAFT. You can replace the school logo using the upload control above.
           </div>
         )}
       </form>
