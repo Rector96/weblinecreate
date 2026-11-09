@@ -86,8 +86,6 @@ function ToastViewport() {
 
 function AppContent() {
   const { isAuthenticated, school, role, isLoading } = useAuth();
-  const publicPath = window.location.pathname.replace(/\\/+$/, '') || '/';
-  if (publicPath === '/about' || publicPath === '/contact') return <PublicInfoPage page={publicPath.slice(1) as 'about' | 'contact'} />;
   const isTeacher = role === 'teacher';
   const teacherAllowedRoutes = ['create-exam', 'exam-success', 'teacher-finished'];
   const [currentRoute, setCurrentRoute] = useState<string>('dashboard');
@@ -205,6 +203,9 @@ function AppContent() {
     setRouteParam(param || null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const publicPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  if (publicPath === '/about' || publicPath === '/contact') return <PublicInfoPage page={publicPath.slice(1) as 'about' | 'contact'} />;
 
   // One shared loader covers startup, authentication, and invitation validation.
   if (isLoading || isInitialLoading || (Boolean(initialJoinToken) && !isAuthenticated && guestInviteLoading)) {
