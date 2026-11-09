@@ -9,13 +9,42 @@ const EMAIL = 'rockwavedigital@gmail.com';
 export const PublicInfoPage: React.FC<PublicInfoPageProps> = ({ page }) => {
   const isAbout = page === 'about';
   useEffect(() => {
-    document.title = isAbout ? 'About ROCKCRAFT | Better School Assessment' : 'Contact ROCKCRAFT Support';
-    let description = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
-    if (!description) { description = document.createElement('meta'); description.name = 'description'; document.head.appendChild(description); }
-    description.content = isAbout
+    const title = isAbout ? 'About ROCKCRAFT | Better School Assessment' : 'Contact ROCKCRAFT Support';
+    const summary = isAbout
       ? 'Discover how ROCKCRAFT empowers teachers and schools to prepare, organise and improve examination assessment.'
       : 'Contact ROCKCRAFT support by email or WhatsApp for help with your school workspace and examinations.';
-  }, [isAbout]);
+    const canonicalUrl = `https://rockcraft.netlify.app/${page}`;
+    document.title = title;
+
+    const setMeta = (selector: string, attribute: 'name' | 'property', key: string, content: string) => {
+      let element = document.querySelector(selector) as HTMLMetaElement | null;
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute(attribute, key);
+        document.head.appendChild(element);
+      }
+      element.content = content;
+    };
+
+    setMeta('meta[name="description"]', 'name', 'description', summary);
+    setMeta('meta[property="og:title"]', 'property', 'og:title', title);
+    setMeta('meta[property="og:description"]', 'property', 'og:description', summary);
+    setMeta('meta[property="og:url"]', 'property', 'og:url', canonicalUrl);
+    setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', title);
+    setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', summary);
+
+    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.rel = 'canonical';
+      document.head.appendChild(canonical);
+    }
+    canonical.href = canonicalUrl;
+    return () => {
+      document.title = 'ROCKCRAFT | AI Exam Question & Paper Generator for Nigerian Schools';
+      if (canonical) canonical.href = 'https://rockcraft.netlify.app/';
+    };
+  }, [isAbout, page]);
   return (
     <div className="min-h-screen overflow-hidden bg-[#f7f9fd] text-slate-900">
       <header className="relative z-10 border-b border-slate-200/80 bg-white/90 backdrop-blur">
