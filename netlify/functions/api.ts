@@ -1051,5 +1051,5 @@ Respond strictly with a JSON object:
 };
 
 export const config = {
-  path: ['/api/generate-questions', '/api/exam-request-status', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite', '/api/check-exam-conflict', '/api/publish-exam', '/api/scan-handwritten-questions'],
+  path: ['/sitemap.xml', '/api/generate-questions', '/api/exam-request-status', '/api/regenerate-single-question', '/api/generate-more-questions', '/api/initialize-payment', '/api/verify-payment', '/api/school-invite', '/api/check-exam-conflict', '/api/publish-exam', '/api/scan-handwritten-questions'],
 };
