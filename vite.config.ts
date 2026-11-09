@@ -17,7 +17,7 @@ export default defineConfig(() => {
           id: '/',
           name: 'ROCKCRAFT - Nigerian School Exam Paper Builder',
           short_name: 'ROCKCRAFT',
-          description: 'Multi-tenant SaaS for Nigerian secondary schools to generate WAEC/JAMB exam papers with AI and DOCX exports.',
+          description: 'AI-assisted examination paper and marking scheme creator for Nigerian schools.',
           theme_color: '#1d4ed8',
           background_color: '#ffffff',
           display: 'standalone',
