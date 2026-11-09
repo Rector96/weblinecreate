@@ -15,9 +15,9 @@ export default defineConfig(() => {
         includeAssets: ['rockcraft-logo.png', 'favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
           id: '/',
-          name: 'ROCKCRAFT - Nigerian School Exam Paper Builder',
+          name: 'ROCKCRAFT - AI Exam Question and Paper Creator for Nigerian Schools',
           short_name: 'ROCKCRAFT',
-          description: 'AI-assisted examination paper and marking scheme creator for Nigerian schools.',
+          description: 'Create objective and theory exam questions, examination papers and marking schemes with AI-assisted tools for Nigerian primary and secondary schools.',
           theme_color: '#1d4ed8',
           background_color: '#ffffff',
           display: 'standalone',
