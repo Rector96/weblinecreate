@@ -14,6 +14,7 @@ import { WhatsAppButton } from './components/common/WhatsAppButton';
 import { PaystackModal } from './components/common/PaystackModal';
 import { WelcomeModal } from './components/common/WelcomeModal';
 import { AuthPage } from './components/auth/AuthPage';
+import { PublicInfoPage } from './components/public/PublicInfoPage';
 import { DashboardPage } from './components/dashboard/DashboardPage';
 import { CreateExamWizard } from './components/create-exam/CreateExamWizard';
 import { ExamSuccessPage } from './components/create-exam/ExamSuccessPage';
@@ -85,6 +86,8 @@ function ToastViewport() {
 
 function AppContent() {
   const { isAuthenticated, school, role, isLoading } = useAuth();
+  const publicPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  if (publicPath === '/about' || publicPath === '/contact') return <PublicInfoPage page={publicPath.slice(1) as 'about' | 'contact'} />;
   const isTeacher = role === 'teacher';
   const teacherAllowedRoutes = ['create-exam', 'exam-success', 'teacher-finished'];
   const [currentRoute, setCurrentRoute] = useState<string>('dashboard');
