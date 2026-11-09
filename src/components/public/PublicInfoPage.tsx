@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ArrowRight, BookOpenCheck, ClipboardCheck, GraduationCap, Mail, MessageCircle, ShieldCheck, Sparkles } from 'lucide-react';
 
 type PublicInfoPageProps = { page: 'about' | 'contact' };
@@ -8,6 +8,14 @@ const EMAIL = 'rockwavedigital@gmail.com';
 
 export const PublicInfoPage: React.FC<PublicInfoPageProps> = ({ page }) => {
   const isAbout = page === 'about';
+  useEffect(() => {
+    document.title = isAbout ? 'About ROCKCRAFT | Better School Assessment' : 'Contact ROCKCRAFT Support';
+    let description = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (!description) { description = document.createElement('meta'); description.name = 'description'; document.head.appendChild(description); }
+    description.content = isAbout
+      ? 'Discover how ROCKCRAFT empowers teachers and schools to prepare, organise and improve examination assessment.'
+      : 'Contact ROCKCRAFT support by email or WhatsApp for help with your school workspace and examinations.';
+  }, [isAbout]);
   return (
     <div className="min-h-screen overflow-hidden bg-[#f7f9fd] text-slate-900">
       <header className="relative z-10 border-b border-slate-200/80 bg-white/90 backdrop-blur">
