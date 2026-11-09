@@ -190,7 +190,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-semibold text-blue-50"><ShieldCheck className="h-4 w-4" /> Verified school workspace</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-semibold text-blue-50"><ShieldCheck className="h-4 w-4" /> School workspace</span>
             {canEdit && <span className="rounded-full bg-cyan-300/15 px-3 py-2 text-[11px] font-semibold text-cyan-100">Logo management enabled</span>}
           </div>
         </div>
@@ -277,7 +277,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
         {/* School Logo Section */}
         {!logoUrl && canEdit && (
           <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
-            <strong>Action needed: add your school logo.</strong> Upload your official crest here and save your profile. ROCKCRAFT will use it in the header of your exam paper previews, print/PDF output and new DOCX exports.
+            <strong>Action needed: add your school logo.</strong> Upload your official crest here. It is saved automatically and ROCKCRAFT will use it in the header of your exam paper previews, print/PDF output and new DOCX exports.
           </div>
         )}
         <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center gap-3 sm:gap-4 pb-4 sm:pb-5 border-b border-slate-100 min-w-0">
@@ -345,7 +345,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={adminName}
               onChange={(e) => setAdminName(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -361,7 +361,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -375,7 +375,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
             />
           </div>
@@ -387,7 +387,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <select
               value={state}
               onChange={(e) => setState(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
             >
               {NIGERIAN_STATES.map((s) => (
@@ -403,7 +403,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <select
               value={lga}
               onChange={(e) => setLga(e.target.value)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
             >
               {(NIGERIAN_STATES_LGAS[state] || []).map((l) => (
@@ -421,7 +421,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             <select
               value={institutionType}
               onChange={(e) => setInstitutionType(e.target.value as any)}
-              disabled={!canEdit}
+              disabled={!canEditSchoolDetails}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white disabled:bg-slate-50"
             >
               <option value="Secondary">Secondary School</option>
@@ -443,7 +443,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             placeholder="e.g. Floreat Collegium (Let the College Flourish)"
             value={motto}
             onChange={(e) => setMotto(e.target.value)}
-            disabled={!canEdit}
+            disabled={!canEditSchoolDetails}
             className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
           />
         </div>
@@ -457,7 +457,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="e.g. 3 Catholic Mission Street, Lagos Island, Lagos"
-            disabled={!canEdit}
+            disabled={!canEditSchoolDetails}
             className="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none disabled:bg-slate-50"
           />
         </div>
