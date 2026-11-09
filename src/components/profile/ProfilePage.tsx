@@ -77,6 +77,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
     const file = e.currentTarget.files?.[0];
     e.currentTarget.value = '';
     if (!file) return;
+    if (!canEdit) {
+      setMessage('Only school administrators can update the school logo.');
+      return;
+    }
     const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       setMessage('Please upload your school logo as PNG, JPG or WebP.');
@@ -296,7 +300,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
               <Camera className="w-5 h-5 text-white" />
               <input
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg,image/webp"
                 onChange={handleLogoUpload}
                 className="hidden"
               />
