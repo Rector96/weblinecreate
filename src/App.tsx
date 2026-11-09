@@ -204,7 +204,7 @@ function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const publicPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const publicPath = window.location.pathname.replace(/\/+$/, '')|| '/';
   if (publicPath === '/about' || publicPath === '/contact') return <PublicInfoPage page={publicPath.slice(1) as 'about' | 'contact'} />;
 
   // One shared loader covers startup, authentication, and invitation validation.
