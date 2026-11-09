@@ -174,7 +174,32 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-5 text-left px-0.5 sm:px-2 pb-6">
+    <div className="w-full max-w-5xl mx-auto space-y-4 sm:space-y-5 text-left px-0.5 sm:px-2 pb-8">
+      <section className="relative isolate overflow-hidden rounded-[1.75rem] bg-[#071b3b] px-5 py-6 text-white shadow-xl shadow-blue-950/10 sm:px-8 sm:py-8">
+        <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-blue-500/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/20 bg-white p-2 shadow-lg sm:h-20 sm:w-20">
+              {school?.logo_url ? <img src={school.logo_url} alt="School logo" className="h-full w-full object-contain" /> : <Building className="h-8 w-8 text-slate-400" />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-blue-200">School identity</p>
+              <h1 className="mt-1 break-words text-xl font-black tracking-tight sm:text-2xl">{school?.name || 'School profile'}</h1>
+              <p className="mt-1 text-xs text-blue-100">{school?.state || 'Location not set'}{school?.lga ? ` · ${school.lga}` : ''}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-semibold text-blue-50"><ShieldCheck className="h-4 w-4" /> Verified school workspace</span>
+            {canEdit && <span className="rounded-full bg-cyan-300/15 px-3 py-2 text-[11px] font-semibold text-cyan-100">Logo management enabled</span>}
+          </div>
+        </div>
+        <div className="relative mt-7 grid grid-cols-2 gap-3 border-t border-white/15 pt-5 sm:grid-cols-3">
+          <div><p className="text-[10px] uppercase tracking-wider text-blue-200">Account</p><p className="mt-1 text-sm font-bold">School workspace</p></div>
+          <div><p className="text-[10px] uppercase tracking-wider text-blue-200">Institution</p><p className="mt-1 text-sm font-bold">{school?.institution_type || 'Education'}</p></div>
+          <div className="col-span-2 sm:col-span-1"><p className="text-[10px] uppercase tracking-wider text-blue-200">Profile access</p><p className="mt-1 text-sm font-bold">{isPlatformAdmin ? 'Platform administrator' : canEdit ? 'Logo updates only' : 'View only'}</p></div>
+        </div>
+      </section>
       <div>
         <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
           School Profile & Identity
