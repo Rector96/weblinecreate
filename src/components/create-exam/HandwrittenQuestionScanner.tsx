@@ -54,7 +54,7 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
 
   const scan = async () => {
     if (!files.length) { setError('Take a photo or upload at least one page.'); return; }
-    setBusy(true); setError(''); setStatusLine('Preparing clear photos…');
+    setBusy(true); setError(''); setStatusLine('Preparing clear photos for accurate reading…');
     try {
       const pages = await Promise.all(files.map(async (file) => {
         let imageSource: CanvasImageSource;
@@ -88,18 +88,47 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
           bitmap?.close();
           throw new Error('The selected photo is empty or unreadable. Please choose a clear JPG or PNG photo.');
         }
-        const maxSide = 1400;
+
+        // Slightly higher resolution + mild contrast boost for better handwriting accuracy
+        const maxSide = 1600;
         const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(sourceWidth * scale));
         canvas.height = Math.max(1, Math.round(sourceHeight * scale));
         const context = canvas.getContext('2d');
         if (!context) { bitmap?.close(); throw new Error('Image compression is unavailable in this browser.'); }
+
         context.fillStyle = '#ffffff';
         context.fillRect(0, 0, canvas.width, canvas.height);
         context.drawImage(imageSource, 0, 0, canvas.width, canvas.height);
+
+        // Mild contrast enhancement (helps faded pen / pencil)
+        try {
+          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          const contrast = 1.12;
+          const intercept = 128 * (1 - contrast);
+          for (let i = 0; i < data.length; i += 4) {
+            data[i] = Math.min(255, Math.max(0, data[i] * contrast + intercept));
+            data[i + 1] = Math.min(255, Math.max(0, data[i + 1] * contrast + intercept));
+            data[i + 2] = Math.min(255, Math.max(0, data[i + 2] * contrast + intercept));
+          }
+          context.putImageData(imageData, 0, 0);
+        } catch {
+          // Some browsers can restrict getImageData; ignore and continue with original draw.
+        }
+
         bitmap?.close();
-        const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Could not prepare an image for scanning.')), 'image/jpeg', 0.68));
+
+        // Slightly higher quality JPEG for better OCR while still keeping payload reasonable
+        const blob = await new Promise<Blob>((resolve, reject) =>
+          canvas.toBlob(
+            value => (value ? resolve(value) : reject(new Error('Could not prepare an image for scanning.'))),
+            'image/jpeg',
+            0.78,
+          ),
+        );
+
         const data = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => {
@@ -111,60 +140,95 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
         });
         return { mimeType: 'image/jpeg', data };
       }));
+
       const totalEncodedSize = pages.reduce((sum, page) => sum + page.data.length, 0);
-      if (totalEncodedSize > 5_000_000) throw new Error('These pages are still too large to send safely. Try scanning 3–4 pages at a time.');
+      if (totalEncodedSize > 5_500_000) {
+        throw new Error('These pages are still too large to send safely. Try scanning 3–4 pages at a time.');
+      }
+
       setStatusLine('Sending pages securely…');
       const headers = await getAuthHeaders();
       headers.set('Content-Type', 'application/json');
       const response = await fetch('/api/scan-handwritten-questions', {
-        method: 'POST', headers, body: JSON.stringify({ school_id: schoolId, pages }),
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ school_id: schoolId, pages }),
       });
+
       const parseResponse = async (res: Response, stage: 'submit' | 'poll') => {
         const raw = await res.text();
-        try { return JSON.parse(raw); }
-        catch {
+        try {
+          return JSON.parse(raw);
+        } catch {
           const contentType = res.headers.get('content-type') || 'unknown';
-          // Preserve enough diagnostics to distinguish a Netlify routing/deployment
-          // response from a JSON error returned by the scanner API.
           console.error('ROCKCRAFT handwriting scan received a non-JSON response', {
             stage,
             status: res.status,
             contentType,
-            bodyPreview: raw.replace(/\\s+/g, ' ').slice(0, 240),
+            bodyPreview: raw.replace(/\s+/g, ' ').slice(0, 240),
           });
           if (res.status === 429) {
             throw new Error('Lots of schools may be scanning right now. Your scan can be retried shortly.');
           }
           throw new Error(
-            `The scanner returned an unexpected response (HTTP ${res.status}, ${contentType}). Your photos are still here. Refresh and try again; if this repeats, check the Netlify scanner deployment and function logs.`
+            `The scanner returned an unexpected response (HTTP ${res.status}, ${contentType}). Your photos are still here. Refresh and try again; if this repeats, check the Netlify scanner deployment and function logs.`,
           );
         }
       };
+
       let result: any = await parseResponse(response, 'submit');
-      if (!response.ok || !result.success) throw new Error(typeof result.error === 'string' ? result.error : 'We could not add your scan to the queue.');
-      if (!result.queued || !result.request_id) throw new Error('The scan was not queued. Your photos are still here—please retry.');
+      if (!response.ok || !result.success) {
+        throw new Error(typeof result.error === 'string' ? result.error : 'We could not add your scan to the queue.');
+      }
+      if (!result.queued || !result.request_id) {
+        throw new Error('The scan was not queued. Your photos are still here—please retry.');
+      }
+
       const requestId = result.request_id as string;
       const deadline = Date.now() + 6 * 60 * 1000;
       let pollCount = 0;
       setStatusLine('In the school queue…');
+
       while (Date.now() < deadline) {
-        await new Promise(resolve => setTimeout(resolve, pollCount < 5 ? 1200 : 2200));
+        await new Promise(resolve => setTimeout(resolve, pollCount < 5 ? 1100 : 2000));
         pollCount += 1;
-        if (pollCount === 3) setStatusLine('Reading handwriting with AI…');
-        else if (pollCount === 8) setStatusLine('Matching diagrams to questions…');
-        else if (pollCount === 15) setStatusLine('Still working — please keep this screen open…');
+
+        if (pollCount === 2) setStatusLine('Reading handwriting carefully…');
+        else if (pollCount === 5) setStatusLine('Separating objective and theory questions…');
+        else if (pollCount === 9) setStatusLine('Matching diagrams to questions…');
+        else if (pollCount === 14) setStatusLine('Almost done — finalising structure…');
+        else if (pollCount === 20) setStatusLine('Still working — please keep this screen open…');
+
         const pollHeaders = await getAuthHeaders();
         pollHeaders.set('x-school-id', schoolId);
-        const pollResponse = await fetch('/api/scan-handwritten-questions?id=' + encodeURIComponent(requestId), { method: 'GET', headers: pollHeaders });
+        const pollResponse = await fetch(
+          '/api/scan-handwritten-questions?id=' + encodeURIComponent(requestId),
+          { method: 'GET', headers: pollHeaders },
+        );
         result = await parseResponse(pollResponse, 'poll');
-        if (!pollResponse.ok || !result.success) throw new Error(result.error || 'Could not check scan progress.');
-        if (result.status === 'failed') throw new Error(result.error || 'The scan could not be completed. Please retry; your original photos are still available.');
+
+        if (!pollResponse.ok || !result.success) {
+          throw new Error(result.error || 'Could not check scan progress.');
+        }
+        if (result.status === 'failed') {
+          throw new Error(
+            result.error ||
+              'The scan could not be completed. Please retry; your original photos are still available.',
+          );
+        }
         if (result.status === 'completed') break;
       }
-      if (result.status !== 'completed') throw new Error('Your scan is still in the queue because many schools may be using AI. Your photos are safe on this screen—press Analyse again in a moment.');
+
+      if (result.status !== 'completed') {
+        throw new Error(
+          'Your scan is still in the queue because many schools may be using AI. Your photos are safe on this screen—press Analyse again in a moment.',
+        );
+      }
+
       setStatusLine('Attaching diagrams…');
       const extracted = Array.isArray(result.data) ? result.data : [];
       const diagramRegions = Array.isArray(result.diagram_regions) ? result.diagram_regions : [];
+
       const cropDiagram = async (region: any): Promise<string | null> => {
         const file = files[region.page_index];
         if (!file) return null;
@@ -172,10 +236,17 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
           const url = URL.createObjectURL(file);
           const image = await new Promise<HTMLImageElement>((resolve, reject) => {
             const img = new Image();
-            img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
-            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+            img.onload = () => {
+              URL.revokeObjectURL(url);
+              resolve(img);
+            };
+            img.onerror = () => {
+              URL.revokeObjectURL(url);
+              reject(new Error('Image load failed'));
+            };
             img.src = url;
           });
+
           const padX = Math.min(0.03, Math.max(0, region.x) * 0.25);
           const padY = Math.min(0.03, Math.max(0, region.y) * 0.25);
           const nx = Math.max(0, region.x - padX);
@@ -187,6 +258,7 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
           const width = Math.min(image.naturalWidth - left, Math.ceil(nw * image.naturalWidth));
           const height = Math.min(image.naturalHeight - top, Math.ceil(nh * image.naturalHeight));
           if (width < 2 || height < 2) return null;
+
           const scale = Math.min(1, 1000 / Math.max(width, height));
           const canvas = document.createElement('canvas');
           canvas.width = Math.max(1, Math.round(width * scale));
@@ -197,21 +269,39 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(image, left, top, width, height, 0, 0, canvas.width, canvas.height);
           return canvas.toDataURL('image/jpeg', 0.82);
-        } catch { return null; }
+        } catch {
+          return null;
+        }
       };
-      const crops = await Promise.all(diagramRegions.map(async (region: any) => ({ region, image: await cropDiagram(region) })));
+
+      const crops = await Promise.all(
+        diagramRegions.map(async (region: any) => ({
+          region,
+          image: await cropDiagram(region),
+        })),
+      );
+
       const withDiagrams = extracted.map((question: ExtractedQuestion) => {
-        const match = crops.find(({ region, image }) =>
-          image
-          && region.section === question.section
-          && Number(region.question_number) === Number(question.question_number)
-        ) || crops.find(({ region, image }) =>
-          image
-          && Number(region.question_number) === Number(question.question_number)
-        );
+        const match =
+          crops.find(
+            ({ region, image }) =>
+              image &&
+              region.section === question.section &&
+              Number(region.question_number) === Number(question.question_number),
+          ) ||
+          crops.find(
+            ({ region, image }) =>
+              image && Number(region.question_number) === Number(question.question_number),
+          );
         return match?.image ? { ...question, diagram_image: match.image } : question;
       });
-      if (!withDiagrams.length) throw new Error('No questions could be confidently extracted. Try brighter, sharper photos with the whole page visible.');
+
+      if (!withDiagrams.length) {
+        throw new Error(
+          'No questions could be confidently extracted. Try brighter, sharper photos with the whole page visible.',
+        );
+      }
+
       onQuestionsExtracted(withDiagrams);
       clearPhotos();
       onClose();
@@ -223,33 +313,161 @@ export const HandwrittenQuestionScanner: React.FC<Props> = ({ schoolId, getAuthH
     }
   };
 
-  return <section className="space-y-4 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm sm:p-5" aria-label="Handwritten question scanner">
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex gap-3">
-        <div className="rounded-xl bg-blue-50 p-2.5 text-blue-700"><ScanText className="h-5 w-5" /></div>
-        <div><h3 className="font-bold text-slate-900">Scan handwritten questions</h3><p className="mt-1 text-xs leading-5 text-slate-500">Upload up to 8 page photos. Gemini separates objective and theory questions, suggests objective answers when confident, and flags anything uncertain for your review.</p></div>
-      </div>
-      <button type="button" onClick={() => { clearPhotos(); onClose(); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Close scanner"><X className="h-4 w-4" /></button>
-    </div>
-    <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple className="hidden" onChange={e => { addFiles(e.target.files); e.currentTarget.value = ''; }} />
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      <button type="button" onClick={() => { if (inputRef.current) { inputRef.current.removeAttribute('capture'); inputRef.current.click(); } }} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Upload className="h-4 w-4" /> Upload page photos</button>
-      <button type="button" onClick={() => { if (inputRef.current) { inputRef.current.setAttribute('capture', 'environment'); inputRef.current.click(); } }} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"><Camera className="h-4 w-4" /> Take a photo</button>
-    </div>
-    {files.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{files.map((file, index) => <div key={file.name + file.lastModified + index} className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><img src={previews[index] || ''} alt={'Page ' + (index + 1)} className="h-28 w-full object-cover" /><span className="block truncate px-2 py-1 text-[11px] text-slate-600">Page {index + 1}</span><button type="button" onClick={() => setFiles(v => v.filter((_, i) => i !== index))} className="absolute right-1 top-1 rounded-full bg-white/95 p-1 text-slate-700 shadow" aria-label={'Remove page ' + (index + 1)}><X className="h-3.5 w-3.5" /></button></div>)}</div>}
-    <p className="text-[11px] text-slate-500">Tips: use bright, even light; keep the page flat and fully inside the frame. Upload pages in reading order. Up to 8 images, 8 MB each. Photos are sent for scanning only and are not saved to your ROCKCRAFT account.</p>
-    {error && <p role="alert" className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</p>}
-    {busy && typeof document !== 'undefined' && createPortal(
-      <div role="status" aria-live="polite" className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/90 p-5 text-white">
-        <div className="w-full max-w-sm text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/20"><Loader2 className="h-8 w-8 animate-spin text-blue-300" /></div>
-          <h2 className="mt-5 text-xl font-black">ROCKCRAFT is reading your pages</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-300">{statusLine || 'Handwriting can take a little time. We are checking the pages now.'}</p>
-          <p className="mt-4 text-xs text-slate-400">Please keep this screen open. Your photos stay on this device until the scan finishes.</p>
+  return (
+    <section
+      className="space-y-4 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm sm:p-5"
+      aria-label="Handwritten question scanner"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex gap-3">
+          <div className="rounded-xl bg-blue-50 p-2.5 text-blue-700">
+            <ScanText className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900">Scan handwritten questions</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Upload up to 8 page photos. Gemini separates objective and theory questions, suggests
+              objective answers when confident, and flags anything uncertain for your review.
+            </p>
+          </div>
         </div>
-      </div>, document.body
-    )}
-    <button type="button" disabled={busy || !files.length} onClick={scan} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Analysing all pages…</> : <><ScanText className="h-4 w-4" /> Analyse handwriting with Gemini</>}</button>
+        <button
+          type="button"
+          onClick={() => {
+            clearPhotos();
+            onClose();
+          }}
+          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+          aria-label="Close scanner"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
 
-  </section>;
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        multiple
+        className="hidden"
+        onChange={e => {
+          addFiles(e.target.files);
+          e.currentTarget.value = '';
+        }}
+      />
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => {
+            if (inputRef.current) {
+              inputRef.current.removeAttribute('capture');
+              inputRef.current.click();
+            }
+          }}
+          className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          <Upload className="h-4 w-4" /> Upload page photos
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (inputRef.current) {
+              inputRef.current.setAttribute('capture', 'environment');
+              inputRef.current.click();
+            }
+          }}
+          className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+        >
+          <Camera className="h-4 w-4" /> Take a photo
+        </button>
+      </div>
+
+      {files.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {files.map((file, index) => (
+            <div
+              key={file.name + file.lastModified + index}
+              className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+            >
+              <img
+                src={previews[index] || ''}
+                alt={'Page ' + (index + 1)}
+                className="h-28 w-full object-cover"
+              />
+              <span className="block truncate px-2 py-1 text-[11px] text-slate-600">
+                Page {index + 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => setFiles(v => v.filter((_, i) => i !== index))}
+                className="absolute right-1 top-1 rounded-full bg-white/95 p-1 text-slate-700 shadow"
+                aria-label={'Remove page ' + (index + 1)}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-[11px] text-slate-500">
+        Tips: use bright, even light; keep the page flat and fully inside the frame. Upload pages in
+        reading order. Up to 8 images, 8 MB each. Photos are sent for scanning only and are not saved
+        to your ROCKCRAFT account.
+      </p>
+
+      {error && (
+        <p
+          role="alert"
+          className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {error}
+        </p>
+      )}
+
+      {busy &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/90 p-5 text-white"
+          >
+            <div className="w-full max-w-sm text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/20">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-300" />
+              </div>
+              <h2 className="mt-5 text-xl font-black">ROCKCRAFT is reading your pages</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                {statusLine || 'Handwriting can take a little time. We are checking the pages now.'}
+              </p>
+              <p className="mt-4 text-xs text-slate-400">
+                Please keep this screen open. Your photos stay on this device until the scan finishes.
+              </p>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      <button
+        type="button"
+        disabled={busy || !files.length}
+        onClick={scan}
+        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+      >
+        {busy ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" /> Analysing all pages…
+          </>
+        ) : (
+          <>
+            <ScanText className="h-4 w-4" /> Analyse handwriting with Gemini
+          </>
+        )}
+      </button>
+    </section>
+  );
 };
