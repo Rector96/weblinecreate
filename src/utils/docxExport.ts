@@ -72,12 +72,50 @@ async function getSchoolLogoRun(school?: School | null): Promise<ImageRun | null
   try {
     const response = await fetch(school.logo_url);
     if (!response.ok) return null;
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('svg') || contentType.includes('webp')) return null;
-    const type: 'jpg' | 'gif' | 'bmp' | 'png' = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : contentType.includes('gif') ? 'gif' : contentType.includes('bmp') ? 'bmp' : 'png';
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    const sourceBlob = await response.blob();
+    if (!sourceBlob.size) return null;
+
+    let imageBlob = sourceBlob;
+    let type: 'jpg' | 'gif' | 'bmp' | 'png' =
+      contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' :
+      contentType.includes('gif') ? 'gif' :
+      contentType.includes('bmp') ? 'bmp' : 'png';
+
+    // School profile accepts WebP. Word does not reliably embed WebP/SVG, so
+    // normalize those formats to PNG instead of silently omitting the crest.
+    if (contentType.includes('webp') || contentType.includes('svg')) {
+      const bitmap = await createImageBitmap(sourceBlob);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, bitmap.width);
+      canvas.height = Math.max(1, bitmap.height);
+      const context = canvas.getContext('2d');
+      if (!context) {
+        bitmap.close();
+        return null;
+      }
+      context.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      imageBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not convert the school logo to PNG.')), 'image/png');
+      });
+      type = 'png';
+    }
+
+    const bytes = new Uint8Array(await imageBlob.arrayBuffer());
     if (!bytes.length) return null;
-    return new ImageRun({ data: bytes, type, transformation: { width: 56, height: 56 } });
+    let width = 56;
+    let height = 56;
+    try {
+      const bitmap = await createImageBitmap(imageBlob);
+      const ratio = bitmap.width / Math.max(1, bitmap.height);
+      if (ratio >= 1) height = Math.max(1, Math.round(width / ratio));
+      else width = Math.max(1, Math.round(height * ratio));
+      bitmap.close();
+    } catch {
+      // Keep a square footprint if the browser cannot inspect the image dimensions.
+    }
+    return new ImageRun({ data: bytes, type, transformation: { width, height } });
   } catch (error) {
     console.warn('[ROCKCRAFT] Could not embed school logo in DOCX export:', error);
     return null;
