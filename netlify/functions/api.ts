@@ -61,7 +61,7 @@ function missingSupabaseServerConfig() {
   return missing;
 }
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
-const SUBSCRIPTION_AMOUNT_KOBO = 1100000;
+const SUBSCRIPTION_AMOUNT_KOBO = 1000000;
 const ALLOWED_TERMS = new Set(['First Term', 'Second Term', 'Third Term']);
 
 function jsonResponse(body: unknown, status = 200, headers: Record<string, string> = {}) {
@@ -276,7 +276,7 @@ async function initializePaystackPayment(req: Request) {
     body: JSON.stringify({
       school_id: school.id,
       school_name: school.name,
-      amount_ngn: 11000,
+      amount_ngn: 10000,
       reference,
       status: 'pending',
       term,
