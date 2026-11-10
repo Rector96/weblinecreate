@@ -14,6 +14,9 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
  * Run Gemini vision OCR on exam page images and return structured questions.
  * Throws on hard failures so the caller can mark the queue job failed/retry.
+ *
+ * Tuned for Nigerian secondary school (JSS/SSS) handwritten exam papers:
+ * higher transcription fidelity, better section/option handling, safer answer suggestions.
  */
 export async function processHandwritingPages(
   pages: HandwritingPage[],
@@ -33,20 +36,76 @@ export async function processHandwritingPages(
     inlineData: { mimeType: page.mimeType, data: page.data },
   }));
 
-  const prompt = `Transcribe the handwritten exam pages in order. Preserve visible question wording, subparts, options A-D, formulas, units, tables, marks, and diagram labels. Classify every question: use section "A" only for multiple-choice/objective questions with options, and section "B" for theory, structured, essay, calculation, or written-response questions. A scan may contain both sections; separate them correctly while preserving page reading order and original question numbering. Never invent missing text or options. Include a short [Diagram: ...] description when a diagram appears.
+  // Stronger, education-focused prompt for higher accuracy on real teacher handwriting.
+  const prompt = `You are an expert examiner reading handwritten Nigerian secondary school examination papers (JSS 1–SSS 3).
 
-For objective questions only, independently solve the question and suggest "correct_option" as "A", "B", "C", or "D" only when the question and all necessary options are readable and you are confident. If uncertain, omit it or return an empty string. Never guess just to fill an answer. This is an AI suggestion for teacher review, not a confirmed answer key. Do not generate theory answers or marking schemes unless they are visibly present in the scanned source; theory scans should preserve the questions and subparts only. Keep uncertainty in "review_notes".
+Your job is to carefully transcribe the handwritten questions from the provided page images into clean, structured JSON.
 
-Return valid JSON only, matching this structure:
-{"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"","option_b":"","option_c":"","option_d":"","correct_option":"","marks":1,"confidence":"medium","review_notes":[]}],"diagram_regions":[{"section":"A","question_number":1,"page_index":0,"x":0.1,"y":0.2,"width":0.4,"height":0.3,"description":"labelled diagram"}],"page_notes":[]}
-Keep all questions in original reading order, with numbering as visible. Add a diagram region only when its location is clear; otherwise leave it out. Use an empty diagram_regions array when there are no diagrams. Bounding boxes must be normalized 0-1 relative to the full page image.`;
+RULES (follow strictly):
+1. Read the pages in order. Preserve the original reading order and the original question numbering as written.
+2. Do NOT invent, complete, or guess missing words, options, numbers, or formulas. Only transcribe what is clearly visible.
+3. Classify every question correctly:
+   - section "A" = objective / multiple-choice questions that have options (A, B, C, D).
+   - section "B" = theory, structured, essay, calculation, or any written-response questions.
+4. For section A questions:
+   - Put the full stem in "question_text".
+   - Put each option in option_a, option_b, option_c, option_d exactly as written (without the letter prefix if already present).
+   - Suggest "correct_option" only when you can confidently solve the question from the visible text. If uncertain, leave it empty. Never guess.
+5. For section B questions:
+   - Preserve sub-parts (a), (b), (c) etc. inside question_text.
+   - Capture marks if written (e.g. [10 Marks], 15 marks).
+   - Do NOT invent model answers or marking schemes.
+6. Preserve mathematical symbols, units, tables, and chemical formulas as accurately as possible.
+7. When a diagram or figure is present, add a short description in the question_text as [Diagram: brief description] and also record a diagram_regions entry with approximate normalised bounding box (0–1) if the location is clear.
+8. Use confidence "high", "medium", or "low" honestly. Put any uncertainties or unclear words into "review_notes".
+9. Return ONLY valid JSON. No markdown, no explanation outside the JSON.
+
+Required JSON shape:
+{
+  "questions": [
+    {
+      "section": "A",
+      "question_number": 1,
+      "question_text": "...",
+      "option_a": "...",
+      "option_b": "...",
+      "option_c": "...",
+      "option_d": "...",
+      "correct_option": "",
+      "marks": 1,
+      "confidence": "medium",
+      "review_notes": []
+    }
+  ],
+  "diagram_regions": [
+    {
+      "section": "A",
+      "question_number": 1,
+      "page_index": 0,
+      "x": 0.1,
+      "y": 0.2,
+      "width": 0.4,
+      "height": 0.3,
+      "description": "labelled diagram"
+    }
+  ],
+  "page_notes": []
+}
+
+Keep bounding boxes normalised between 0 and 1 relative to the full page image. If there are no diagrams, return an empty diagram_regions array.`;
 
   let response: any = null;
   let lastError: any = null;
   let usedModel = '';
-  // Prefer current vision-capable Flash models. Older 2.5/1.5 model IDs may be unavailable
-  // to newer API projects, so keep them out of the normal fallback path.
-  const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
+
+  // Prefer fast, high-quality vision Flash models first, then fall back.
+  // Order prioritises speed + accuracy for handwriting.
+  const models = [
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-flash-latest',
+    'gemini-1.5-flash',
+  ];
   const failures: string[] = [];
 
   for (const model of models) {
@@ -55,12 +114,18 @@ Keep all questions in original reading order, with numbering as visible. Add a d
         response = await ai.models.generateContent({
           model,
           contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
-          config: { responseMimeType: 'application/json', temperature: 0.1 },
+          config: {
+            responseMimeType: 'application/json',
+            temperature: 0.05, // lower temperature = more faithful transcription
+          },
         });
-        if (typeof response?.text === 'string' && response.text.trim()) {
+
+        const text = typeof response?.text === 'string' ? response.text.trim() : '';
+        if (text) {
           usedModel = model;
           break;
         }
+
         response = null;
         lastError = new Error('Gemini model returned an empty response.');
         failures.push(model + ': empty response');
@@ -70,6 +135,7 @@ Keep all questions in original reading order, with numbering as visible. Add a d
         const status = Number(error?.status || error?.code || 0);
         const message = String(error?.message || 'Unknown Gemini error');
         failures.push(model + ': ' + (status ? status + ' ' : '') + message.slice(0, 180));
+
         console.error('Handwriting vision attempt failed', {
           model,
           attempt,
@@ -77,44 +143,82 @@ Keep all questions in original reading order, with numbering as visible. Add a d
           message: message.slice(0, 240),
         });
 
-        if (status === 401 || status === 403 || /API key|authentication|permission denied|unauthorized|invalid api key/i.test(message)) {
+        // Hard auth failures should stop immediately.
+        if (
+          status === 401 ||
+          status === 403 ||
+          /API key|authentication|permission denied|unauthorized|invalid api key/i.test(message)
+        ) {
           throw error;
         }
-        // Retry transient errors once, then continue to the next model. Quota errors
-        // can be project-wide, but trying another enabled model may still succeed.
-        const transient = status === 429 || status >= 500 ||
-          /timeout|temporarily unavailable|rate.?limit|resource_exhausted|overloaded|high demand/i.test(message);
+
+        const transient =
+          status === 429 ||
+          status >= 500 ||
+          /timeout|temporarily unavailable|rate.?limit|resource_exhausted|overloaded|high demand/i.test(
+            message,
+          );
+
         if (transient && attempt === 1) {
-          await sleep(status === 429 ? 1800 : 900);
+          await sleep(status === 429 ? 1600 : 800);
           continue;
         }
-        if (status === 404 || /not found|not supported|invalid model/i.test(message)) break;
+
+        // Model not found → try next model quickly.
+        if (status === 404 || /not found|not supported|invalid model/i.test(message)) {
+          break;
+        }
       }
     }
     if (response?.text && usedModel) break;
   }
 
   if (!response?.text || !usedModel) {
-    const summary = failures.length ? failures.join(' | ') : String(lastError?.message || 'No model returned a response.');
-    const finalError: any = new Error('Gemini could not process the scan with the available vision models. ' + summary);
+    const summary =
+      failures.length > 0
+        ? failures.join(' | ')
+        : String(lastError?.message || 'No model returned a response.');
+    const finalError: any = new Error(
+      'Gemini could not process the scan with the available vision models. ' + summary,
+    );
     finalError.status = Number(lastError?.status || lastError?.code || 0) || 503;
     finalError.modelFailures = failures;
     throw finalError;
   }
 
+  // Clean possible markdown fences some models still wrap around JSON.
+  let rawText = String(response.text).trim();
+  if (rawText.startsWith('```')) {
+    rawText = rawText
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+  }
+
   let parsed: any;
   try {
-    parsed = JSON.parse(response.text);
+    parsed = JSON.parse(rawText);
   } catch {
-    throw new Error('Gemini returned a response, but it was not valid structured JSON. Retry with a clearer photo or fewer pages.');
+    throw new Error(
+      'Gemini returned a response, but it was not valid structured JSON. Retry with a clearer photo or fewer pages.',
+    );
   }
 
   const questions = (Array.isArray(parsed.questions) ? parsed.questions : [])
-    .filter((q: any) => q && typeof q.question_text === 'string' && q.question_text.trim() && ['A', 'B'].includes(q.section))
+    .filter(
+      (q: any) =>
+        q &&
+        typeof q.question_text === 'string' &&
+        q.question_text.trim() &&
+        ['A', 'B'].includes(q.section),
+    )
     .slice(0, 100)
     .map((q: any, i: number) => ({
       section: q.section,
-      question_number: Number.isInteger(Number(q.question_number)) && Number(q.question_number) > 0 ? Number(q.question_number) : i + 1,
+      question_number:
+        Number.isInteger(Number(q.question_number)) && Number(q.question_number) > 0
+          ? Number(q.question_number)
+          : i + 1,
       question_text: String(q.question_text).slice(0, 5000),
       ...(q.section === 'A'
         ? {
@@ -122,20 +226,38 @@ Keep all questions in original reading order, with numbering as visible. Add a d
             option_b: String(q.option_b || '').slice(0, 2000),
             option_c: String(q.option_c || '').slice(0, 2000),
             option_d: String(q.option_d || '').slice(0, 2000),
-            ...( ['A', 'B', 'C', 'D'].includes(String(q.correct_option || '').trim().toUpperCase())
-              ? { correct_option: String(q.correct_option).trim().toUpperCase() }
+            ...(['A', 'B', 'C', 'D'].includes(
+              String(q.correct_option || '')
+                .trim()
+                .toUpperCase(),
+            )
+              ? {
+                  correct_option: String(q.correct_option)
+                    .trim()
+                    .toUpperCase(),
+                }
               : {}),
           }
         : {}),
-      marks: Number.isFinite(Number(q.marks)) && Number(q.marks) > 0 ? Math.min(100, Number(q.marks)) : q.section === 'A' ? 1 : 10,
+      marks:
+        Number.isFinite(Number(q.marks)) && Number(q.marks) > 0
+          ? Math.min(100, Number(q.marks))
+          : q.section === 'A'
+            ? 1
+            : 10,
       confidence: ['high', 'medium', 'low'].includes(q.confidence) ? q.confidence : 'medium',
       review_notes: Array.isArray(q.review_notes)
-        ? q.review_notes.filter((n: any) => typeof n === 'string').slice(0, 8).map((n: string) => n.slice(0, 300))
+        ? q.review_notes
+            .filter((n: any) => typeof n === 'string')
+            .slice(0, 8)
+            .map((n: string) => n.slice(0, 300))
         : [],
     }));
 
   if (!questions.length) {
-    throw new Error('No questions could be confidently extracted from these pages. Try brighter, sharper photos with the whole page visible.');
+    throw new Error(
+      'No questions could be confidently extracted from these pages. Try brighter, sharper photos with the whole page visible.',
+    );
   }
 
   const diagrams = (Array.isArray(parsed.diagram_regions) ? parsed.diagram_regions : [])
