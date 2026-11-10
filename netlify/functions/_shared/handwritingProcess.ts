@@ -15,8 +15,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * Run Gemini vision OCR on exam page images and return structured questions.
  * Throws on hard failures so the caller can mark the queue job failed/retry.
  *
- * Tuned for Nigerian secondary school (JSS/SSS) handwritten exam papers:
- * higher transcription fidelity, better section/option handling, safer answer suggestions.
+ * Tuned for Nigerian secondary school (JSS/SSS) handwritten exam papers.
  */
 export async function processHandwritingPages(
   pages: HandwritingPage[],
@@ -36,76 +35,34 @@ export async function processHandwritingPages(
     inlineData: { mimeType: page.mimeType, data: page.data },
   }));
 
-  // Stronger, education-focused prompt for higher accuracy on real teacher handwriting.
+  // Education-focused prompt for better fidelity on real teacher handwriting.
   const prompt = `You are an expert examiner reading handwritten Nigerian secondary school examination papers (JSS 1–SSS 3).
 
-Your job is to carefully transcribe the handwritten questions from the provided page images into clean, structured JSON.
+Transcribe the handwritten questions from the page images into clean structured JSON.
 
-RULES (follow strictly):
-1. Read the pages in order. Preserve the original reading order and the original question numbering as written.
-2. Do NOT invent, complete, or guess missing words, options, numbers, or formulas. Only transcribe what is clearly visible.
-3. Classify every question correctly:
-   - section "A" = objective / multiple-choice questions that have options (A, B, C, D).
-   - section "B" = theory, structured, essay, calculation, or any written-response questions.
-4. For section A questions:
-   - Put the full stem in "question_text".
-   - Put each option in option_a, option_b, option_c, option_d exactly as written (without the letter prefix if already present).
-   - Suggest "correct_option" only when you can confidently solve the question from the visible text. If uncertain, leave it empty. Never guess.
-5. For section B questions:
-   - Preserve sub-parts (a), (b), (c) etc. inside question_text.
-   - Capture marks if written (e.g. [10 Marks], 15 marks).
-   - Do NOT invent model answers or marking schemes.
-6. Preserve mathematical symbols, units, tables, and chemical formulas as accurately as possible.
-7. When a diagram or figure is present, add a short description in the question_text as [Diagram: brief description] and also record a diagram_regions entry with approximate normalised bounding box (0–1) if the location is clear.
-8. Use confidence "high", "medium", or "low" honestly. Put any uncertainties or unclear words into "review_notes".
-9. Return ONLY valid JSON. No markdown, no explanation outside the JSON.
+RULES:
+1. Read pages in order. Keep original reading order and original question numbers.
+2. Do NOT invent or guess missing text, options, numbers or formulas. Only use what is clearly visible.
+3. section "A" = objective/multiple-choice with options A–D. section "B" = theory, structured, essay, calculation or written-response.
+4. For section A: put the stem in question_text; put options in option_a–option_d; suggest correct_option only when you are confident, otherwise leave empty.
+5. For section B: keep sub-parts (a)(b)(c); capture marks if written; do not invent answers.
+6. Preserve maths symbols, units, tables and formulas as accurately as possible.
+7. If a diagram is present, add [Diagram: brief description] in question_text and include a diagram_regions entry with normalised 0–1 box when location is clear.
+8. Use confidence high/medium/low honestly. Put uncertainties in review_notes.
+9. Return ONLY valid JSON. No markdown fences.
 
-Required JSON shape:
-{
-  "questions": [
-    {
-      "section": "A",
-      "question_number": 1,
-      "question_text": "...",
-      "option_a": "...",
-      "option_b": "...",
-      "option_c": "...",
-      "option_d": "...",
-      "correct_option": "",
-      "marks": 1,
-      "confidence": "medium",
-      "review_notes": []
-    }
-  ],
-  "diagram_regions": [
-    {
-      "section": "A",
-      "question_number": 1,
-      "page_index": 0,
-      "x": 0.1,
-      "y": 0.2,
-      "width": 0.4,
-      "height": 0.3,
-      "description": "labelled diagram"
-    }
-  ],
-  "page_notes": []
-}
+JSON shape:
+{"questions":[{"section":"A","question_number":1,"question_text":"...","option_a":"","option_b":"","option_c":"","option_d":"","correct_option":"","marks":1,"confidence":"medium","review_notes":[]}],"diagram_regions":[{"section":"A","question_number":1,"page_index":0,"x":0.1,"y":0.2,"width":0.4,"height":0.3,"description":"labelled diagram"}],"page_notes":[]}
 
-Keep bounding boxes normalised between 0 and 1 relative to the full page image. If there are no diagrams, return an empty diagram_regions array.`;
+Empty diagram_regions if none. Bounding boxes must be 0–1 relative to the full page.`;
 
   let response: any = null;
   let lastError: any = null;
   let usedModel = '';
 
-  // Prefer fast, high-quality vision Flash models first, then fall back.
-  // Order prioritises speed + accuracy for handwriting.
-  const models = [
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-flash-latest',
-    'gemini-1.5-flash',
-  ];
+  // Restore the models that were already working on this project.
+  // gemini-3.8-flash is the current stable high-quality Flash vision model (2026).
+  const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-3.6-flash'];
   const failures: string[] = [];
 
   for (const model of models) {
@@ -116,7 +73,7 @@ Keep bounding boxes normalised between 0 and 1 relative to the full page image. 
           contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
           config: {
             responseMimeType: 'application/json',
-            temperature: 0.05, // lower temperature = more faithful transcription
+            temperature: 0.1,
           },
         });
 
@@ -143,7 +100,6 @@ Keep bounding boxes normalised between 0 and 1 relative to the full page image. 
           message: message.slice(0, 240),
         });
 
-        // Hard auth failures should stop immediately.
         if (
           status === 401 ||
           status === 403 ||
@@ -160,11 +116,10 @@ Keep bounding boxes normalised between 0 and 1 relative to the full page image. 
           );
 
         if (transient && attempt === 1) {
-          await sleep(status === 429 ? 1600 : 800);
+          await sleep(status === 429 ? 1800 : 900);
           continue;
         }
 
-        // Model not found → try next model quickly.
         if (status === 404 || /not found|not supported|invalid model/i.test(message)) {
           break;
         }
@@ -186,7 +141,7 @@ Keep bounding boxes normalised between 0 and 1 relative to the full page image. 
     throw finalError;
   }
 
-  // Clean possible markdown fences some models still wrap around JSON.
+  // Strip possible markdown fences some models still return.
   let rawText = String(response.text).trim();
   if (rawText.startsWith('```')) {
     rawText = rawText
