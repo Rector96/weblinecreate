@@ -168,7 +168,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Amount Paid:</span>
-                <span className="font-bold text-slate-900">₦11,000.00</span>
+                <span className="font-bold text-slate-900">₦10,000.00</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Term & Session:</span>
@@ -212,7 +212,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
               </div>
               <div>
                 <h3 className="text-lg font-black text-slate-900">School Term Subscription</h3>
-                <p className="text-xs text-slate-500">Official Paystack Gateway · ₦11,000 / Term</p>
+                <p className="text-xs text-slate-500">Official Paystack Gateway · ₦10,000 / Term</p>
               </div>
             </div>
 
@@ -261,7 +261,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
             <div className="mb-4 border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
               <div className="flex items-baseline justify-between">
                 <div>
-                  <span className="text-2xl font-black text-slate-900">₦11,000</span>
+                  <span className="text-2xl font-black text-slate-900">₦10,000</span>
                   <span className="text-xs text-slate-500 font-medium ml-1">/ School Term</span>
                 </div>
                 <span className="text-[11px] bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full border border-emerald-200">
@@ -334,7 +334,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
                 </>
               ) : (
                 <>
-                  <span>Pay ₦11,000 via Paystack</span>
+                  <span>Pay ₦10,000 via Paystack</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

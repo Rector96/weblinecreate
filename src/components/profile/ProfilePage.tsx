@@ -268,7 +268,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenPaystack }) => {
                 : 'bg-white text-blue-900 hover:bg-blue-50'
             }`}
           >
-            {school.subscription_status === 'active' ? 'Manage plan' : 'Upgrade · ₦11,000'}
+            {school.subscription_status === 'active' ? 'Manage plan' : 'Upgrade · ₦10,000'}
           </button>
         </div>
       )}
