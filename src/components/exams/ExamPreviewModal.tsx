@@ -94,8 +94,19 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
 <body>
   <div class="exam-preview-overlay"><div class="exam-preview-dialog">${paperHtml}</div></div>
   <script>
-    window.addEventListener('load', function () {
-      setTimeout(function () { window.focus(); window.print(); }, 500);
+    window.addEventListener('load', async function () {
+      // Wait for the school crest and any question diagrams to finish decoding
+      // before opening the print dialog; otherwise mobile browsers can omit them.
+      await Promise.all(Array.from(document.images).map(function (img) {
+        if (typeof img.decode === 'function') return img.decode().catch(function () {});
+        if (img.complete) return Promise.resolve();
+        return new Promise(function (resolve) {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      }));
+      window.focus();
+      window.print();
     });
   </script>
 </body>
