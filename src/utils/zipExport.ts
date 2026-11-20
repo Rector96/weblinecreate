@@ -1,9 +1,10 @@
 import JSZip from 'jszip';
-import { saveAs } from 'file-saver';
+import { downloadBlob } from './downloadBlob';
 import { Exam, School } from '../types';
 import { buildExamDocxBlob } from './docxExport';
 
 export async function exportAllExamsZip(exams: Exam[], school?: School | null): Promise<void> {
+  if (!exams.length) throw new Error('There are no exams to include in this download.');
   const zip = new JSZip();
   const folderName = `${(school?.name || 'ROCKCRAFT').replace(/[^a-zA-Z0-9]/g, '_')}_Exams_Bundle`;
   const folder = zip.folder(folderName);
@@ -17,5 +18,5 @@ export async function exportAllExamsZip(exams: Exam[], school?: School | null): 
   }
 
   const content = await zip.generateAsync({ type: 'blob' });
-  saveAs(content, `${folderName}.zip`);
+  downloadBlob(content, `${folderName}.zip`);
 }

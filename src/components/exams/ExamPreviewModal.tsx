@@ -22,6 +22,8 @@ interface ExamPreviewModalProps {
 export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClose }) => {
   const { school } = useAuth();
   const [activeTab, setActiveTab] = useState<'paper' | 'scheme'>('paper');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   if (!exam) return null;
 
@@ -114,6 +116,21 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
     printWindow.document.close();
   };
 
+  const handleExport = async () => {
+    if (!exam || isDownloading) return;
+    setIsDownloading(true);
+    setDownloadError(null);
+    try {
+      if (activeTab === 'paper') await exportExamToDocx(exam, school);
+      else await exportMarkingSchemeToDocx(exam, school);
+    } catch (error) {
+      console.error('Failed to export exam from preview', error);
+      setDownloadError(error instanceof Error ? error.message : 'Could not download this file. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="exam-preview-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in">
       <div className="exam-preview-dialog w-full max-w-4xl max-h-[95vh] bg-slate-100 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-left border border-slate-300">
@@ -153,15 +170,12 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
             </button>
 
             <button
-              onClick={() =>
-                activeTab === 'paper'
-                  ? exportExamToDocx(exam, school)
-                  : exportMarkingSchemeToDocx(exam, school)
-              }
-              className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              onClick={handleExport}
+              disabled={isDownloading}
+              className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 disabled:opacity-60 text-blue-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
             >
               <Download className="w-3.5 h-3.5 text-blue-600" />
-              <span>Export DOCX</span>
+              <span>{isDownloading ? 'Preparing…' : 'Export DOCX'}</span>
             </button>
 
             <button
@@ -173,6 +187,7 @@ export const ExamPreviewModal: React.FC<ExamPreviewModalProps> = ({ exam, onClos
           </div>
         </div>
 
+        {downloadError && <div role="alert" className="mx-4 mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{downloadError}</div>}
         <div className="exam-preview-scroll flex-1 overflow-y-auto p-4 sm:p-8">
           <div data-watermark={school?.name || "SCHOOL NAME"} className="exam-paper-print bg-white max-w-3xl mx-auto p-6 sm:p-10 rounded-2xl shadow-sm border border-slate-200 font-serif text-slate-900 leading-relaxed text-left">
             {activeTab === 'paper' ? (
