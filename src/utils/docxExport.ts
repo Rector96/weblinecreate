@@ -14,7 +14,7 @@ import {
   PageNumber,
   ImageRun,
 } from 'docx';
-import { saveAs } from 'file-saver';
+import { downloadBlob } from './downloadBlob';
 import { Exam, School } from '../types';
 
 const FONT_NAME = 'Times New Roman';
@@ -417,7 +417,7 @@ export async function exportExamToDocx(exam: Exam, school?: School | null): Prom
   const cleanSubject = (exam.subject || 'Exam').replace(/[^a-zA-Z0-9]/g, '_');
   const cleanClass = (exam.class_name || 'Class').replace(/[^a-zA-Z0-9]/g, '_');
   const termSlug = (exam.term || 'Term').replace(/\s+/g, '');
-  saveAs(blob, `${schoolName.slice(0, 18)}_${cleanSubject}_${cleanClass}_${termSlug}_Exam.docx`);
+  downloadBlob(blob, `${schoolName.slice(0, 18)}_${cleanSubject}_${cleanClass}_${termSlug}_Exam.docx`);
 }
 
 export async function exportMarkingSchemeToDocx(exam: Exam, school?: School | null): Promise<void> {
@@ -523,5 +523,5 @@ export async function exportMarkingSchemeToDocx(exam: Exam, school?: School | nu
   const blob = await Packer.toBlob(doc);
   const cleanSubject = (exam.subject || 'Exam').replace(/[^a-zA-Z0-9]/g, '_');
   const cleanClass = (exam.class_name || 'Class').replace(/[^a-zA-Z0-9]/g, '_');
-  saveAs(blob, `${schoolName.slice(0, 18)}_${cleanSubject}_${cleanClass}_MarkingScheme.docx`);
+  downloadBlob(blob, `${schoolName.slice(0, 18)}_${cleanSubject}_${cleanClass}_MarkingScheme.docx`);
 }
