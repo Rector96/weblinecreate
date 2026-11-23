@@ -99,8 +99,12 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
 
   const handleDownloadDocx = async (exam: Exam) => {
     setActionId(`docx_${exam.id}`);
+    setError(null);
     try {
       await exportExamToDocx(exam, school);
+    } catch (downloadError) {
+      console.error('[ROCKCRAFT] Individual exam download failed:', downloadError);
+      setError(downloadError instanceof Error ? `Could not download the exam: ${downloadError.message}` : 'Could not download the exam. Please try again or contact support.');
     } finally {
       setActionId(null);
     }
@@ -108,8 +112,12 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
 
   const handleDownloadScheme = async (exam: Exam) => {
     setActionId(`scheme_${exam.id}`);
+    setError(null);
     try {
       await exportMarkingSchemeToDocx(exam, school);
+    } catch (downloadError) {
+      console.error('[ROCKCRAFT] Marking scheme download failed:', downloadError);
+      setError(downloadError instanceof Error ? `Could not download the marking scheme: ${downloadError.message}` : 'Could not download the marking scheme. Please try again or contact support.');
     } finally {
       setActionId(null);
     }
@@ -118,8 +126,12 @@ export const ExamsListPage: React.FC<ExamsListPageProps> = ({
   const handleExportZip = async () => {
     if (filteredExams.length === 0) return;
     setIsExportingZip(true);
+    setError(null);
     try {
       await exportAllExamsZip(filteredExams, school);
+    } catch (downloadError) {
+      console.error('[ROCKCRAFT] ZIP exam download failed:', downloadError);
+      setError(downloadError instanceof Error ? `Could not create or download the ZIP: ${downloadError.message}` : 'Could not create or download the ZIP. Please try again or contact support.');
     } finally {
       setIsExportingZip(false);
     }
